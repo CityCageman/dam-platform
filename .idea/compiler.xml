@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Annotation profile for 数据资产管理平台" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$PROJECT_DIR$/../../Program File/apache-maven/repository/org/projectlombok/lombok/1.18.38/lombok-1.18.38.jar" />
+        </processorPath>
+        <module name="dam-quality" />
+        <module name="dam-lineage" />
+        <module name="dam-security" />
+        <module name="dam-operations" />
+        <module name="dam-gateway" />
+        <module name="dam-standard" />
+        <module name="dam-agent" />
+        <module name="dam-catalog" />
+        <module name="dam-common" />
+        <module name="dam-auth" />
+        <module name="dam-lifecycle" />
+      </profile>
+    </annotationProcessing>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="dam-agent" options="-parameters" />
+      <module name="dam-auth" options="-parameters" />
+      <module name="dam-catalog" options="-parameters" />
+      <module name="dam-common" options="-parameters" />
+      <module name="dam-gateway" options="-parameters" />
+      <module name="dam-lifecycle" options="-parameters" />
+      <module name="dam-lineage" options="-parameters" />
+      <module name="dam-operations" options="-parameters" />
+      <module name="dam-quality" options="-parameters" />
+      <module name="dam-security" options="-parameters" />
+      <module name="dam-standard" options="-parameters" />
+    </option>
+  </component>
+</project>
