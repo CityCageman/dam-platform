@@ -1,0 +1,31 @@
+# 数据资产管理平台 - 数据库服务器 Docker Compose（可选：自建 PostgreSQL 时使用）
+# 说明：当前环境数据库已存在（10.162.3.16:11001），无需部署本文件；
+#       仅在需要自建一套全新 PG 时使用。应用集群直接通过环境变量连接现有库。
+name: dam-platform-db
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: dam-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: damplatform
+      POSTGRES_USER: dam
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-Cuhkszmc_2026}
+      TZ: Asia/Shanghai
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # 首次初始化：先建表结构，再灌种子数据（文件名前缀保证执行顺序）
+      - ../db/create_schema_doc.sql:/docker-entrypoint-initdb.d/01_create_schema.sql:ro
+      - ../db/初始化.sql:/docker-entrypoint-initdb.d/02_init_data.sql:ro
+    ports:
+      # 暴露 5432 供应用集群服务器（台2）连接；仅内网访问，勿对公网开放
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dam -d damplatform"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

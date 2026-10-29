@@ -1,0 +1,31 @@
+server:
+  port: 8089
+spring:
+  application:
+    name: dam-agent
+  profiles:
+    active: dev
+  config:
+    import:
+      - optional:nacos:${spring.application.name}.yml
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+  autoconfigure:
+    # 智能体模块不连接数据库，排除数据源/MyBatis-Plus 自动装配
+    # （dam-common 依赖传递了 mybatis-plus 与 spring-boot-starter-jdbc 相关配置）
+    exclude:
+      # Spring Boot 4 中 DataSource 自动装配迁移至 spring-boot-jdbc 模块，包路径为 org.springframework.boot.jdbc.autoconfigure
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      - com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration
+
+sa-token:
+  token-name: token
+  timeout: 86400
+  is-concurrent: true
+  is-share: false
+  token-style: jwt
+  jwt-secret-key: dam-platform-jwt-secret-key-2026

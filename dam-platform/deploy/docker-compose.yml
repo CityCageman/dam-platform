@@ -1,0 +1,219 @@
+# 数据资产管理平台 - Docker Compose 一键部署
+# 前置：先执行 deploy/build.sh 完成前后端编译，再 `docker compose up -d --build`
+name: dam-platform
+
+# 连库服务的通用数据库连接（PostgreSQL 容器内部地址）
+x-pg-env: &pg-env
+  SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/damplatform
+  SPRING_DATASOURCE_USERNAME: dam
+  SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-Cuhkszmc_2026}
+  TZ: Asia/Shanghai
+
+services:
+  # ==================== 数据库 ====================
+  postgres:
+    image: postgres:15-alpine
+    container_name: dam-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: damplatform
+      POSTGRES_USER: dam
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-Cuhkszmc_2026}
+      TZ: Asia/Shanghai
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # 首次初始化：先建表结构，再灌种子数据（文件名前缀保证执行顺序）
+      - ../db/create_schema_doc.sql:/docker-entrypoint-initdb.d/01_create_schema.sql:ro
+      - ../db/初始化.sql:/docker-entrypoint-initdb.d/02_init_data.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dam -d damplatform"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # 生产建议不对外暴露；需外部连接数据库时再打开
+    # ports:
+    #   - "5432:5432"
+
+  # ==================== 后端微服务 ====================
+  dam-auth:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-auth/target/dam-auth-1.0.0-exec.jar
+    container_name: dam-auth
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  dam-catalog:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-catalog/target/dam-catalog-1.0.0-exec.jar
+    container_name: dam-catalog
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+      # 外键血缘自动落库调用 lineage 服务（容器网络内用服务名）
+      DAM_LINEAGE_URL: http://dam-lineage:8093
+      # 报表 SQL 生成调用编码智能体（容器网络内用服务名）
+      DAM_AGENT_URL: http://dam-agent:8089
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  dam-lineage:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-lineage/target/dam-lineage-1.0.0-exec.jar
+    container_name: dam-lineage
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  dam-standard:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-standard/target/dam-standard-1.0.0-exec.jar
+    container_name: dam-standard
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  dam-quality:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-quality/target/dam-quality-1.0.0-exec.jar
+    container_name: dam-quality
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  dam-security:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-security/target/dam-security-1.0.0-exec.jar
+    container_name: dam-security
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  dam-lifecycle:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-lifecycle/target/dam-lifecycle-1.0.0-exec.jar
+    container_name: dam-lifecycle
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  dam-operations:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-operations/target/dam-operations-1.0.0-exec.jar
+    container_name: dam-operations
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # 智能体服务：不连库，仅外呼 LLM，密钥由 .env 注入
+  dam-agent:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-agent/target/dam-agent-1.0.0-exec.jar
+    container_name: dam-agent
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      DAM_AGENT_CHAT_BASE_URL: ${DAM_AGENT_CHAT_BASE_URL}
+      DAM_AGENT_CHAT_API_KEY: ${DAM_AGENT_CHAT_API_KEY}
+      DAM_AGENT_CHAT_MODEL: ${DAM_AGENT_CHAT_MODEL:-qwen3.8-27b-tp8}
+      DAM_AGENT_CODE_BASE_URL: ${DAM_AGENT_CODE_BASE_URL}
+      DAM_AGENT_CODE_API_KEY: ${DAM_AGENT_CODE_API_KEY}
+      DAM_AGENT_CODE_MODEL: ${DAM_AGENT_CODE_MODEL:-qwen3-coder-30b-a3b}
+
+  # 网关：对外唯一 API 入口，路由地址覆盖为容器服务名
+  dam-gateway:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-gateway/target/dam-gateway-1.0.0-exec.jar
+    container_name: dam-gateway
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      DAM_ROUTE_AUTH: http://dam-auth:8081
+      DAM_ROUTE_CATALOG: http://dam-catalog:8092
+      DAM_ROUTE_LINEAGE: http://dam-lineage:8093
+      DAM_ROUTE_STANDARD: http://dam-standard:8084
+      DAM_ROUTE_QUALITY: http://dam-quality:8085
+      DAM_ROUTE_SECURITY: http://dam-security:8086
+      DAM_ROUTE_LIFECYCLE: http://dam-lifecycle:8087
+      DAM_ROUTE_OPERATIONS: http://dam-operations:8088
+      DAM_ROUTE_AGENT: http://dam-agent:8089
+    ports:
+      - "8080:8080"
+    depends_on:
+      - dam-auth
+      - dam-catalog
+      - dam-lineage
+      - dam-standard
+      - dam-quality
+      - dam-security
+      - dam-lifecycle
+      - dam-operations
+      - dam-agent
+
+  # ==================== 前端（Nginx） ====================
+  frontend:
+    image: nginx:1.27-alpine
+    container_name: dam-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ../codebase/frontend/dist:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - dam-gateway
+
+volumes:
+  pgdata:

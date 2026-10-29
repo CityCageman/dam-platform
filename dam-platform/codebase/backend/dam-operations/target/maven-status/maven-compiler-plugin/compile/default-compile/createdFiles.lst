@@ -1,0 +1,13 @@
+com\dam\operations\service\TicketSlaService.class
+com\dam\operations\service\DashboardService.class
+com\dam\operations\service\UserBehaviorService.class
+com\dam\operations\repository\DamUsageStatsMapper.class
+com\dam\operations\service\AssetValuationService.class
+com\dam\operations\repository\DamTicketCommentMapper.class
+com\dam\operations\repository\DamTicketMapper.class
+com\dam\operations\entity\DamTicketComment.class
+com\dam\operations\entity\DamTicket.class
+com\dam\operations\service\OperationsService.class
+com\dam\operations\DamOperationsApplication.class
+com\dam\operations\entity\DamUsageStats.class
+com\dam\operations\controller\OperationsController.class

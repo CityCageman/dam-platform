@@ -1,0 +1,28 @@
+# systemd 实例化单元：按服务名启动单个后端服务
+# 安装（以 dam-auth 为例）：
+#   sudo cp deploy/systemd/dam@.service /etc/systemd/system/
+#   sudo mkdir -p /opt/dam/logs && sudo cp codebase/backend/dam-auth/target/dam-auth-1.0.0-exec.jar /opt/dam/
+#   sudo cp deploy/systemd/env.conf /etc/dam/env.conf   # 按需，放数据库/密钥
+#   sudo useradd -r -s /usr/sbin/nologin dam || true
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now dam@dam-auth
+[Unit]
+Description=DAM platform service %i
+After=network.target
+
+[Service]
+Type=simple
+User=dam
+Group=dam
+WorkingDirectory=/opt/dam
+# 环境变量文件：数据库连接、智能体密钥、网关路由地址（若拆分部署）
+EnvironmentFile=/etc/dam/env.conf
+ExecStart=/usr/bin/java -Xmx512m -Xms256m -XX:+UseParallelGC -jar /opt/dam/%i-1.0.0-exec.jar --spring.profiles.active=prod
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/opt/dam/logs/%i.log
+StandardError=append:/opt/dam/logs/%i.log
+
+[Install]
+WantedBy=multi-user.target

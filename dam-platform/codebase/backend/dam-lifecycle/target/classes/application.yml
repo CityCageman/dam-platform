@@ -1,0 +1,19 @@
+server:
+  port: 8087
+spring:
+  application:
+    name: dam-lifecycle
+  profiles:
+    active: dev
+  config:
+    import:
+      - optional:nacos:${spring.application.name}.yml
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+sa-token:
+  token-name: token
+  timeout: 86400

@@ -1,0 +1,22 @@
+# 后端微服务通用镜像（Podman / Docker 均可构建）
+# 离线前提：构建机已具备基础镜像 eclipse-temurin:21-jre（或先 docker/podman pull）
+# 构建上下文：codebase/backend
+#   podman build -f deploy/podman/Dockerfile.backend \
+#     --build-arg JAR_FILE=dam-auth/target/dam-auth-1.0.0-exec.jar \
+#     -t localhost/dam-auth:1.0.0 codebase/backend
+FROM eclipse-temurin:21-jre
+
+ARG JAR_FILE
+ARG APP_NAME=dam-service
+
+ENV JAVA_OPTS="-Xmx512m -Xms256m -XX:+UseParallelGC -Dfile.encoding=UTF-8 -Duser.timezone=Asia/Shanghai" \
+    SPRING_PROFILES_ACTIVE=prod \
+    TZ=Asia/Shanghai \
+    APP_NAME=${APP_NAME}
+
+WORKDIR /app
+COPY ${JAR_FILE} app.jar
+
+EXPOSE 8080
+
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]

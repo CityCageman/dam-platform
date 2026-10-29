@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>登录态注入</title></head>
+<body>
+<script>
+// 开发辅助：从 URL hash 注入登录态后跳转，用于自动化测试/截图
+// 用法：/set-token.html#token=xxx&user=<json>&perms=<json>&redirect=/dataservice
+(function () {
+  const q = new URLSearchParams(location.hash.slice(1));
+  const token = q.get('token');
+  if (token) localStorage.setItem('dap_token', token);
+  if (q.get('user')) localStorage.setItem('dap_user', q.get('user'));
+  if (q.get('perms')) localStorage.setItem('dap_permissions', q.get('perms'));
+  location.replace(q.get('redirect') || '/dashboard');
+})();
+</script>
+</body>
+</html>

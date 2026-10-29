@@ -1,0 +1,12 @@
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-quality\src\main\java\com\dam\quality\controller\QualityController.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-quality\src\main\java\com\dam\quality\DamQualityApplication.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-quality\src\main\java\com\dam\quality\entity\DamQualityCheck.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-quality\src\main\java\com\dam\quality\entity\DamQualityRule.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-quality\src\main\java\com\dam\quality\repository\DamQualityCheckMapper.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-quality\src\main\java\com\dam\quality\repository\DamQualityRuleMapper.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-quality\src\main\java\com\dam\quality\repository\DynamicQueryMapper.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-quality\src\main\java\com\dam\quality\repository\DynamicSqlProvider.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-quality\src\main\java\com\dam\quality\service\AlarmNotificationService.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-quality\src\main\java\com\dam\quality\service\QualityScanService.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-quality\src\main\java\com\dam\quality\service\QualityScheduler.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-quality\src\main\java\com\dam\quality\service\QualityService.java

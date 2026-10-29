@@ -1,0 +1,28 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.0.6)
+
+2026-10-28T17:22:16.246+08:00  INFO 9284 --- [dam-standard] [           main] c.dam.standard.DamStandardApplication    : Starting DamStandardApplication v1.0.0 using Java 21.0.11 with PID 9284 (D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-standard\target\dam-standard-1.0.0-exec.jar started by HP in D:\Project Management\dam-platform\dam-platform\codebase\backend)
+2026-10-28T17:22:16.255+08:00  INFO 9284 --- [dam-standard] [           main] c.dam.standard.DamStandardApplication    : The following 1 profile is active: "dev"
+2026-10-28T17:22:17.838+08:00  INFO 9284 --- [dam-standard] [           main] o.s.cloud.context.scope.GenericScope     : BeanFactory id=832d0559-251e-33d4-b132-3a547e0bbaf7
+2026-10-28T17:22:18.279+08:00  INFO 9284 --- [dam-standard] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8084 (http)
+2026-10-28T17:22:18.296+08:00  INFO 9284 --- [dam-standard] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-28T17:22:18.296+08:00  INFO 9284 --- [dam-standard] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.21]
+2026-10-28T17:22:18.329+08:00  INFO 9284 --- [dam-standard] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 1928 ms
+ _ _   |_  _ _|_. ___ _ |    _ 
+| | |\/|_)(_| | |_\  |_)||_|_\ 
+     /               |         
+                        3.5.16 
+____ ____    ___ ____ _  _ ____ _  _ 
+[__  |__| __  |  |  | |_/  |___ |\ | 
+___] |  |     |  |__| | \_ |___ | \| 
+https://sa-token.cc (v1.37.0)
+2026-10-28T17:22:20.383+08:00  INFO 9284 --- [dam-standard] [           main] m.e.s.MybatisPlusApplicationContextAware : Register ApplicationContext instances org.springframework.boot.web.server.servlet.context.AnnotationConfigServletWebServerApplicationContext@40e10ff8
+2026-10-28T17:22:21.702+08:00  INFO 9284 --- [dam-standard] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8084 (http) with context path '/'
+2026-10-28T17:22:21.736+08:00  INFO 9284 --- [dam-standard] [           main] c.dam.standard.DamStandardApplication    : Started DamStandardApplication in 6.267 seconds (process running for 7.182)

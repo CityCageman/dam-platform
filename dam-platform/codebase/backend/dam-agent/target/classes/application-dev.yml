@@ -1,0 +1,28 @@
+# 智能体连接配置（开发环境）
+# 生产环境请通过环境变量注入（如 DAM_AGENT_CHAT_BASE_URL / DAM_AGENT_CHAT_API_KEY），密钥不要提交到 git
+dam:
+  agent:
+    # 对话智能体（通用问答）
+    chat:
+      # 智能体服务地址（完整到 /v1/chat/completions）
+      base-url: https://llm-tp8.cuhkszmc.cn/v1/chat/completions
+      # 认证密钥（发送为 Authorization: Bearer <api-key>）
+      api-key: sk-faf6035c9b3e4235a1881bce5dedb51a
+      # 默认模型（对话模型，请按实际替换）
+      model: qwen3.8-27b-tp8
+      # 总体超时（秒）
+      timeout-seconds: 120
+      # 连接超时（秒）
+      connect-timeout-seconds: 10
+    # 编码智能体（代码 / SQL 生成）
+    code:
+      # 智能体服务地址（完整到 /v1/chat/completions）
+      base-url: https://coder.cuhkszmc.cn/v1/chat/completions
+      # 认证密钥（发送为 Authorization: Bearer <api-key>）
+      api-key: sk-faf6035c9b3e4235a1881bce5dedb51a
+      # 默认模型（编码模型）
+      model: qwen3-coder-30b-a3b
+      # 总体超时（秒）
+      timeout-seconds: 120
+      # 连接超时（秒）
+      connect-timeout-seconds: 10

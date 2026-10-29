@@ -1,0 +1,20 @@
+# 数据资产管理平台 - 前端 Nginx Docker Compose（前后端分离：前端服务器）
+# 说明：本文件只部署 Nginx，托管前端静态资源 dist，并把 /api 反代到后端服务器网关。
+# 前置：前端机需已存在 codebase/frontend/dist（可在任意机器执行 deploy/build.sh 后拷入，或前端机直接 npm run build）。
+# 用法：cd deploy && docker compose -f docker-compose.frontend.yml up -d
+name: dam-platform-frontend
+
+services:
+  frontend:
+    image: nginx:1.27-alpine
+    container_name: dam-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      # 后端网关地址（内网IP:8080），务必改成后端服务器实际地址
+      BACKEND_GATEWAY: ${BACKEND_GATEWAY:-192.168.1.20:8080}
+    volumes:
+      - ../codebase/frontend/dist:/usr/share/nginx/html:ro
+      # Nginx 官方镜像模板机制：启动时用 envsubst 将 ${BACKEND_GATEWAY} 替换后生成 default.conf
+      - ./nginx.frontend.template:/etc/nginx/templates/default.conf.template:ro

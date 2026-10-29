@@ -1,0 +1,15 @@
+# 前端镜像（Nginx + 内置 dist，生产无需挂载宿主机目录）
+# 构建上下文：项目根目录（需要访问 codebase/frontend/dist 与 deploy/nginx.frontend.template）
+#   podman build -f deploy/podman/Dockerfile.frontend -t localhost/dam-frontend:1.0.0 .
+FROM nginx:1.27-alpine
+
+ENV TZ=Asia/Shanghai \
+    BACKEND_GATEWAY=dam-gateway:8080
+
+# 静态资源
+COPY codebase/frontend/dist/ /usr/share/nginx/html/
+
+# 官方镜像启动时用 envsubst 生成 default.conf，${BACKEND_GATEWAY} 由运行参数注入
+COPY deploy/nginx.frontend.template /etc/nginx/templates/default.conf.template
+
+EXPOSE 80

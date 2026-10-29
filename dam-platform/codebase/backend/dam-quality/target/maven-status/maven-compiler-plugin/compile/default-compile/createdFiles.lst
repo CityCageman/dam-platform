@@ -1,0 +1,11 @@
+com\dam\quality\service\QualityScheduler.class
+com\dam\quality\DamQualityApplication.class
+com\dam\quality\controller\QualityController.class
+com\dam\quality\service\AlarmNotificationService.class
+com\dam\quality\service\QualityScanService.class
+com\dam\quality\entity\DamQualityCheck.class
+com\dam\quality\repository\DamQualityCheckMapper.class
+com\dam\quality\repository\DynamicQueryMapper.class
+com\dam\quality\entity\DamQualityRule.class
+com\dam\quality\repository\DamQualityRuleMapper.class
+com\dam\quality\service\QualityService.class

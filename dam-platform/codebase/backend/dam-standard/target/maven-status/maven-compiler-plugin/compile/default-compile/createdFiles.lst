@@ -1,0 +1,13 @@
+com\dam\standard\controller\StandardController.class
+com\dam\standard\entity\DamStandard.class
+com\dam\standard\repository\DamStandardValueMapper.class
+com\dam\standard\DamStandardApplication.class
+com\dam\standard\entity\DamStandardValue.class
+com\dam\standard\repository\DamStandardMapper.class
+com\dam\standard\repository\DamStandardMappingMapper.class
+com\dam\standard\entity\DamStandardMapping.class
+com\dam\standard\repository\DamDeviationReportMapper.class
+com\dam\standard\entity\DamDeviationReport.class
+com\dam\standard\service\StandardAutoValidatorService.class
+com\dam\standard\service\StandardService.class
+com\dam\standard\service\StandardScheduler.class

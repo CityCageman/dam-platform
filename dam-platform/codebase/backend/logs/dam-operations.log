@@ -1,0 +1,67 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.0.6)
+
+2026-10-28T17:22:24.624+08:00  INFO 25872 --- [dam-operations] [           main] c.d.operations.DamOperationsApplication  : Starting DamOperationsApplication v1.0.0 using Java 21.0.11 with PID 25872 (D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-operations\target\dam-operations-1.0.0-exec.jar started by HP in D:\Project Management\dam-platform\dam-platform\codebase\backend)
+2026-10-28T17:22:24.630+08:00  INFO 25872 --- [dam-operations] [           main] c.d.operations.DamOperationsApplication  : The following 1 profile is active: "dev"
+2026-10-28T17:22:26.462+08:00  INFO 25872 --- [dam-operations] [           main] o.s.cloud.context.scope.GenericScope     : BeanFactory id=179e1d0a-eddb-3d88-b60e-7094bb7765ee
+2026-10-28T17:22:27.097+08:00  INFO 25872 --- [dam-operations] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8088 (http)
+2026-10-28T17:22:27.144+08:00  INFO 25872 --- [dam-operations] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-28T17:22:27.148+08:00  INFO 25872 --- [dam-operations] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.21]
+2026-10-28T17:22:27.223+08:00  INFO 25872 --- [dam-operations] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2483 ms
+ _ _   |_  _ _|_. ___ _ |    _ 
+| | |\/|_)(_| | |_\  |_)||_|_\ 
+     /               |         
+                        3.5.16 
+____ ____    ___ ____ _  _ ____ _  _ 
+[__  |__| __  |  |  | |_/  |___ |\ | 
+___] |  |     |  |__| | \_ |___ | \| 
+https://sa-token.cc (v1.37.0)
+2026-10-28T17:22:29.478+08:00  INFO 25872 --- [dam-operations] [           main] m.e.s.MybatisPlusApplicationContextAware : Register ApplicationContext instances org.springframework.boot.web.server.servlet.context.AnnotationConfigServletWebServerApplicationContext@3234f74e
+2026-10-28T17:22:30.592+08:00  INFO 25872 --- [dam-operations] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8088 (http) with context path '/'
+2026-10-28T17:22:30.606+08:00  INFO 25872 --- [dam-operations] [           main] c.d.operations.DamOperationsApplication  : Started DamOperationsApplication in 6.765 seconds (process running for 7.821)
+2026-10-28T18:00:30.924+08:00  INFO 25872 --- [dam-operations] [nio-8088-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-28T18:00:30.927+08:00  INFO 25872 --- [dam-operations] [nio-8088-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-10-28T18:00:30.935+08:00  INFO 25872 --- [dam-operations] [nio-8088-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 8 ms
+2026-10-28T18:00:31.159+08:00  INFO 25872 --- [dam-operations] [nio-8088-exec-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-10-28T18:00:32.103+08:00  INFO 25872 --- [dam-operations] [nio-8088-exec-1] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@1421af61
+2026-10-28T18:00:32.138+08:00  INFO 25872 --- [dam-operations] [nio-8088-exec-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-10-29T08:15:57.821+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@4516f8b (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T08:15:57.823+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@279789af (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T08:15:57.824+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=13h5m777ms773µs900ns).
+2026-10-29T08:15:57.826+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@29c19a9f (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T08:15:57.828+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@532e0ea9 (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T08:15:57.829+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@48ef2f92 (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T08:15:57.832+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@72119e0c (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T08:15:57.833+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@5721e7b3 (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T08:15:57.834+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@7459f0b8 (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T08:15:57.835+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@45fbd21e (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T08:15:57.838+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@3be4c553 (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T09:49:45.708+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=3m22s566ms336µs200ns).
+2026-10-29T09:49:45.715+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@66c8a32f (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T09:49:45.718+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@131ab3c8 (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T09:49:45.720+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@458023d5 (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T09:49:45.722+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@66722191 (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T09:49:45.725+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@7a7e4d3b (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T09:49:45.727+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@3c3c354f (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T09:49:45.729+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@78e63796 (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T09:49:45.731+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@f6fffb2 (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T09:49:45.732+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@7f07cf1 (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T09:49:45.734+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@5a3bb70d (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T13:58:19.736+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@48f98322 (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T13:58:19.742+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Thread starvation or clock leap detected (housekeeper delta=9m6s246ms427µs600ns).
+2026-10-29T13:58:19.745+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@5d43e747 (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T13:58:19.747+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@4c33ec15 (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T13:58:19.749+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@48d78622 (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T13:58:19.751+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@17caf9c3 (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T13:58:19.753+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@55f14da2 (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T13:58:19.754+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@6f1404d (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T13:58:19.756+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@72632027 (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T13:58:19.757+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@32a7db49 (This connection has been closed.). Possibly consider using a shorter maxLifetime value.
+2026-10-29T13:58:19.758+08:00  WARN 25872 --- [dam-operations] [l-1:housekeeper] com.zaxxer.hikari.pool.PoolBase          : HikariPool-1 - Failed to validate connection org.postgresql.jdbc.PgConnection@6d641ce2 (This connection has been closed.). Possibly consider using a shorter maxLifetime value.

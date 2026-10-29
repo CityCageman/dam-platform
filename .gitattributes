@@ -1,0 +1,15 @@
+# 默认：仓库内统一用 LF，检出时按平台自动处理
+* text=auto
+
+# Windows 批处理脚本必须用 CRLF，否则可能执行异常
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Shell 脚本必须用 LF
+*.sh text eol=lf
+
+# 二进制文件不转换
+*.png binary
+*.jpg binary
+*.zip binary
+*.exe binary

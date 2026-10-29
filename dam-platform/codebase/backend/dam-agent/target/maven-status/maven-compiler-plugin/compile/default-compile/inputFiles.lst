@@ -1,0 +1,10 @@
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-agent\src\main\java\com\dam\agent\config\AgentConfigProperties.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-agent\src\main\java\com\dam\agent\config\AgentExceptionHandler.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-agent\src\main\java\com\dam\agent\config\AgentProperties.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-agent\src\main\java\com\dam\agent\controller\AgentController.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-agent\src\main\java\com\dam\agent\DamAgentApplication.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-agent\src\main\java\com\dam\agent\dto\ChatCompletionResponse.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-agent\src\main\java\com\dam\agent\dto\ChatMessage.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-agent\src\main\java\com\dam\agent\dto\ChatRequest.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-agent\src\main\java\com\dam\agent\service\AgentClient.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-agent\src\main\java\com\dam\agent\service\AgentService.java

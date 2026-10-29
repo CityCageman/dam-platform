@@ -1,0 +1,37 @@
+# 前端 Nginx 配置模板（前后端分离）
+# Nginx 官方镜像会在容器启动时用 envsubst 替换 ${BACKEND_GATEWAY} 后生成 /etc/nginx/conf.d/default.conf
+# 注意：${BACKEND_GATEWAY} 由 docker-compose.frontend.yml 的 environment 注入（后端网关地址，如 192.168.1.20:8080）
+server {
+    listen 80;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # SPA history 路由回退
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 后端 API → 后端网关（前后端分离：反代到后端服务器）
+    location /api/ {
+        proxy_pass http://${BACKEND_GATEWAY};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # SSE 流式对话（智能体）必需：关闭缓冲、拉长读超时
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+
+    # 静态资源缓存
+    location ~* \.(js|css|png|jpg|jpeg|gif|svg|ico|woff2?)$ {
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+    }
+}

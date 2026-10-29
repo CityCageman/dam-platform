@@ -1,0 +1,48 @@
+# 数据资产管理平台 - 中间件服务器 Docker Compose（台3：Nacos + 前端 Nginx）
+# 说明：部署 Nacos（注册/配置中心）+ 前端 Nginx（静态资源 + API 反代）。
+# 前置：前端 dist 已构建（deploy/build.sh 或 npm run build），且台2网关已就绪。
+# 用法：cd deploy && docker compose -f docker-compose.middleware.yml up -d
+name: dam-platform-middleware
+
+services:
+  # ==================== 注册中心 / 配置中心 ====================
+  nacos:
+    image: nacos/nacos-server:v3.1.1
+    container_name: dam-nacos
+    restart: unless-stopped
+    environment:
+      MODE: standalone
+      NACOS_AUTH_ENABLE: "false"
+      TZ: Asia/Shanghai
+    ports:
+      - "8848:8848"   # 控制台 / HTTP API（供台2微服务连接，仅内网）
+      - "9848:9848"   # gRPC 客户端端口（Nacos 2.x+ 必需，主端口+1000）
+    volumes:
+      - nacosdata:/home/nacos/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8848/nacos/v1/console/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  # ==================== 前端（Nginx） ====================
+  frontend:
+    image: nginx:1.27-alpine
+    container_name: dam-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"       # 对外提供页面入口
+    environment:
+      # 后端网关地址（台2 应用集群网关，内网IP:8080），务必改成实际地址
+      BACKEND_GATEWAY: ${BACKEND_GATEWAY:-192.168.1.12:8080}
+    volumes:
+      - ../codebase/frontend/dist:/usr/share/nginx/html:ro
+      # Nginx 官方镜像模板机制：启动时用 envsubst 将 ${BACKEND_GATEWAY} 替换后生成 default.conf
+      - ./nginx.frontend.template:/etc/nginx/templates/default.conf.template:ro
+    depends_on:
+      nacos:
+        condition: service_healthy
+
+volumes:
+  nacosdata:

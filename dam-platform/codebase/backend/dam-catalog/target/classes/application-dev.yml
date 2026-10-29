@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://10.162.3.16:11001/damplatform
+    username: dam
+    password: Cuhkszmc_2026
+    driver-class-name: org.postgresql.Driver
+
+# dam-lineage 服务地址（外键血缘自动落库）
+dam:
+  lineage-url: http://localhost:8093

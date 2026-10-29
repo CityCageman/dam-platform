@@ -1,0 +1,27 @@
+server:
+  port: 8085
+spring:
+  application:
+    name: dam-quality
+  profiles:
+    active: dev
+  config:
+    import:
+      - optional:nacos:${spring.application.name}.yml
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+  mail:
+    host: smtp.example.com
+    port: 587
+    username: 
+    password:
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+sa-token:
+  token-name: token
+  timeout: 86400

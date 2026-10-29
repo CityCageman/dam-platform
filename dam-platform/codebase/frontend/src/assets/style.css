@@ -1,0 +1,299 @@
+/* ===== 简洁式蓝青主题（参考 frontend - new 风格） ===== */
+:root {
+  --med-primary: #2f7bff;
+  --med-primary-light: #4a8dff;
+  --med-primary-lighter: #eff4ff;
+  --med-primary-soft: #dbe8ff;
+  --med-primary-dark: #2563eb;
+  --med-accent: #16c2c2;
+
+  --med-white: #ffffff;
+  --med-bg: #f4f6fa;
+  --med-bg-level2: #f8fafc;
+  --med-card-bg: #ffffff;
+
+  --med-text: #1f2a3d;
+  --med-text-secondary: #475569;
+  --med-text-light: #8a94a6;
+
+  --med-border: #e9edf5;
+  --med-border-light: #f0f2f7;
+
+  --med-sidebar-width: 232px;
+  --med-header-height: 60px;
+
+  --med-success: #16c2c2;
+  --med-warning: #f59e0b;
+  --med-danger: #ef4444;
+  --med-info: #98a2b3;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body, #app { height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: var(--med-bg);
+  color: var(--med-text);
+  font-size: 13px;
+}
+
+/* ===== 页面布局 ===== */
+.page-container { padding: 20px; }
+.page-header {
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.page-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--med-text);
+  padding-left: 12px;
+  border-left: 3px solid var(--med-primary);
+  line-height: 1.4;
+}
+.page-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.search-bar {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  background: var(--med-white);
+  padding: 16px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--med-border);
+}
+
+/* ===== 白色卡片容器（简洁卡片式面板） ===== */
+.white-card {
+  background: var(--med-white);
+  border-radius: 12px;
+  border: 1px solid var(--med-border);
+  padding: 18px 20px;
+}
+
+/* ===== 文本颜色工具类 ===== */
+.text-primary { color: var(--med-primary) !important; }
+.text-title { color: var(--med-text) !important; }
+.text-secondary { color: var(--med-text-secondary) !important; }
+.text-light { color: var(--med-text-light) !important; }
+.text-success { color: var(--med-success) !important; }
+.text-warning { color: var(--med-warning) !important; }
+.text-danger { color: var(--med-danger) !important; }
+.text-info { color: var(--med-info) !important; }
+
+.bg-light { background: var(--med-primary-lighter) !important; }
+.bg-muted { background: var(--med-bg-level2) !important; }
+
+/* ===== Element Plus 全局覆写 ===== */
+
+/* Card */
+.el-card {
+  border-radius: 12px;
+  border: 1px solid var(--med-border);
+  box-shadow: none;
+  --el-card-padding: 18px 20px;
+}
+.el-card__header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--med-border-light);
+  font-weight: 600;
+  color: var(--med-text);
+}
+
+/* Table */
+.el-table {
+  border-radius: 12px;
+  overflow: hidden;
+  --el-table-header-bg-color: #f7f9fc;
+  --el-table-border-color: #eef1f7;
+  font-size: 12.5px;
+}
+.el-table th.el-table__cell {
+  background: #f7f9fc !important;
+  color: #5b6b85;
+  font-weight: 600;
+}
+.el-table--striped .el-table__body tr.el-table__row--striped td {
+  background: var(--med-bg-level2);
+}
+
+/* Tabs */
+.el-tabs__item {
+  font-weight: 500;
+}
+.el-tabs__item.is-active {
+  color: var(--med-primary) !important;
+  font-weight: 600;
+}
+.el-tabs__active-bar { background: var(--med-primary) !important; }
+.el-tabs__nav-wrap::after { height: 1px; }
+
+/* Button - Primary（蓝青渐变） */
+.el-button--primary {
+  background: var(--med-primary);
+  border-color: var(--med-primary);
+}
+.el-button--primary:hover {
+  background: var(--med-primary-light);
+  border-color: var(--med-primary-light);
+}
+.el-button--primary:focus {
+  background: var(--med-primary);
+  border-color: var(--med-primary);
+}
+
+/* Pagination */
+.pagination-bar {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Stats Card */
+.card-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: var(--med-text);
+}
+.card-label {
+  color: var(--med-text-light);
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+/* Empty State */
+.empty-text { color: var(--med-text-light); }
+
+/* Tag */
+.el-tag { border-radius: 4px; }
+.el-tag--primary {
+  --el-tag-bg-color: var(--med-primary-lighter);
+  --el-tag-border-color: var(--med-primary-soft);
+  --el-tag-text-color: var(--med-primary);
+}
+
+/* Dialog */
+.el-dialog {
+  border-radius: 10px;
+}
+.el-dialog__header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--med-border-light);
+  margin-right: 0;
+}
+.el-dialog__title {
+  font-size: 17px;
+  font-weight: 600;
+}
+.el-dialog__body {
+  padding: 20px 24px;
+}
+.el-dialog__footer {
+  padding: 12px 24px;
+  border-top: 1px solid var(--med-border-light);
+}
+
+/* Drawer */
+.el-drawer__header {
+  font-weight: 600;
+  font-size: 17px;
+  margin-bottom: 0;
+}
+
+/* Descriptions */
+.el-descriptions__title {
+  font-weight: 600;
+  color: var(--med-text);
+}
+
+/* Result */
+.el-result__title {
+  font-weight: 600;
+}
+
+/* Link */
+.el-link--primary {
+  --el-link-text-color: var(--med-primary);
+}
+
+/* ===== 简洁式页面头部（page-head / page-title / page-desc） ===== */
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.page-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: .2px;
+  margin: 0 0 6px;
+  color: var(--med-text);
+}
+.page-desc {
+  color: #7a8699;
+  font-size: 12.5px;
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* ===== 卡片式面板（带渐变竖条标题） ===== */
+.panel {
+  background: #fff;
+  border: 1px solid var(--med-border);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.panel-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-title::before {
+  content: '';
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #2f7bff, #16c2c2);
+}
+
+/* ===== 统计卡片 ===== */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  gap: 14px;
+}
+.stat-card {
+  background: #fff;
+  border: 1px solid var(--med-border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::after {
+  content: '';
+  position: absolute;
+  right: -24px;
+  top: -24px;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(47, 123, 255, .06);
+}
+.stat-label { color: #7a8699; font-size: 12px; }
+.stat-value { font-size: 26px; font-weight: 700; margin-top: 6px; letter-spacing: -.5px; font-variant-numeric: tabular-nums; }
+.stat-foot { color: var(--med-info); font-size: 11.5px; margin-top: 6px; }

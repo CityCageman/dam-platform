@@ -1,0 +1,72 @@
+spring:
+  application:
+    name: dam-gateway
+  profiles:
+    active: dev
+  config:
+    import:
+      - optional:nacos:${spring.application.name}.yml
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: dam-auth
+              uri: ${DAM_ROUTE_AUTH:lb://dam-auth}
+              predicates:
+                - Path=/api/auth/**
+            - id: dam-catalog
+              uri: ${DAM_ROUTE_CATALOG:lb://dam-catalog}
+              predicates:
+                - Path=/api/catalog/**
+            - id: dam-lineage
+              uri: ${DAM_ROUTE_LINEAGE:lb://dam-lineage}
+              predicates:
+                - Path=/api/lineage/**
+            - id: dam-standard
+              uri: ${DAM_ROUTE_STANDARD:lb://dam-standard}
+              predicates:
+                - Path=/api/standard/**
+            - id: dam-quality
+              uri: ${DAM_ROUTE_QUALITY:lb://dam-quality}
+              predicates:
+                - Path=/api/quality/**
+            - id: dam-security
+              uri: ${DAM_ROUTE_SECURITY:lb://dam-security}
+              predicates:
+                - Path=/api/security/**
+            - id: dam-lifecycle
+              uri: ${DAM_ROUTE_LIFECYCLE:lb://dam-lifecycle}
+              predicates:
+                - Path=/api/lifecycle/**
+            - id: dam-operations
+              uri: ${DAM_ROUTE_OPERATIONS:lb://dam-operations}
+              predicates:
+                - Path=/api/operations/**
+            - id: dam-agent
+              uri: ${DAM_ROUTE_AGENT:lb://dam-agent}
+              predicates:
+                - Path=/api/agent/**
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowedOriginPatterns: "*"
+                allowedMethods: "*"
+                allowedHeaders: "*"
+                allowCredentials: true
+
+server:
+  port: 8080
+
+sa-token:
+  token-name: token
+  timeout: 86400
+  is-concurrent: true
+  is-share: false
+  token-style: jwt
+  jwt-secret-key: dam-platform-jwt-secret-key-2026

@@ -1,0 +1,13 @@
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-operations\src\main\java\com\dam\operations\controller\OperationsController.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-operations\src\main\java\com\dam\operations\DamOperationsApplication.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-operations\src\main\java\com\dam\operations\entity\DamTicket.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-operations\src\main\java\com\dam\operations\entity\DamTicketComment.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-operations\src\main\java\com\dam\operations\entity\DamUsageStats.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-operations\src\main\java\com\dam\operations\repository\DamTicketCommentMapper.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-operations\src\main\java\com\dam\operations\repository\DamTicketMapper.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-operations\src\main\java\com\dam\operations\repository\DamUsageStatsMapper.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-operations\src\main\java\com\dam\operations\service\AssetValuationService.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-operations\src\main\java\com\dam\operations\service\DashboardService.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-operations\src\main\java\com\dam\operations\service\OperationsService.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-operations\src\main\java\com\dam\operations\service\TicketSlaService.java
+D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-operations\src\main\java\com\dam\operations\service\UserBehaviorService.java

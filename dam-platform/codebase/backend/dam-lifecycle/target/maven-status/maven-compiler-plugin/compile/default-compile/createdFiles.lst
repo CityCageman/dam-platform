@@ -1,0 +1,8 @@
+com\dam\lifecycle\repository\DamLifecyclePolicyMapper.class
+com\dam\lifecycle\service\LifecycleService.class
+com\dam\lifecycle\entity\DamDestructionRecord.class
+com\dam\lifecycle\controller\LifecycleController.class
+com\dam\lifecycle\repository\DamDestructionRecordMapper.class
+com\dam\lifecycle\entity\DamLifecyclePolicy.class
+com\dam\lifecycle\DamLifecycleApplication.class
+com\dam\lifecycle\service\StorageTieringService.class

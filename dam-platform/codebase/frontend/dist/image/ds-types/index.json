@@ -1,0 +1,44 @@
+[
+  {
+    "code": "POSTGRESQL",
+    "name": "PostgreSQL",
+    "file": "postgresql.svg",
+    "color": "#336791"
+  },
+  {
+    "code": "MYSQL",
+    "name": "MySQL",
+    "file": "mysql.svg",
+    "color": "#00758F"
+  },
+  {
+    "code": "ORACLE",
+    "name": "Oracle",
+    "file": "oracle.svg",
+    "color": "#C74634"
+  },
+  {
+    "code": "SQLSERVER",
+    "name": "SQL Server",
+    "file": "sqlserver.svg",
+    "color": "#CC2927"
+  },
+  {
+    "code": "IRIS",
+    "name": "IRIS",
+    "file": "iris.svg",
+    "color": "#1A67A3"
+  },
+  {
+    "code": "DM8",
+    "name": "达梦",
+    "file": "dm8.svg",
+    "color": "#C7000B"
+  },
+  {
+    "code": "KINGBASE",
+    "name": "人大金仓",
+    "file": "kingbase.svg",
+    "color": "#1D4E89"
+  }
+]

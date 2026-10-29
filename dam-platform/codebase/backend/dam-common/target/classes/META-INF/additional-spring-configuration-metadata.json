@@ -1,0 +1,40 @@
+{
+  "properties": [
+    {
+      "name": "sa-token.token-name",
+      "type": "java.lang.String",
+      "description": "Token 名称（同时也是 cookie 名称）.",
+      "defaultValue": "satoken"
+    },
+    {
+      "name": "sa-token.timeout",
+      "type": "java.lang.Long",
+      "description": "Token 有效期（单位：秒），-1 代表永不过期.",
+      "defaultValue": 2592000
+    },
+    {
+      "name": "sa-token.is-concurrent",
+      "type": "java.lang.Boolean",
+      "description": "是否允许同一账号并发登录（为 true 时允许一起登录，为 false 时新登录挤掉旧登录）.",
+      "defaultValue": true
+    },
+    {
+      "name": "sa-token.is-share",
+      "type": "java.lang.Boolean",
+      "description": "在多人登录同一账号时，是否共用一个 token.",
+      "defaultValue": true
+    },
+    {
+      "name": "sa-token.token-style",
+      "type": "java.lang.String",
+      "description": "Token 风格（uuid、simple-uuid、random-32、random-64、random-128、tik）.",
+      "defaultValue": "uuid"
+    },
+    {
+      "name": "sa-token.jwt-secret-key",
+      "type": "java.lang.String",
+      "description": "JWT 秘钥.",
+      "defaultValue": ""
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "name": "dam-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.1",
+    "@types/dagre": "^0.7.54",
+    "axios": "^1.6.0",
+    "d3": "^7.9.0",
+    "dagre": "^0.8.5",
+    "echarts": "^5.4.3",
+    "element-plus": "^2.4.4",
+    "jsencrypt": "^3.5.4",
+    "pinia": "^2.1.7",
+    "vue": "^3.3.8",
+    "vue-echarts": "^6.6.8",
+    "vue-router": "^4.2.5"
+  },
+  "devDependencies": {
+    "@types/d3": "^7.4.3",
+    "@types/node": "^26.1.1",
+    "@vitejs/plugin-vue": "^6.0.8",
+    "typescript": "^5.3.2",
+    "vite": "^8.0.5",
+    "vue-tsc": "^2.2.12"
+  }
+}

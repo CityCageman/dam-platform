@@ -1,0 +1,165 @@
+# 数据资产管理平台 - 应用集群服务器 Docker Compose（台2：网关 + 9 个业务微服务）
+# 说明：本文件只部署后端微服务，数据库与 Nacos 均在其他服务器，通过环境变量连接。
+# 前置：先执行 deploy/build.sh 产出各服务 *-exec.jar（JDK 21），并确保台1数据库、台3 Nacos 已就绪。
+# 用法：cd deploy && docker compose -f docker-compose.app.yml up -d --build
+name: dam-platform-app
+
+# 连库服务的数据库连接（指向已存在的 PostgreSQL，10.162.3.16:11001）
+# 数据源走环境变量，不走 Nacos 配置中心
+x-pg-env: &pg-env
+  SPRING_DATASOURCE_URL: jdbc:postgresql://${DB_HOST:-10.162.3.16}:${DB_PORT:-11001}/damplatform
+  SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-dam}
+  SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-Cuhkszmc_2026}
+  TZ: Asia/Shanghai
+
+# Nacos 注册/配置中心地址（指向台3）
+x-nacos-env: &nacos-env
+  NACOS_SERVER_ADDR: ${NACOS_HOST:-192.168.1.13}:8848
+
+services:
+  dam-auth:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-auth/target/dam-auth-1.0.0-exec.jar
+    container_name: dam-auth
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+      NACOS_SERVER_ADDR: ${NACOS_HOST:-192.168.1.13}:8848
+
+  dam-catalog:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-catalog/target/dam-catalog-1.0.0-exec.jar
+    container_name: dam-catalog
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+      NACOS_SERVER_ADDR: ${NACOS_HOST:-192.168.1.13}:8848
+      # 外键血缘自动落库调用 lineage 服务（同机容器网络内用服务名）
+      DAM_LINEAGE_URL: http://dam-lineage:8093
+      # 报表 SQL 生成调用编码智能体（同机容器网络内用服务名）
+      DAM_AGENT_URL: http://dam-agent:8089
+
+  dam-lineage:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-lineage/target/dam-lineage-1.0.0-exec.jar
+    container_name: dam-lineage
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+      NACOS_SERVER_ADDR: ${NACOS_HOST:-192.168.1.13}:8848
+
+  dam-standard:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-standard/target/dam-standard-1.0.0-exec.jar
+    container_name: dam-standard
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+      NACOS_SERVER_ADDR: ${NACOS_HOST:-192.168.1.13}:8848
+
+  dam-quality:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-quality/target/dam-quality-1.0.0-exec.jar
+    container_name: dam-quality
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+      NACOS_SERVER_ADDR: ${NACOS_HOST:-192.168.1.13}:8848
+
+  dam-security:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-security/target/dam-security-1.0.0-exec.jar
+    container_name: dam-security
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+      NACOS_SERVER_ADDR: ${NACOS_HOST:-192.168.1.13}:8848
+
+  dam-lifecycle:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-lifecycle/target/dam-lifecycle-1.0.0-exec.jar
+    container_name: dam-lifecycle
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+      NACOS_SERVER_ADDR: ${NACOS_HOST:-192.168.1.13}:8848
+
+  dam-operations:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-operations/target/dam-operations-1.0.0-exec.jar
+    container_name: dam-operations
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+      NACOS_SERVER_ADDR: ${NACOS_HOST:-192.168.1.13}:8848
+
+  # 智能体服务：不连库，仅外呼 LLM，密钥由 .env 注入
+  dam-agent:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-agent/target/dam-agent-1.0.0-exec.jar
+    container_name: dam-agent
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      NACOS_SERVER_ADDR: ${NACOS_HOST:-192.168.1.13}:8848
+      DAM_AGENT_CHAT_BASE_URL: ${DAM_AGENT_CHAT_BASE_URL}
+      DAM_AGENT_CHAT_API_KEY: ${DAM_AGENT_CHAT_API_KEY}
+      DAM_AGENT_CHAT_MODEL: ${DAM_AGENT_CHAT_MODEL:-qwen3.8-27b-tp8}
+      DAM_AGENT_CODE_BASE_URL: ${DAM_AGENT_CODE_BASE_URL}
+      DAM_AGENT_CODE_API_KEY: ${DAM_AGENT_CODE_API_KEY}
+      DAM_AGENT_CODE_MODEL: ${DAM_AGENT_CODE_MODEL:-qwen3-coder-30b-a3b}
+
+  # 网关：对外唯一 API 入口，路由通过 Nacos 服务发现（lb://dam-xxx）
+  dam-gateway:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-gateway/target/dam-gateway-1.0.0-exec.jar
+    container_name: dam-gateway
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      NACOS_SERVER_ADDR: ${NACOS_HOST:-192.168.1.13}:8848
+    # 对外暴露 8080，供中间件服务器（台3）Nginx 反代 /api 访问
+    ports:
+      - "8080:8080"
+    depends_on:
+      - dam-auth
+      - dam-catalog
+      - dam-lineage
+      - dam-standard
+      - dam-quality
+      - dam-security
+      - dam-lifecycle
+      - dam-operations
+      - dam-agent
+
+# 微服务无本地状态，数据全在 PG，无需持久化卷

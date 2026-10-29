@@ -1,0 +1,43 @@
+# 网关开发环境配置：本地无 Nacos 时直连各服务（生产环境使用 lb:// 服务发现，见 application.yml）
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: dam-auth
+              uri: http://localhost:8081
+              predicates:
+                - Path=/api/auth/**
+            - id: dam-catalog
+              uri: http://localhost:8092
+              predicates:
+                - Path=/api/catalog/**
+            - id: dam-lineage
+              uri: http://localhost:8093
+              predicates:
+                - Path=/api/lineage/**
+            - id: dam-standard
+              uri: http://localhost:8084
+              predicates:
+                - Path=/api/standard/**
+            - id: dam-quality
+              uri: http://localhost:8085
+              predicates:
+                - Path=/api/quality/**
+            - id: dam-security
+              uri: http://localhost:8086
+              predicates:
+                - Path=/api/security/**
+            - id: dam-lifecycle
+              uri: http://localhost:8087
+              predicates:
+                - Path=/api/lifecycle/**
+            - id: dam-operations
+              uri: http://localhost:8088
+              predicates:
+                - Path=/api/operations/**
+            - id: dam-agent
+              uri: http://localhost:8089
+              predicates:
+                - Path=/api/agent/**
