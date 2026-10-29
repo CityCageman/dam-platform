@@ -152,7 +152,7 @@ public class AssetClassifyAiService {
         if (unmatched > 0) {
             log.info("资产分类结果未匹配到资产/类目 {} 条（本批共 {} 条，模型返回 {} 条）；模型首条={}，本批资产={}",
                     unmatched, assets.size(), items.size(),
-                    items.isEmpty() ? "-" : items.get(0),
+                    items.isEmpty() ? "-" : items.getFirst(),
                     assets.stream().map(DamAsset::getAssetName).collect(Collectors.toList()));
         }
 

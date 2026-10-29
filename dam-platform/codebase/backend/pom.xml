@@ -14,35 +14,59 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.6</version>
+        <!-- 4.0.6 → 4.0.7，修复 CVE-2026-40992（Mail 自动配置未开启主机名校验） -->
+        <version>4.0.7</version>
         <relativePath/>
     </parent>
 
     <properties>
         <java.version>21</java.version>
-        <spring-framework.version>7.0.7</spring-framework.version>
-        <spring-cloud.version>2025.1.0</spring-cloud.version>
+        <!-- Spring Framework 由 Spring Boot BOM 管理（默认 7.0.7），覆盖为 7.0.10，修复 CVE-2026-41848（AntPathMatcher ReDoS） -->
+        <spring-framework.version>7.0.10</spring-framework.version>
+        <!-- Spring Cloud 2025.1.0 → 2025.1.3（spring-cloud-commons/context 5.0.3），修复 CVE-2026-59284（/actuator/env 属性键无白名单） -->
+        <spring-cloud.version>2025.1.3</spring-cloud.version>
         <spring-cloud-alibaba.version>2025.1.0.0</spring-cloud-alibaba.version>
         <mybatis-plus.version>3.5.16</mybatis-plus.version>
         <mysql.version>9.3.0</mysql.version>
+        <!-- PostgreSQL JDBC 由 Spring Boot BOM 管理（默认 42.7.11），覆盖为 42.7.14，修复 CVE-2026-107314/107315 -->
+        <postgresql.version>42.7.14</postgresql.version>
         <sa-token.version>1.37.0</sa-token.version>
         <hutool.version>5.8.40</hutool.version>
         <protobuf-java.version>4.28.2</protobuf-java.version>
-        <netty.version>4.2.15.Final</netty.version>
-        <bouncycastle.version>1.84</bouncycastle.version>
-        <logback.version>1.5.25</logback.version>
-        <reactor-netty.version>1.3.0</reactor-netty.version>
+        <!-- Netty 由 Spring Boot BOM 管理（默认 4.2.12.Final），覆盖为 4.2.19.Final，修复 CVE-2026-62380（SOCKS 编码器注入） -->
+        <netty.version>4.2.19.Final</netty.version>
+        <!-- BouncyCastle 由本 POM 自行管理，覆盖为 1.86，修复 CVE-2026-8763/59650/58062/17508 等系列漏洞 -->
+        <bouncycastle.version>1.86</bouncycastle.version>
+        <!-- Log4j2 API 由 Spring Boot BOM 管理（默认 2.25.4），覆盖为 2.26.1，修复 CVE-2026-49844（MapMessage 非有限浮点输出非法 JSON） -->
+        <log4j2.version>2.26.1</log4j2.version>
+        <!-- Logback 由 Spring Boot BOM 管理，覆盖默认 1.5.32，修复 CVE-2026-9828/10532/13006/19880/104721 等 -->
+        <logback.version>1.6.6</logback.version>
+        <!-- Logback 1.6.6 要求 slf4j 2.0.18，与 Boot 默认 2.0.17 同步上调 -->
+        <slf4j.version>2.0.18</slf4j.version>
+        <!-- Reactor Netty 由本 POM 显式管理（高于 reactor-bom），覆盖为 1.3.8，修复 CVE-2026-41715/47848/47845/47874 -->
+        <reactor-netty.version>1.3.8</reactor-netty.version>
+        <!-- Reactor 由 Spring Boot BOM 管理（默认 reactor-bom 2025.0.5 → reactor-core 3.8.5），覆盖为 2025.0.8（reactor-core 3.8.8），修复 CVE-2026-47857/47863 -->
+        <reactor-bom.version>2025.0.8</reactor-bom.version>
+        <!-- HTTP Client5 由 Spring Boot BOM 管理（默认 5.5.2 / httpcore5 5.3.6），覆盖为 5.6.5 / httpcore5 5.4.4，修复 CVE-2026-71290/64607 -->
+        <httpclient5.version>5.6.5</httpclient5.version>
+        <httpcore5.version>5.4.4</httpcore5.version>
         <!-- Jackson 3（tools.jackson）由 Spring Boot 统一管理，覆盖默认 3.1.2，修复 CVE-2026-110879/54512/54513/68497/91776/91777 -->
         <jackson-bom.version>3.2.4</jackson-bom.version>
-        <tomcat.version>11.0.26</tomcat.version>
+        <!-- Tomcat 由 Spring Boot BOM 管理（默认 11.0.21），覆盖为 11.0.27，修复 CVE-2026-103119/101356/101296 等 -->
+        <tomcat.version>11.0.27</tomcat.version>
         <commons-compress.version>1.26.0</commons-compress.version>
-        <spring-security.version>6.4.13</spring-security.version>
+        <!-- Spring Security 由 Spring Boot BOM 管理（默认 7.0.5），覆盖为 7.1.2，修复 CVE-2026-47842（AesBytesEncryptor 空 IV） -->
+        <spring-security.version>7.1.2</spring-security.version>
         <commons-lang3.version>3.18.0</commons-lang3.version>
         <angus-mail.version>2.0.4</angus-mail.version>
         <mssql-jdbc.version>13.2.1.jre11</mssql-jdbc.version>
+        <!-- Oracle JDBC 由 Spring Boot BOM 管理，覆盖默认 23.9.0.25.07，修复 CVE-2026-47045/47060/47061 -->
+        <oracle-database.version>23.26.3.0.0</oracle-database.version>
         <poi.version>5.4.0</poi.version>
         <knife4j.version>4.4.0</knife4j.version>
         <lombok.version>1.18.38</lombok.version>
+        <!-- Micrometer 由 Spring Boot BOM 管理，覆盖默认 1.16.5，修复 micrometer-core DoS 等 CVE -->
+        <micrometer.version>1.16.8</micrometer.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -79,8 +103,8 @@
             <dependency>
                 <groupId>com.fasterxml.jackson</groupId>
                 <artifactId>jackson-bom</artifactId>
-                <!-- Jackson 3.2.4 依赖 jackson-annotations 2.22（JsonApplyView），2.x 侧同步对齐并修复同类 CVE -->
-                <version>2.22.2</version>
+                <!-- Jackson 3.2.4 依赖 jackson-annotations 2.22（JsonApplyView）；2.x 侧对齐到 2.22.4，修复 CVE-2026-110879/91776/91777 -->
+                <version>2.22.4</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -102,7 +126,7 @@
             <dependency>
                 <groupId>org.postgresql</groupId>
                 <artifactId>postgresql</artifactId>
-                <version>42.7.12</version>
+                <version>${postgresql.version}</version>
             </dependency>
             <dependency>
                 <groupId>cn.dev33</groupId>

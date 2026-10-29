@@ -6,7 +6,8 @@ export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src')
+      // 使用 import.meta.dirname 而非 __dirname，兼容 Vite 未来的 configLoader: 'native'
+      '@': resolve(import.meta.dirname, 'src')
     }
   },
   server: {

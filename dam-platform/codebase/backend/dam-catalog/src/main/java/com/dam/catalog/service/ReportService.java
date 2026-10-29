@@ -285,8 +285,6 @@ public class ReportService {
                 result.put("elapsedMs", System.currentTimeMillis() - start);
                 return result;
             }
-        } catch (BusinessException e) {
-            throw e;
         } catch (SQLException e) {
             log.warn("报表执行失败: {}", e.getMessage());
             throw new BusinessException("报表执行失败: " + e.getMessage());

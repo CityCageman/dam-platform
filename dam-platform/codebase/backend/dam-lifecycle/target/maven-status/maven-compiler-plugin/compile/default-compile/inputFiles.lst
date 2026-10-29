@@ -1,8 +1,8 @@
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-lifecycle\src\main\java\com\dam\lifecycle\controller\LifecycleController.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-lifecycle\src\main\java\com\dam\lifecycle\DamLifecycleApplication.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-lifecycle\src\main\java\com\dam\lifecycle\entity\DamDestructionRecord.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-lifecycle\src\main\java\com\dam\lifecycle\entity\DamLifecyclePolicy.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-lifecycle\src\main\java\com\dam\lifecycle\repository\DamDestructionRecordMapper.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-lifecycle\src\main\java\com\dam\lifecycle\repository\DamLifecyclePolicyMapper.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-lifecycle\src\main\java\com\dam\lifecycle\service\LifecycleService.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-lifecycle\src\main\java\com\dam\lifecycle\service\StorageTieringService.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-lifecycle\src\main\java\com\dam\lifecycle\controller\LifecycleController.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-lifecycle\src\main\java\com\dam\lifecycle\DamLifecycleApplication.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-lifecycle\src\main\java\com\dam\lifecycle\entity\DamDestructionRecord.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-lifecycle\src\main\java\com\dam\lifecycle\entity\DamLifecyclePolicy.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-lifecycle\src\main\java\com\dam\lifecycle\repository\DamDestructionRecordMapper.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-lifecycle\src\main\java\com\dam\lifecycle\repository\DamLifecyclePolicyMapper.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-lifecycle\src\main\java\com\dam\lifecycle\service\LifecycleService.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-lifecycle\src\main\java\com\dam\lifecycle\service\StorageTieringService.java

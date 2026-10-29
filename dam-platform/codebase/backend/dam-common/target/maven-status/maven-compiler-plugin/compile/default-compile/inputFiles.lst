@@ -1,7 +1,7 @@
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-common\src\main\java\com\dam\common\config\MyBatisPlusConfig.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-common\src\main\java\com\dam\common\config\SaTokenConfig.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-common\src\main\java\com\dam\common\DamCommonApplication.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-common\src\main\java\com\dam\common\exception\BusinessException.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-common\src\main\java\com\dam\common\exception\GlobalExceptionHandler.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-common\src\main\java\com\dam\common\vo\PageResult.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-common\src\main\java\com\dam\common\vo\Result.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-common\src\main\java\com\dam\common\config\MyBatisPlusConfig.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-common\src\main\java\com\dam\common\config\SaTokenConfig.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-common\src\main\java\com\dam\common\DamCommonApplication.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-common\src\main\java\com\dam\common\exception\BusinessException.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-common\src\main\java\com\dam\common\exception\GlobalExceptionHandler.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-common\src\main\java\com\dam\common\vo\PageResult.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-common\src\main\java\com\dam\common\vo\Result.java

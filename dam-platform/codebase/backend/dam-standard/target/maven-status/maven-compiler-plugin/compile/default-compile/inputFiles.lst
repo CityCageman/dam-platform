@@ -1,13 +1,13 @@
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\controller\StandardController.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\DamStandardApplication.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\entity\DamDeviationReport.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\entity\DamStandard.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\entity\DamStandardMapping.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\entity\DamStandardValue.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\repository\DamDeviationReportMapper.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\repository\DamStandardMapper.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\repository\DamStandardMappingMapper.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\repository\DamStandardValueMapper.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\service\StandardAutoValidatorService.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\service\StandardScheduler.java
-D:\Project Management\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\service\StandardService.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\controller\StandardController.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\DamStandardApplication.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\entity\DamDeviationReport.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\entity\DamStandard.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\entity\DamStandardMapping.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\entity\DamStandardValue.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\repository\DamDeviationReportMapper.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\repository\DamStandardMapper.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\repository\DamStandardMappingMapper.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\repository\DamStandardValueMapper.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\service\StandardAutoValidatorService.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\service\StandardScheduler.java
+D:\DAP\dam-platform\dam-platform\codebase\backend\dam-standard\src\main\java\com\dam\standard\service\StandardService.java
