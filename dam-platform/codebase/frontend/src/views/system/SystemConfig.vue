@@ -1,17 +1,20 @@
 <template>
-  <div class="config-page">
-    <div class="config-header">
-      <h2>系统配置</h2>
-      <div class="header-actions">
-        <el-button size="small" @click="showOverview = true"><el-icon><DataAnalysis /></el-icon> 配置总览</el-button>
-        <el-button size="small" @click="showGuide = true"><el-icon><QuestionFilled /></el-icon> 使用指南</el-button>
+  <div class="page-container config-page">
+    <div class="page-head">
+      <div>
+        <h2 class="page-title">系统配置</h2>
+        <p class="page-desc">维护导航菜单、系统参数、数据字典与数据源类型。</p>
+      </div>
+      <div class="head-actions">
+        <el-button @click="showOverview = true"><el-icon><DataAnalysis /></el-icon>配置总览</el-button>
+        <el-button @click="showGuide = true"><el-icon><QuestionFilled /></el-icon>使用指南</el-button>
       </div>
     </div>
-    <el-row :gutter="12" style="flex:1; overflow: hidden;">
+    <el-row :gutter="14" style="overflow: hidden;">
       <!-- 左侧：配置类型列表 -->
-      <el-col :span="5" style="height: calc(100vh - 110px);">
+      <el-col :span="5" style="height: calc(100vh - 190px);">
         <el-card style="height: 100%; overflow-y: auto;">
-          <template #header><span style="font-weight: 600;">配置类型</span></template>
+          <template #header><span style="font-weight: 600; font-size: 13px;">配置类型</span></template>
           <div v-for="t in configTypes" :key="t.type" class="type-item" :class="{ active: currentType === t.type }" @click="switchType(t.type)">
             <el-icon><component :is="t.icon" /></el-icon>
             <span>{{ t.name }}</span>
@@ -19,7 +22,7 @@
         </el-card>
       </el-col>
       <!-- 右侧：配置树 -->
-      <el-col :span="19" style="height: calc(100vh - 110px);">
+      <el-col :span="19" style="height: calc(100vh - 190px);">
         <el-card style="height: 100%; display: flex; flex-direction: column;">
           <!-- 字典管理：左侧类型 / 右侧数据（master-detail） -->
           <template v-if="currentType === '__dict__'">
@@ -590,12 +593,12 @@ function selectIcon(icon: string) {
 </script>
 
 <style scoped>
-.config-page { height: 100vh; display: flex; flex-direction: column; padding: 0 16px; }
-.config-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; flex-shrink: 0; }
-.header-actions { display: flex; gap: 8px; }
-.type-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: pointer; border-radius: 6px; margin: 2px 0; }
-.type-item:hover { background: #ecf5ff; }
-.type-item.active { background: #ecf5ff; color: #409EFF; font-weight: 600; }
+.config-page { min-height: calc(100vh - 64px); }
+.type-item { display: flex; align-items: center; gap: 8px; padding: 10px 11px; cursor: pointer; border-radius: 9px; margin: 2px 0; color: var(--med-text-secondary); font-size: 13px; transition: all .15s; }
+.type-item .el-icon { font-size: 16px; }
+.type-item:hover { background: #F5F7FB; color: var(--med-text); }
+.type-item.active { background: var(--med-primary-lighter); color: var(--med-primary); font-weight: 600; }
+.type-item.active .el-icon { color: var(--med-primary); }
 .toolbar { display: flex; align-items: center; padding: 0 0 8px 0; flex-shrink: 0; }
 .tree-node { display: flex; align-items: center; gap: 4px; font-size: 13px; width: 100%; }
 .node-code { color: #909399; font-size: 11px; margin-left: 4px; }

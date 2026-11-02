@@ -24,16 +24,17 @@
         <p class="card-sub">请使用平台账号登录</p>
         <el-form :model="form" :rules="rules" ref="formRef" @keyup.enter="handleLogin">
           <el-form-item prop="username">
-            <el-input v-model="form.username" placeholder="用户名" size="large" :prefix-icon="User" autofocus />
+            <el-input v-model="form.username" placeholder="用户名" size="large" :prefix-icon="User" autocomplete="username" autofocus />
           </el-form-item>
           <el-form-item prop="password">
             <el-input v-model="form.password" type="password" placeholder="密码" size="large"
-                      :prefix-icon="Lock" show-password />
+                      :prefix-icon="Lock" show-password autocomplete="current-password" />
           </el-form-item>
           <el-button class="submit" type="primary" size="large" :loading="loading" @click="handleLogin">
             登 录
           </el-button>
         </el-form>
+        <div class="login-foot">内网部署 · 数据资产管理平台 v1.0.0</div>
         <div class="demo-accounts">
           <div class="demo-title">演示账号（点击填充）</div>
           <div class="demo-row" v-for="d in demoAccounts" :key="d.u" @click="fill(d)">
@@ -141,8 +142,9 @@ async function handleLogin() {
 
 .login-right {
   display: flex; align-items: center; justify-content: center;
-  background: #f4f6fa;
+  background: var(--med-bg);
 }
+.login-foot { margin-top: 18px; color: var(--med-text-light); font-size: 11px; text-align: center; letter-spacing: .3px; }
 
 .login-card {
   width: 380px;
