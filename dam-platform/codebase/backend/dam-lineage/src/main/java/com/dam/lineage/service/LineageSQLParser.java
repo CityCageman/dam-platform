@@ -1,6 +1,13 @@
 package com.dam.lineage.service;
 
 import lombok.extern.slf4j.Slf4j;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.create.table.CreateTable;
+import net.sf.jsqlparser.statement.insert.Insert;
+import net.sf.jsqlparser.statement.select.Select;
+import net.sf.jsqlparser.statement.select.WithItem;
+import net.sf.jsqlparser.util.TablesNamesFinder;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -42,7 +49,76 @@ public class LineageSQLParser {
         // 解析 CTE (WITH ... AS)
         parseCTE(normalized, sql, jobName, sourceSystem, relations);
 
+        // JSqlParser 补全表级血缘：支持多表 JOIN / 子查询 / INSERT..SELECT / CTAS
+        List<LineageRelation> jsqlTables = parseTableLineageWithJsql(sql, jobName, sourceSystem);
+        if (!jsqlTables.isEmpty()) {
+            // 移除正则产生的表级边，保留字段级/CTE 边
+            relations.removeIf(r -> "table".equalsIgnoreCase(r.lineageType()));
+            relations.addAll(jsqlTables);
+        }
+
         return relations;
+    }
+
+    /**
+     * 用 JSqlParser 提取 INSERT/CTAS 的全部源表，生成表级血缘
+     * <p>
+     * 正则只捕获第一个 FROM 表；这里补全 JOIN、子查询、CTE 内的所有源表。
+     * 解析失败时返回空列表，由原正则兜底。
+     *
+     * @param sql          原始 SQL
+     * @param jobName      作业名
+     * @param sourceSystem 来源系统
+     * @return 表级关系
+     */
+    private List<LineageRelation> parseTableLineageWithJsql(String sql, String jobName, String sourceSystem) {
+        try {
+            Statement stmt = CCJSqlParserUtil.parse(sql);
+            String target = null;
+            Select select = null;
+            if (stmt instanceof Insert insert) {
+                target = cleanName(insert.getTable().getFullyQualifiedName());
+                select = insert.getSelect();
+            } else if (stmt instanceof CreateTable createTable && createTable.getSelect() != null) {
+                target = cleanName(createTable.getTable().getFullyQualifiedName());
+                select = createTable.getSelect();
+            }
+            if (target == null || target.isBlank()) {
+                return List.of();
+            }
+            Set<String> cteAliases = new HashSet<>();
+            if (select != null && select.getWithItemsList() != null) {
+                for (WithItem<?> item : select.getWithItemsList()) {
+                    if (item.getAliasName() != null) {
+                        cteAliases.add(cleanName(item.getAliasName()).toLowerCase(Locale.ROOT));
+                    }
+                }
+            }
+            Set<String> tables = TablesNamesFinder.findTables(sql);
+            List<LineageRelation> out = new ArrayList<>();
+            for (String raw : tables) {
+                String name = cleanName(raw);
+                if (name.isBlank() || name.equalsIgnoreCase(target)) {
+                    continue;
+                }
+                if (cteAliases.contains(name.toLowerCase(Locale.ROOT))) {
+                    continue;
+                }
+                out.add(new LineageRelation(name, target, null, null, sql, jobName, sourceSystem, "table"));
+            }
+            return out;
+        } catch (Exception e) {
+            log.debug("JSqlParser 解析失败，回退正则: {}", e.getMessage());
+            return List.of();
+        }
+    }
+
+    /**
+     * 清理表名引号/空白
+     */
+    private String cleanName(String name) {
+        if (name == null) return "";
+        return name.trim().replace("\"", "").replace("`", "");
     }
 
     /**
