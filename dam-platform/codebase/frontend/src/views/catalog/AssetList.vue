@@ -1,20 +1,40 @@
 <template>
   <div class="page-container">
-    <div class="page-header">
-      <h2>资产目录</h2>
-      <div class="header-actions">
-        <el-button @click="showSourceSystemDialog = true">
-          <el-icon><Setting /></el-icon> 来源系统
-        </el-button>
-        <el-button type="success" @click="showCreateDialog = true">
-          <el-icon><Plus /></el-icon> 注册资产
-        </el-button>
-        <el-button @click="refreshRecordCounts">
-          <el-icon><Refresh /></el-icon> 同步记录数
-        </el-button>
-        <el-button @click="showImportDialog = true">
-          <el-icon><Upload /></el-icon> 批量导入
-        </el-button>
+    <div class="page-head">
+      <div>
+        <h2 class="page-title">资产目录</h2>
+        <p class="page-desc">按主题域浏览资产，支持筛选、批量打标签、导出与列配置。</p>
+      </div>
+      <div class="head-actions">
+        <el-button @click="showSourceSystemDialog = true"><el-icon><Setting /></el-icon>来源系统</el-button>
+        <el-button @click="showColumnConfig = true"><el-icon><Grid /></el-icon>列设置</el-button>
+        <el-button @click="exportCurrent"><el-icon><Download /></el-icon>导出</el-button>
+        <el-button @click="refreshRecordCounts"><el-icon><Refresh /></el-icon>同步记录数</el-button>
+        <el-button type="success" @click="showCreateDialog = true"><el-icon><Plus /></el-icon>注册资产</el-button>
+        <el-button @click="showImportDialog = true"><el-icon><Upload /></el-icon>批量导入</el-button>
+      </div>
+    </div>
+
+    <div class="stat-grid" style="margin-bottom: 14px;">
+      <div class="stat-card">
+        <div class="stat-label">资产总数</div>
+        <div class="stat-value">{{ total }}</div>
+        <div class="stat-foot">当前筛选范围</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">本页数据表</div>
+        <div class="stat-value">{{ tableCount }}</div>
+        <div class="stat-foot">按 TABLE 类型统计</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">本页已分级</div>
+        <div class="stat-value">{{ classifiedCount }}</div>
+        <div class="stat-foot">已设置数据分级</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">来源系统</div>
+        <div class="stat-value">{{ sourceSystemList.length }}</div>
+        <div class="stat-foot">已登记</div>
       </div>
     </div>
     <el-row :gutter="16">
@@ -54,35 +74,52 @@
               style="width: 200px;"
               @change="onCascaderChange"
             />
+            <el-select v-model="dataSourceId" placeholder="数据源" clearable filterable style="width: 170px;" @change="search">
+              <el-option v-for="d in dataSources" :key="d.id" :label="d.dsName" :value="d.id" />
+            </el-select>
+            <el-select v-model="tagId" placeholder="标签" clearable style="width: 140px;" @change="search">
+              <el-option v-for="tg in tagList" :key="tg.id" :label="tg.tagName" :value="tg.id" />
+            </el-select>
             <el-select v-model="assetType" placeholder="资产类型" clearable style="width: 130px;" @change="search">
               <el-option v-for="t in assetTypes" :key="t.configCode" :label="t.configName" :value="t.configCode" />
             </el-select>
             <el-select v-model="securityLevel" placeholder="数据分级" clearable style="width: 160px;" @change="search">
               <el-option v-for="s in securityLevels" :key="s.configCode" :label="s.configName" :value="s.configCode" />
             </el-select>
-            <el-input v-model="keyword" placeholder="搜索资产名称/描述" clearable style="width: 260px;" @keyup.enter="search" />
+            <el-select v-model="sortBy" placeholder="排序" clearable style="width: 120px;" @change="search">
+              <el-option label="按名称" value="name" /><el-option label="按更新" value="updated" />
+            </el-select>
+            <el-input v-model="keyword" placeholder="搜索资产名称/描述" clearable style="width: 230px;" @keyup.enter="search" />
             <el-button type="primary" @click="search">查询</el-button>
             <el-button @click="resetSearch">重置</el-button>
           </div>
-          <el-table :data="assetList" stripe @row-click="goDetail" style="cursor: pointer;">
-            <el-table-column label="主题域 / 类目" min-width="180" show-overflow-tooltip>
+          <div v-if="selectedRows.length" class="batch-bar">
+            <span>已选 {{ selectedRows.length }} 个资产</span>
+            <el-button size="small" @click="showBatchTag = true">批量打标签</el-button>
+            <el-button size="small" @click="exportSelected">导出所选</el-button>
+            <el-button size="small" text @click="selectedRows = []">清空</el-button>
+          </div>
+          <el-table :data="assetList" stripe v-loading="loading" @row-click="goDetail"
+                    @selection-change="onSelectionChange" style="cursor: pointer;">
+            <el-table-column type="selection" width="42" />
+            <el-table-column v-if="columns.category" label="主题域 / 类目" min-width="180" show-overflow-tooltip>
               <template #default="{ row }">{{ row.categoryPathText || getCategoryName(row.categoryId) || '-' }}</template>
             </el-table-column>
             <el-table-column prop="assetName" label="资产名称" min-width="200" />
-            <el-table-column prop="sourceMetadataType" label="类型" width="80">
+            <el-table-column v-if="columns.type" prop="sourceMetadataType" label="类型" width="80">
               <template #default="{ row }">
                 <el-tag :type="(row.sourceMetadataType || '').toLowerCase() === 'table' ? 'primary' : (row.sourceMetadataType || '').toLowerCase() === 'api' ? 'success' : 'warning'" size="small">{{ (row.sourceMetadataType || '').toLowerCase() }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="sourceSystem" label="来源系统" width="140" />
-            <el-table-column label="数据分级" width="150">
+            <el-table-column v-if="columns.system" prop="sourceSystem" label="来源系统" width="140" />
+            <el-table-column v-if="columns.security" label="数据分级" width="150">
               <template #default="{ row }">
                 <el-tag :type="getSecurityTagType(row.securityLevel)" size="small" effect="plain">
                   {{ getSecurityLevelLabel(row.securityLevel) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="recordCount" label="记录数" width="110">
+            <el-table-column v-if="columns.recordCount" prop="recordCount" label="记录数" width="110">
               <template #default="{ row }">{{ row.recordCount?.toLocaleString() || '-' }}</template>
             </el-table-column>
             <el-table-column label="操作" width="100" fixed="right">
@@ -102,6 +139,35 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <el-dialog v-model="showBatchTag" title="批量打标签" width="420px" top="25vh">
+      <el-form label-width="80px">
+        <el-form-item label="标签">
+          <el-select v-model="batchTagId" placeholder="选择标签" style="width: 100%;">
+            <el-option v-for="tg in tagList" :key="tg.id" :label="tg.tagName" :value="tg.id" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <div class="muted">将为选中的 {{ selectedRows.length }} 个资产追加该标签。</div>
+      <template #footer>
+        <el-button @click="showBatchTag = false">取消</el-button>
+        <el-button type="primary" :loading="batchTagSaving" @click="applyBatchTag">应用</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="showColumnConfig" title="列设置" width="360px" top="25vh">
+      <div class="column-config">
+        <el-checkbox v-model="columns.category">主题域 / 类目</el-checkbox>
+        <el-checkbox v-model="columns.type">类型</el-checkbox>
+        <el-checkbox v-model="columns.system">来源系统</el-checkbox>
+        <el-checkbox v-model="columns.security">数据分级</el-checkbox>
+        <el-checkbox v-model="columns.recordCount">记录数</el-checkbox>
+      </div>
+      <template #footer>
+        <el-button @click="showColumnConfig = false">取消</el-button>
+        <el-button type="primary" @click="saveColumns">保存</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 分类管理对话框 -->
     <el-dialog v-model="showCategoryDialog" title="分类管理" width="600px" top="3vh" class="category-mgr-dialog">
@@ -371,7 +437,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { catalogApi } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -379,7 +445,9 @@ import type { TagProps } from 'element-plus'
 import {
   Delete,
   Document,
+  Download,
   Edit,
+  Grid,
   Folder,
   FolderOpened,
   Plus,
@@ -390,6 +458,8 @@ import {
 } from "@element-plus/icons-vue";
 
 const router = useRouter()
+const tableCount = computed(() => assetList.value.filter(a => String(a.sourceMetadataType || '').toUpperCase() === 'TABLE').length)
+const classifiedCount = computed(() => assetList.value.filter(a => a.securityLevel).length)
 const keyword = ref('')
 const assetType = ref('')
 const securityLevel = ref('')
@@ -400,6 +470,18 @@ const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
 const assetList = ref<any[]>([])
+const dataSources = ref<any[]>([])
+const tagList = ref<any[]>([])
+const dataSourceId = ref<number>()
+const tagId = ref<number>()
+const sortBy = ref('')
+const loading = ref(false)
+const selectedRows = ref<any[]>([])
+const showBatchTag = ref(false)
+const batchTagId = ref<number>()
+const batchTagSaving = ref(false)
+const showColumnConfig = ref(false)
+const columns = ref<any>({ category: true, type: true, system: true, security: true, recordCount: true })
 const categories = ref<any[]>([])
 /** 分类管理用全量主题域树（不按角色过滤） */
 const mgCategories = ref<any[]>([])
@@ -597,8 +679,81 @@ onMounted(async () => {
   await loadCategoryTypes()
   await loadCategories()
   loadSourceSystems()
+  loadDataSources()
+  loadTags()
+  loadColumns()
   loadAssets()
 })
+
+async function loadDataSources() {
+  try {
+    const res: any = await catalogApi.getDataSources()
+    dataSources.value = res.data || []
+  } catch (_e) { dataSources.value = [] }
+}
+
+async function loadTags() {
+  try {
+    const res: any = await catalogApi.getTags()
+    tagList.value = res.data || []
+  } catch (_e) { tagList.value = [] }
+}
+
+function loadColumns() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('dam-asset-columns') || '{}')
+    columns.value = { ...columns.value, ...saved }
+  } catch (_e) { /* ignore */ }
+}
+
+function saveColumns() {
+  localStorage.setItem('dam-asset-columns', JSON.stringify(columns.value))
+  showColumnConfig.value = false
+}
+
+function onSelectionChange(rows: any[]) { selectedRows.value = rows }
+
+function csvCell(v: any) {
+  const s = v == null ? '' : String(v)
+  return '"' + s.replace(/"/g, '""') + '"'
+}
+
+function exportCsv(rows: any[], filename: string) {
+  const header = ['资产名称', '类型', '来源系统', '数据分级', '记录数', '分类']
+  const lines = [header.map(csvCell).join(',')]
+  for (const r of rows) {
+    lines.push([
+      r.assetName, r.sourceMetadataType, r.sourceSystem, r.securityLevel,
+      r.recordCount, r.categoryPathText || getCategoryName(r.categoryId)
+    ].map(csvCell).join(','))
+  }
+  const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function exportCurrent() { exportCsv(assetList.value, 'assets-current.csv') }
+function exportSelected() { exportCsv(selectedRows.value, 'assets-selected.csv') }
+
+async function applyBatchTag() {
+  if (!batchTagId.value) { ElMessage.warning('请选择标签'); return }
+  batchTagSaving.value = true
+  try {
+    for (const row of selectedRows.value) {
+      await catalogApi.assignTag(row.id, batchTagId.value)
+    }
+    ElMessage.success(`已为 ${selectedRows.value.length} 个资产添加标签`)
+    showBatchTag.value = false
+    selectedRows.value = []
+    await loadAssets()
+  } catch (e: any) {
+    ElMessage.error(e.message || '批量打标签失败')
+  } finally { batchTagSaving.value = false }
+}
 
 async function loadDicts() {
   try {
@@ -814,18 +969,29 @@ async function saveRoleDomainConfig() {
 }
 
 async function loadAssets() {
-  const res: any = await catalogApi.searchAssets({
-    keyword: keyword.value || undefined,
-    assetType: assetType.value || undefined,
-    categoryId: categoryId.value || undefined,
-    securityLevel: securityLevel.value || undefined,
-    // 资产目录按当前角色可见主题域收敛（元数据管理等其他页面不传，不受影响）
-    enforceDomainPermission: true,
-    page: page.value,
-    pageSize: pageSize.value
-  })
-  assetList.value = res.data.records || []
-  total.value = res.data.total || 0
+  loading.value = true
+  try {
+    const res: any = await catalogApi.searchAssets({
+      keyword: keyword.value || undefined,
+      assetType: assetType.value || undefined,
+      categoryId: categoryId.value || undefined,
+      securityLevel: securityLevel.value || undefined,
+      dataSourceId: dataSourceId.value || undefined,
+      tagId: tagId.value || undefined,
+      sortBy: sortBy.value || undefined,
+      enforceDomainPermission: true,
+      page: page.value,
+      pageSize: pageSize.value
+    })
+    assetList.value = res.data?.records || []
+    total.value = res.data?.total || 0
+  } catch (e: any) {
+    ElMessage.error(e.message || '加载资产失败')
+    assetList.value = []
+    total.value = 0
+  } finally {
+    loading.value = false
+  }
 }
 
 function search() { page.value = 1; loadAssets() }
@@ -834,6 +1000,9 @@ function resetSearch() {
   keyword.value = ''
   assetType.value = ''
   securityLevel.value = ''
+  dataSourceId.value = undefined
+  tagId.value = undefined
+  sortBy.value = ''
   searchCategoryPath.value = undefined
   categoryId.value = undefined
   search()
@@ -1038,4 +1207,8 @@ async function handleImportFile(uploadFile: any) {
 .category-mgr-content :deep(.el-tree-node.is-current > .el-tree-node__content) {
   background-color: transparent;
 }
+
+.batch-bar { display: flex; align-items: center; gap: 10px; padding: 8px 10px; margin-bottom: 8px; background: #F8FAFD; border: 1px solid var(--med-border); border-radius: 8px; font-size: 12px; color: var(--med-text-secondary); }
+.column-config { display: flex; flex-direction: column; gap: 8px; }
+.muted { color: var(--med-text-light); font-size: 12px; }
 </style>
