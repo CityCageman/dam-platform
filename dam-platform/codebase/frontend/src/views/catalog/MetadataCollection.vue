@@ -15,6 +15,37 @@
     <el-row :gutter="16">
       <!-- 右侧：主内容（全宽） -->
       <el-col :span="24">
+        <div class="meta-layout" :class="{ 'no-rail': !(isMetaType('technical') && isTableType) }">
+          <!-- 左侧：数据源 / Schema 导航 -->
+          <aside class="meta-rail" v-if="isMetaType('technical') && isTableType">
+            <div class="rail-head">
+              <span>数据源</span>
+              <el-button text size="small" :icon="Refresh" title="刷新" @click="loadDataSources" />
+            </div>
+            <div class="rail-list">
+              <div class="rail-item" :class="{ active: !selectedDsId }" @click="backToDataSourceList">
+                <el-icon><Grid /></el-icon>
+                <div class="rail-main"><b>全部数据源</b><span>{{ dataSources.length }} 个</span></div>
+              </div>
+              <template v-for="ds in filteredDataSources" :key="ds.id">
+                <div class="rail-item" :class="{ active: selectedDsId === ds.id }" @click="onDsRowClick(ds, null)">
+                  <div class="rail-main">
+                    <b>{{ ds.dsName }}</b>
+                    <span>{{ ds.dsType }} · {{ schemaStats[ds.id]?.tableCount ?? '-' }} 张表</span>
+                  </div>
+                  <el-tag size="small" :type="dataLayerTagType(ds.dataLayer)">{{ dataLayerLabel(ds.dataLayer) }}</el-tag>
+                </div>
+                <div v-if="selectedDsId === ds.id && schemaStats[ds.id]?.schemas?.length" class="rail-schemas">
+                  <div v-for="s in schemaStats[ds.id].schemas" :key="s.schemaId" class="rail-schema">
+                    <span>{{ s.schemaName || 'public' }}</span><em>{{ s.tableCount }}</em>
+                  </div>
+                </div>
+              </template>
+              <el-empty v-if="!filteredDataSources.length" description="暂无数据源" :image-size="50" />
+            </div>
+          </aside>
+
+          <div class="meta-main">
         <template v-if="loading">
           <el-card style="height: calc(100vh - 160px); display: flex; align-items: center; justify-content: center;">
             <el-icon class="is-loading" :size="24"><Loading /></el-icon>
@@ -299,6 +330,8 @@
             </template>
           </el-dialog>
         </template>
+          </div>
+        </div>
 
     <!-- 数据库表详情抽屉 -->
     <el-drawer v-model="showDbDetailDrawer" :title="selectedTable?.tableName || '表详情'" size="70%" @close="handleDrawerClose">
@@ -3096,4 +3129,37 @@ const extData = computed(() => {
 .schema-name { font-family: Consolas, monospace; color: var(--med-text); }
 .schema-count { color: var(--med-primary); font-weight: 600; }
 .schema-empty { color: var(--med-text-light); font-size: 12px; }
+
+/* ===== 元数据页：左侧数据源导航 / 右侧内容 ===== */
+.meta-layout { display: grid; grid-template-columns: 248px minmax(0, 1fr); gap: 16px; align-items: start; }
+.meta-layout.no-rail { grid-template-columns: minmax(0, 1fr); }
+.meta-rail {
+  position: sticky;
+  top: 84px;
+  background: #fff;
+  border: 1px solid var(--med-border);
+  border-radius: 14px;
+  padding: 10px;
+  max-height: calc(100vh - 110px);
+  overflow-y: auto;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+}
+.rail-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 6px 8px; font-size: 13px; font-weight: 600; color: var(--med-text); }
+.rail-list { display: flex; flex-direction: column; gap: 2px; }
+.rail-item { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 8px; cursor: pointer; }
+.rail-item:hover { background: #F5F7FB; }
+.rail-item.active { background: var(--med-primary-lighter); }
+.rail-main { flex: 1; min-width: 0; }
+.rail-main b { display: block; font-size: 12px; font-weight: 600; color: var(--med-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rail-main span { font-size: 10.5px; color: var(--med-text-light); }
+.rail-item > .el-tag { margin-left: auto; flex: 0 0 auto; }
+.rail-schemas { margin: 2px 0 6px 26px; border-left: 1px solid var(--med-border); padding-left: 8px; }
+.rail-schema { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px; font-size: 10.5px; color: var(--med-text-secondary); border-radius: 5px; }
+.rail-schema:hover { background: #F8FAFD; }
+.rail-schema em { font-style: normal; color: var(--med-text-light); }
+.meta-main { min-width: 0; }
+@media (max-width: 1200px) {
+  .meta-layout { grid-template-columns: minmax(0, 1fr); }
+  .meta-rail { position: static; max-height: 260px; }
+}
 </style>
