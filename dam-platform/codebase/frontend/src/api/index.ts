@@ -369,6 +369,8 @@ export const lifecycleApi = {
   approveDestruction(id: number, data: any) { return request.put(`/lifecycle/destructions/${id}/approve`, data) },
   // 存储分层
   executeTiering() { return request.post('/lifecycle/tiering/execute') },
+  getPolicyCandidates(id: number) { return request.get(`/lifecycle/policies/${id}/candidates`) },
+  getExecutions(params: any) { return request.get('/lifecycle/executions', { params }) },
   getTierDistribution() { return request.get('/lifecycle/tiering/distribution') }
 }
 

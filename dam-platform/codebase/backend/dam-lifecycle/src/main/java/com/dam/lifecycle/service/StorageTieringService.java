@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dam.catalog.entity.DamAsset;
 import com.dam.catalog.repository.DamAssetMapper;
 import com.dam.lifecycle.entity.DamDestructionRecord;
+import com.dam.lifecycle.entity.DamLifecycleExecution;
 import com.dam.lifecycle.entity.DamLifecyclePolicy;
 import com.dam.lifecycle.repository.DamDestructionRecordMapper;
+import com.dam.lifecycle.repository.DamLifecycleExecutionMapper;
 import com.dam.lifecycle.repository.DamLifecyclePolicyMapper;
 import com.dam.operations.entity.DamUsageStats;
 import com.dam.operations.repository.DamUsageStatsMapper;
@@ -34,6 +36,8 @@ public class StorageTieringService {
     private final DamAssetMapper assetMapper;
     private final DamUsageStatsMapper usageStatsMapper;
     private final DamDestructionRecordMapper destructionRecordMapper;
+    /** 执行记录（可选表，未迁移时降级） */
+    private final DamLifecycleExecutionMapper executionMapper;
 
     /**
      * 执行所有启用的生命周期策略
@@ -55,6 +59,7 @@ public class StorageTieringService {
                 if (action != null) {
                     actions.add(action);
                     String actionType = (String) action.get("action");
+                    saveExecution(policy, action, actionType);
                     switch (actionType) {
                         case "archive" -> archived++;
                         case "destroy" -> { destroyed++; executeDestroy(asset, policy); }
@@ -133,6 +138,68 @@ public class StorageTieringService {
         result.put("ageDays", ageDays);
         result.put("policyName", policy.getPolicyName());
         return result;
+    }
+
+    /**
+     * 保存执行记录（表未迁移时只告警，不影响主流程）
+     */
+    private void saveExecution(DamLifecyclePolicy policy, Map<String, Object> action, String actionType) {
+        try {
+            if (executionMapper.tableExists() == null) {
+                return;
+            }
+            DamLifecycleExecution log = new DamLifecycleExecution();
+            log.setPolicyId(policy.getId());
+            log.setPolicyName(policy.getPolicyName());
+            log.setAssetId(action.get("assetId") instanceof Number n ? n.longValue() : null);
+            log.setAssetName(String.valueOf(action.get("assetName")));
+            log.setTier(String.valueOf(action.get("tier")));
+            log.setAction(actionType);
+            log.setReason(String.valueOf(action.get("reason")));
+            log.setExecutedAt(LocalDateTime.now());
+            log.setExecutedBy("system");
+            executionMapper.insert(log);
+        } catch (Exception e) {
+            log.warn("生命周期执行记录写入失败（请确认已执行 v7 迁移）: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 预览某个策略命中的资产
+     *
+     * @param policyId 策略ID
+     * @return 命中明细与统计
+     */
+    public Map<String, Object> previewPolicy(Long policyId) {
+        DamLifecyclePolicy policy = policyMapper.selectById(policyId);
+        if (policy == null) throw new RuntimeException("策略不存在");
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (DamAsset asset : findTargetAssets(policy)) {
+            Map<String, Object> action = evaluateAsset(asset, policy);
+            if (action != null) rows.add(action);
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("policyName", policy.getPolicyName());
+        result.put("total", rows.size());
+        result.put("rows", rows);
+        return result;
+    }
+
+    /**
+     * 查询执行记录
+     */
+    public List<DamLifecycleExecution> getExecutions(Long policyId, String action, Integer limit) {
+        try {
+            int size = limit == null || limit <= 0 ? 200 : Math.min(limit, 1000);
+            LambdaQueryWrapper<DamLifecycleExecution> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(policyId != null, DamLifecycleExecution::getPolicyId, policyId);
+            wrapper.eq(action != null && !action.isBlank(), DamLifecycleExecution::getAction, action);
+            wrapper.orderByDesc(DamLifecycleExecution::getExecutedAt).last("LIMIT " + size);
+            return executionMapper.selectList(wrapper);
+        } catch (Exception e) {
+            log.warn("执行记录表不存在或查询失败（请确认已执行 v7 迁移）: {}", e.getMessage());
+            return List.of();
+        }
     }
 
     /**

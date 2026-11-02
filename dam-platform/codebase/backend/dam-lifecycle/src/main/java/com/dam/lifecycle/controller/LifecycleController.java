@@ -107,6 +107,25 @@ public class LifecycleController {
     }
 
     /**
+     * 预览策略命中资产（执行前确认影响范围）
+     */
+    @GetMapping("/policies/{id}/candidates")
+    public Result<Map<String, Object>> previewPolicy(@PathVariable Long id) {
+        return Result.success(storageTieringService.previewPolicy(id));
+    }
+
+    /**
+     * 查询生命周期执行记录
+     */
+    @GetMapping("/executions")
+    public Result<List<com.dam.lifecycle.entity.DamLifecycleExecution>> executions(
+            @RequestParam(required = false) Long policyId,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) Integer limit) {
+        return Result.success(storageTieringService.getExecutions(policyId, action, limit));
+    }
+
+    /**
      * 获取各存储层级（热/温/冷/过期）的资产分布
      *
      * @return 分层分布统计

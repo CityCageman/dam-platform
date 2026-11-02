@@ -61,9 +61,10 @@
                 <el-tag size="small" :type="Number(row.status) === 1 ? 'success' : 'info'">{{ Number(row.status) === 1 ? '启用' : '停用' }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="170" fixed="right">
+            <el-table-column label="操作" width="230" fixed="right">
               <template #default="{ row }">
                 <el-button text type="primary" size="small" @click="openEditPolicy(row)">编辑</el-button>
+                <el-button text size="small" @click="openCandidates(row)">命中预览</el-button>
                 <el-button text size="small" @click="togglePolicy(row)">{{ Number(row.status) === 1 ? '停用' : '启用' }}</el-button>
               </template>
             </el-table-column>
@@ -101,6 +102,34 @@
             </el-table-column>
           </el-table>
           <el-empty v-if="!destructions.length" description="暂无销毁记录" :image-size="60" />
+        </el-tab-pane>
+
+        <el-tab-pane label="执行记录" name="executions">
+          <div class="tab-toolbar">
+            <el-select v-model="execAction" placeholder="全部动作" clearable style="width: 130px;" @change="loadExecutions">
+              <el-option label="归档" value="archive" /><el-option label="销毁" value="destroy" /><el-option label="通知" value="notify" />
+            </el-select>
+            <el-button @click="loadExecutions">查询</el-button>
+            <div style="flex: 1;" />
+            <span class="muted">共 {{ executions.length }} 条</span>
+          </div>
+          <el-table :data="executions" stripe>
+            <el-table-column prop="policyName" label="策略" width="150" show-overflow-tooltip />
+            <el-table-column prop="assetName" label="资产" min-width="160" show-overflow-tooltip />
+            <el-table-column prop="tier" label="分层" width="100" />
+            <el-table-column label="动作" width="90">
+              <template #default="{ row }">
+                <el-tag size="small" :type="row.action === 'archive' ? 'warning' : row.action === 'destroy' ? 'danger' : 'info'">
+                  {{ actionLabel(row.action) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="reason" label="原因" min-width="220" show-overflow-tooltip />
+            <el-table-column label="执行时间" width="160">
+              <template #default="{ row }">{{ formatTime(row.executedAt) }}</template>
+            </el-table-column>
+          </el-table>
+          <el-empty v-if="!executions.length" description="暂无执行记录；执行分层后会写入" :image-size="56" />
         </el-tab-pane>
 
         <el-tab-pane label="分层分布" name="tiering">
@@ -176,6 +205,29 @@
         <el-button type="primary" @click="submitDestruction">提交</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="showCandidates" :title="`命中预览：${candidatePolicy?.policyName || ''}`" width="760px" top="10vh">
+      <el-alert :closable="false" type="info" show-icon
+                :title="`命中 ${candidates.length} 个资产；归档/销毁/通知动作已按策略规则计算，执行前请确认。`"
+                style="margin-bottom: 12px;" />
+      <el-table :data="candidates" stripe max-height="480">
+        <el-table-column prop="assetName" label="资产" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="tier" label="分层" width="110" />
+        <el-table-column label="动作" width="100">
+          <template #default="{ row }">
+            <el-tag size="small" :type="row.action === 'archive' ? 'warning' : row.action === 'destroy' ? 'danger' : 'info'">
+              {{ actionLabel(row.action) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="ageDays" label="已创建(天)" width="100" />
+        <el-table-column prop="reason" label="判定原因" min-width="240" show-overflow-tooltip />
+      </el-table>
+      <el-empty v-if="!candidates.length" description="按当前策略没有命中资产" :image-size="56" />
+      <template #footer>
+        <el-button @click="showCandidates = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -196,6 +248,11 @@ const isEditPolicy = ref(false)
 const policyForm = ref<any>({})
 const showDestructionForm = ref(false)
 const destructionForm = ref<any>({})
+const executions = ref<any[]>([])
+const execAction = ref('')
+const showCandidates = ref(false)
+const candidatePolicy = ref<any>(null)
+const candidates = ref<any[]>([])
 
 const enabledPolicies = computed(() => policies.value.filter(p => Number(p.status) === 1).length)
 const pendingDestructions = computed(() => destructions.value.filter(d => Number(d.status) === 0).length)
@@ -205,7 +262,7 @@ const destructionLabel = (v: any) => Number(v) === 1 ? '已批准' : Number(v) =
 const formatTime = (v: string) => v ? String(v).replace('T', ' ').slice(0, 16) : '-'
 
 async function loadAll() {
-  await Promise.all([loadPolicies(), loadDestructions(), loadTier()])
+  await Promise.all([loadPolicies(), loadDestructions(), loadTier(), loadExecutions()])
 }
 
 async function loadPolicies() {
@@ -289,6 +346,24 @@ async function approve(row: any, status: number) {
   } catch (_e) { /* 取消 */ }
 }
 
+const actionLabel = (v: string) => ({ archive: '归档', destroy: '销毁', notify: '通知' } as any)[v] || v || '-'
+
+async function loadExecutions() {
+  try {
+    const res: any = await lifecycleApi.getExecutions({ action: execAction.value || undefined, limit: 300 })
+    executions.value = res.data || []
+  } catch (_e) { executions.value = [] }
+}
+
+async function openCandidates(row: any) {
+  try {
+    candidatePolicy.value = row
+    const res: any = await lifecycleApi.getPolicyCandidates(row.id)
+    candidates.value = res.data?.rows || []
+    showCandidates.value = true
+  } catch (e: any) { ElMessage.error(e.message || '加载命中资产失败') }
+}
+
 async function executeTiering() {
   try {
     await ElMessageBox.confirm('执行会按启用策略归档/销毁资产，确认继续？', '执行分层', { type: 'warning' })
@@ -297,6 +372,7 @@ async function executeTiering() {
     lastExecute.value = res.data || {}
     ElMessage.success(`执行完成：归档 ${res.data?.archived || 0}，销毁 ${res.data?.destroyed || 0}，通知 ${res.data?.notified || 0}`)
     await loadAll()
+    await loadExecutions()
   } catch (e: any) {
     if (e !== 'cancel' && e !== 'close') ElMessage.error(e.message || '执行失败')
   } finally { executing.value = false }
