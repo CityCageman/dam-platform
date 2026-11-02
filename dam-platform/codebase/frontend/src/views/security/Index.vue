@@ -1,6 +1,37 @@
 <template>
   <div class="page-container">
-    <div class="page-header"><h2>安全管控</h2></div>
+    <div class="page-head">
+      <div>
+        <h2 class="page-title">安全管控</h2>
+        <p class="page-desc">敏感数据识别、脱敏策略、审计日志与脱敏效果预览。</p>
+      </div>
+      <div class="head-actions">
+        <el-button @click="loadAll"><el-icon><Refresh /></el-icon>刷新</el-button>
+      </div>
+    </div>
+
+    <div class="stat-grid" style="margin-bottom: 14px;">
+      <div class="stat-card">
+        <div class="stat-label">敏感规则</div>
+        <div class="stat-value">{{ sensitiveRules.length }}</div>
+        <div class="stat-foot">高敏感 {{ highRules }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">脱敏策略</div>
+        <div class="stat-value">{{ maskingPolicies.length }}</div>
+        <div class="stat-foot">启用 {{ enabledPolicies }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">审计日志</div>
+        <div class="stat-value">{{ auditLogs.length }}</div>
+        <div class="stat-foot">当前筛选结果</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">脱敏算法</div>
+        <div class="stat-value">{{ algorithms.length }}</div>
+        <div class="stat-foot">可用于策略/预览</div>
+      </div>
+    </div>
     <el-tabs v-model="activeTab">
       <el-tab-pane label="敏感规则" name="rules">
         <el-card>
@@ -124,6 +155,8 @@
 import { ref, onMounted } from 'vue'
 import { securityApi } from '@/api'
 import { ElMessage } from 'element-plus'
+import { computed } from 'vue'
+import { Refresh } from '@element-plus/icons-vue'
 
 const activeTab = ref('rules')
 const algorithms = ref<string[]>([])
@@ -136,13 +169,17 @@ const showCreateMasking = ref(false)
 const ruleForm = ref<any>({ sensitivityLevel: 'medium' })
 const maskingForm = ref<any>({ maskingType: 'mask' })
 const maskPreview = ref({ value: '', algorithm: 'mask', result: '' })
+const highRules = computed(() => sensitiveRules.value.filter(r => String(r.sensitivityLevel).toLowerCase() === 'high').length)
+const enabledPolicies = computed(() => maskingPolicies.value.filter(p => Number(p.status) === 1).length)
 
-onMounted(() => {
+function loadAll() {
   loadAlgorithms()
   loadRules()
   loadMasking()
   searchAudit()
-})
+}
+
+onMounted(loadAll)
 
 async function loadAlgorithms() {
   try {

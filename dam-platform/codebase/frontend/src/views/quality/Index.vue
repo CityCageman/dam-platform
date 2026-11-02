@@ -1,6 +1,16 @@
 <template>
   <div class="page-container">
-    <div class="page-header"><h2>数据质量管理</h2></div>
+    <div class="page-head">
+      <div>
+        <h2 class="page-title">数据质量</h2>
+        <p class="page-desc">维护质量规则、执行检测并查看历史与趋势。</p>
+      </div>
+      <div class="head-actions">
+        <el-button @click="loadRules(); loadOverview()"><el-icon><Refresh /></el-icon>刷新</el-button>
+        <el-button :loading="executingAll" @click="handleExecuteAll">执行全部</el-button>
+        <el-button type="primary" @click="openCreate"><el-icon><Plus /></el-icon>新建规则</el-button>
+      </div>
+    </div>
 
     <!-- 概览卡片 -->
     <el-row :gutter="20" style="margin-bottom: 20px;">
@@ -28,8 +38,6 @@
               <el-option label="有效性" value="validity" />
             </el-select>
             <el-button type="primary" @click="search">查询</el-button>
-            <el-button type="success" @click="showCreate = true">新建规则</el-button>
-            <el-button :loading="executingAll" @click="handleExecuteAll">执行全部</el-button>
           </div>
           <el-table :data="ruleList" stripe>
             <el-table-column prop="ruleCode" label="规则编码" min-width="180" />
@@ -50,10 +58,16 @@
               <template #default="{ row }">
                 <el-button size="small" text @click="viewChecks(row)">检测历史</el-button>
                 <el-button size="small" text :loading="executingId === row.id" @click="handleExecute(row.id)">执行</el-button>
+                <el-button size="small" text type="primary" @click="openEdit(row)">编辑</el-button>
+                <el-button size="small" text @click="toggleRule(row)">{{ Number(row.status) === 1 ? '停用' : '启用' }}</el-button>
                 <el-button size="small" text type="danger" @click="deleteRule(row.id)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
+          <div class="pagination-bar">
+            <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="total"
+                           layout="total, prev, pager, next" @change="loadRules" />
+          </div>
         </el-card>
       </el-tab-pane>
       <el-tab-pane label="检测记录" name="checks">
@@ -80,7 +94,7 @@
       </el-tab-pane>
     </el-tabs>
 
-    <el-dialog v-model="showCreate" title="新建质量规则" width="500px">
+    <el-dialog v-model="showCreate" :title="isEditRule ? '编辑质量规则' : '新建质量规则'" width="560px" top="14vh">
       <el-form :model="ruleForm" label-width="100px">
         <el-form-item label="规则编码"><el-input v-model="ruleForm.ruleCode" /></el-form-item>
         <el-form-item label="规则类型">
@@ -102,6 +116,11 @@
         </el-form-item>
         <el-form-item label="期望值"><el-input v-model="ruleForm.expectValue" /></el-form-item>
         <el-form-item label="校验SQL"><el-input v-model="ruleForm.ruleExpression" type="textarea" :rows="3" /></el-form-item>
+        <el-form-item label="描述"><el-input v-model="ruleForm.description" type="textarea" :rows="2" /></el-form-item>
+        <el-form-item label="定时执行">
+          <el-switch v-model="ruleForm.isScheduled" />
+          <el-input v-if="ruleForm.isScheduled" v-model="ruleForm.cronExpression" placeholder="Cron 表达式" style="width: 220px; margin-left: 10px;" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showCreate = false">取消</el-button>
@@ -115,6 +134,7 @@
 import { ref, onMounted, nextTick, shallowRef, watch } from 'vue'
 import { qualityApi } from '@/api'
 import { ElMessage } from 'element-plus'
+import { Plus, Refresh } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 
 const activeTab = ref('rules')
@@ -126,6 +146,7 @@ const total = ref(0)
 const ruleList = ref<any[]>([])
 const checkList = ref<any[]>([])
 const showCreate = ref(false)
+const isEditRule = ref(false)
 const executingAll = ref(false)
 const executingId = ref<number>()
 const ruleForm = ref<any>({ severity: 'medium' })
@@ -191,12 +212,36 @@ async function handleExecuteAll() {
   }
 }
 
+function openCreate() {
+  isEditRule.value = false
+  ruleForm.value = { severity: 'medium', ruleLevel: 'normal', isScheduled: false }
+  showCreate.value = true
+}
+
+function openEdit(row: any) {
+  isEditRule.value = true
+  ruleForm.value = { ...row }
+  showCreate.value = true
+}
+
+async function toggleRule(row: any) {
+  try {
+    await qualityApi.updateRule({ ...row, status: Number(row.status) === 1 ? 0 : 1 })
+    ElMessage.success('状态已更新')
+    await loadRules()
+  } catch (e: any) { ElMessage.error(e.message || '更新失败') }
+}
+
 async function submitRule() {
-  await qualityApi.createRule(ruleForm.value)
-  ElMessage.success('创建成功')
-  showCreate.value = false
-  ruleForm.value = { severity: 'medium' }
-  loadRules()
+  try {
+    if (!ruleForm.value.ruleCode?.trim()) { ElMessage.warning('请输入规则编码'); return }
+    if (isEditRule.value) await qualityApi.updateRule(ruleForm.value)
+    else await qualityApi.createRule(ruleForm.value)
+    ElMessage.success(isEditRule.value ? '编辑成功' : '创建成功')
+    showCreate.value = false
+    ruleForm.value = { severity: 'medium' }
+    await loadRules()
+  } catch (e: any) { ElMessage.error(e.message || '保存失败') }
 }
 
 async function loadOverview() {
