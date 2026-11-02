@@ -105,6 +105,8 @@ public class QualityScanService {
                     }
                     errorSqlBody = "SELECT * FROM " + tableName + " WHERE " + errorSqlBody;
                 }
+                // 去掉结尾分号，避免被包成子查询后语法错误
+                errorSqlBody = errorSqlBody.replaceAll(";+\s*$", "").trim();
                 // 如果表达式使用 __ERROR__ 占位，异常查询替换为恒真
                 errorSqlBody = errorSqlBody.replace("__ERROR__", "1=1");
 

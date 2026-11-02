@@ -21,7 +21,7 @@
         <div class="stat-foot">当前维度/关键字范围内</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">本页 SQL 报表</div>
+        <div class="stat-label">本页 SQL/过程</div>
         <div class="stat-value">{{ sqlCount }}</div>
         <div class="stat-foot">可直接在线取数</div>
       </div>

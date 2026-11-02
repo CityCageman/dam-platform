@@ -7,7 +7,7 @@ dam:
       # 智能体服务地址（完整到 /v1/chat/completions）
       base-url: https://llm-tp8.cuhkszmc.cn/v1/chat/completions
       # 认证密钥（发送为 Authorization: Bearer <api-key>）
-      api-key: sk-faf6035c9b3e4235a1881bce5dedb51a
+      api-key: ${DAM_AGENT_CHAT_API_KEY:}
       # 默认模型（对话模型，请按实际替换）
       model: qwen3.8-27b-tp8
       # 总体超时（秒）
@@ -19,7 +19,7 @@ dam:
       # 智能体服务地址（完整到 /v1/chat/completions）
       base-url: https://coder.cuhkszmc.cn/v1/chat/completions
       # 认证密钥（发送为 Authorization: Bearer <api-key>）
-      api-key: sk-faf6035c9b3e4235a1881bce5dedb51a
+      api-key: ${DAM_AGENT_CODE_API_KEY:}
       # 默认模型（编码模型）
       model: qwen3-coder-30b-a3b
       # 总体超时（秒）
