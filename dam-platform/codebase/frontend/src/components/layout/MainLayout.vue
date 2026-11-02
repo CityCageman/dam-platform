@@ -10,11 +10,6 @@
         </div>
       </div>
 
-      <div class="workspace">
-        <span class="ws-dot"></span>
-        <span>生产环境 · 市一院</span>
-        <el-icon class="ws-caret"><ArrowDown /></el-icon>
-      </div>
 
       <el-menu
         :default-active="defaultActive"
@@ -314,24 +309,6 @@ async function handleLogout() {
 .brand-title { color: #fff; font-size: 14px; font-weight: 600; letter-spacing: .2px; }
 .brand-sub { color: #6f86a8; font-size: 9.5px; margin-top: 2px; letter-spacing: .8px; }
 
-/* 环境切换 */
-.workspace {
-  margin: 0 4px 12px;
-  height: 34px;
-  padding: 0 10px;
-  border-radius: 9px;
-  background: #16233c;
-  border: 1px solid #22324f;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #c7d2e5;
-  font-size: 11.5px;
-  cursor: pointer;
-}
-.workspace:hover { border-color: #2f4468; }
-.ws-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; flex: 0 0 7px; }
-.ws-caret { margin-left: auto; color: #7c8ca8; font-size: 12px; }
 
 /* 导航 */
 .nav { border-right: none; flex: 1; background: transparent; }
@@ -464,7 +441,7 @@ async function handleLogout() {
   .user-meta { display: none; }
 }
 @media (max-width: 900px) {
-  .workspace, .brand-text, .nav-group, .sidebar-foot .who { display: none; }
+  .brand-text, .nav-group, .sidebar-foot .who { display: none; }
   .sidebar { width: 72px; flex-basis: 72px; align-items: center; padding: 18px 8px; }
   :deep(.el-menu-item), :deep(.el-sub-menu__title) { justify-content: center; padding: 0 !important; }
   .global-search { display: none; }
