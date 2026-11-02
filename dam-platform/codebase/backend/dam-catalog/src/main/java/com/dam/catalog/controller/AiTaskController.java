@@ -2,6 +2,7 @@ package com.dam.catalog.controller;
 
 import com.dam.catalog.entity.AiTask;
 import com.dam.catalog.entity.AiTaskItem;
+import com.dam.catalog.service.AiRateLimiter;
 import com.dam.catalog.service.AiTaskService;
 import com.dam.common.vo.PageResult;
 import com.dam.common.vo.Result;
@@ -23,6 +24,7 @@ import java.util.Map;
 public class AiTaskController {
 
     private final AiTaskService taskService;
+    private final AiRateLimiter aiRateLimiter;
 
     @GetMapping
     public Result<PageResult<AiTask>> page(@RequestParam(required = false) String status,
@@ -53,6 +55,7 @@ public class AiTaskController {
 
     @PostMapping("/{id}/items/batch-review")
     public Result<Integer> batchReview(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        aiRateLimiter.check(aiRateLimiter.currentKey(), 60, 60_000);
         boolean accept = !Boolean.FALSE.equals(body.get("accept"))
                 && !"false".equalsIgnoreCase(String.valueOf(body.get("accept")));
         boolean all = Boolean.TRUE.equals(body.get("all"))
@@ -68,6 +71,7 @@ public class AiTaskController {
 
     @PostMapping
     public Result<AiTask> create(@RequestBody Map<String, Object> body) {
+        aiRateLimiter.check(aiRateLimiter.currentKey(), 60, 60_000);
         return Result.success(taskService.create(body));
     }
 
@@ -82,6 +86,7 @@ public class AiTaskController {
                                @PathVariable Long itemId,
                                @RequestParam(defaultValue = "true") boolean accept,
                                @RequestParam(required = false) String reviewer) {
+        aiRateLimiter.check(aiRateLimiter.currentKey(), 120, 60_000);
         taskService.review(id, itemId, accept, reviewer);
         return Result.success(null);
     }

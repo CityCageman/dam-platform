@@ -9,6 +9,8 @@ import com.dam.catalog.entity.AiTask;
 import com.dam.catalog.entity.AiTaskItem;
 import com.dam.catalog.repository.AiTaskItemMapper;
 import com.dam.catalog.repository.AiTaskMapper;
+import cn.dev33.satoken.stp.StpUtil;
+import com.dam.common.exception.BusinessException;
 import com.dam.common.vo.PageResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -55,9 +57,11 @@ public class AiTaskService {
      */
     public PageResult<AiTask> page(String status, String taskType, String keyword,
                                    Integer page, Integer pageSize) {
+        String user = requireUser();
         int p = Math.max(1, page == null ? 1 : page);
         int size = Math.clamp(pageSize == null ? 20 : pageSize, 1, MAX_PAGE_SIZE);
         LambdaQueryWrapper<AiTask> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(AiTask::getCreatedBy, user);
         if (StrUtil.isNotBlank(status)) {
             wrapper.eq(AiTask::getStatus, status);
         }
@@ -77,10 +81,7 @@ public class AiTaskService {
      * 任务详情（含草稿明细）
      */
     public Map<String, Object> detail(Long id) {
-        AiTask task = taskMapper.selectById(id);
-        if (task == null) {
-            throw new IllegalArgumentException("任务不存在: " + id);
-        }
+        AiTask task = ownedTask(id);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("task", task);
         return result;
@@ -90,6 +91,7 @@ public class AiTaskService {
      * 任务明细分页
      */
     public PageResult<AiTaskItem> itemPage(Long taskId, Integer page, Integer pageSize, String status) {
+        ownedTask(taskId);
         int p = Math.max(1, page == null ? 1 : page);
         int size = Math.clamp(pageSize == null ? 20 : pageSize, 1, MAX_PAGE_SIZE);
         LambdaQueryWrapper<AiTaskItem> wrapper = new LambdaQueryWrapper<>();
@@ -113,6 +115,8 @@ public class AiTaskService {
      */
     @Transactional
     public int reviewBatch(Long taskId, List<Long> itemIds, boolean accept, boolean all, String reviewer) {
+        ownedTask(taskId);
+        String operator = requireUser();
         LambdaQueryWrapper<AiTaskItem> wrapper = new LambdaQueryWrapper<AiTaskItem>()
                 .eq(AiTaskItem::getTaskId, taskId);
         if (all) {
@@ -139,7 +143,7 @@ public class AiTaskService {
                 applyDraft(item);
             }
             item.setStatus(accept ? "ACCEPTED" : "REJECTED");
-            item.setReviewedBy(StrUtil.isNotBlank(reviewer) ? reviewer : "system");
+            item.setReviewedBy(operator);
             item.setReviewedAt(now);
             itemMapper.updateById(item);
             count++;
@@ -168,6 +172,7 @@ public class AiTaskService {
         if (!STATUSES.contains(status)) {
             throw new IllegalArgumentException("不支持的任务状态: " + status);
         }
+        String operator = requireUser();
         LocalDateTime now = LocalDateTime.now();
         AiTask task = new AiTask();
         task.setTaskType(taskType);
@@ -180,7 +185,7 @@ public class AiTaskService {
         task.setRejectedCount(0);
         task.setModel(cut(str(body.get("model")), 100));
         task.setPrompt(cut(str(body.get("prompt")), 20000));
-        task.setCreatedBy(cut(StrUtil.isNotBlank(str(body.get("createdBy"))) ? str(body.get("createdBy")) : "system", 100));
+        task.setCreatedBy(operator);
         task.setCreatedAt(now);
         task.setUpdatedAt(now);
         taskMapper.insert(task);
@@ -232,6 +237,7 @@ public class AiTaskService {
      */
     @Transactional
     public void review(Long taskId, Long itemId, boolean accept, String reviewer) {
+        ownedTask(taskId);
         AiTaskItem item = itemMapper.selectById(itemId);
         if (item == null || !taskId.equals(item.getTaskId())) {
             throw new IllegalArgumentException("任务明细不存在或不属于该任务");
@@ -241,7 +247,7 @@ public class AiTaskService {
         }
         LocalDateTime now = LocalDateTime.now();
         item.setStatus(accept ? "ACCEPTED" : "REJECTED");
-        item.setReviewedBy(StrUtil.isNotBlank(reviewer) ? reviewer : "system");
+        item.setReviewedBy(requireUser());
         item.setReviewedAt(now);
         itemMapper.updateById(item);
 
@@ -277,10 +283,7 @@ public class AiTaskService {
      */
     @Transactional
     public void updateStatus(Long id, Map<String, Object> body) {
-        AiTask task = taskMapper.selectById(id);
-        if (task == null) {
-            return;
-        }
+        AiTask task = ownedTask(id);
         String status = str(body.get("status"));
         if (StrUtil.isNotBlank(status)) {
             if (!STATUSES.contains(status)) {
@@ -323,13 +326,46 @@ public class AiTaskService {
      * 任务状态统计
      */
     public Map<String, Object> stats() {
+        String user = requireUser();
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("total", taskMapper.selectCount(new LambdaQueryWrapper<>()));
+        result.put("total", taskMapper.selectCount(new LambdaQueryWrapper<AiTask>()
+                .eq(AiTask::getCreatedBy, user)));
         for (String status : List.of("PENDING", "RUNNING", "REVIEW", "DONE", "FAILED")) {
             result.put(status, taskMapper.selectCount(new LambdaQueryWrapper<AiTask>()
+                    .eq(AiTask::getCreatedBy, user)
                     .eq(AiTask::getStatus, status)));
         }
         return result;
+    }
+
+    /**
+     * 当前登录用户ID（JWT 无状态解析）
+     */
+    private String requireUser() {
+        Object id;
+        try {
+            id = StpUtil.getLoginIdDefaultNull();
+        } catch (Exception e) {
+            id = null;
+        }
+        if (id == null) {
+            throw new BusinessException("未登录或登录已过期");
+        }
+        return String.valueOf(id);
+    }
+
+    /**
+     * 校验任务归属：只允许创建人访问/审核
+     */
+    private AiTask ownedTask(Long id) {
+        AiTask task = taskMapper.selectById(id);
+        if (task == null) {
+            throw new BusinessException("任务不存在: " + id);
+        }
+        if (!requireUser().equals(task.getCreatedBy())) {
+            throw new BusinessException("无权访问该任务");
+        }
+        return task;
     }
 
     private String str(Object o) {

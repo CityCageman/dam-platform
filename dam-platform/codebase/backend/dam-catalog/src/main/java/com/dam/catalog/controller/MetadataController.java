@@ -4,6 +4,7 @@ import com.dam.catalog.entity.DamDataSource;
 import com.dam.catalog.entity.DamMetadataExt;
 import com.dam.catalog.entity.MetadataManagement;
 import com.dam.catalog.entity.MetadataSchema;
+import com.dam.catalog.service.AiRateLimiter;
 import com.dam.catalog.service.MetadataAiService;
 import com.dam.catalog.service.MetadataService;
 import com.dam.catalog.service.TechnicalMetadataService;
@@ -39,6 +40,9 @@ public class MetadataController {
 
     /** 元数据 AI 智能标注服务（表注释/主题域/安全分级） */
     private final MetadataAiService metadataAiService;
+
+    /** AI 接口限流 */
+    private final AiRateLimiter aiRateLimiter;
 
     /**
      * 获取资产的完整技术元数据（6大类别）
@@ -112,6 +116,7 @@ public class MetadataController {
      */
     @PostMapping("/ai-annotate")
     public Result<Map<String, Object>> aiAnnotate(@RequestBody Map<String, Object> body) {
+        aiRateLimiter.check(aiRateLimiter.currentKey(), 10, 60_000);
         Long dataSourceId = body.get("dataSourceId") instanceof Number n ? n.longValue() : null;
         Long afterId = body.get("afterId") instanceof Number n ? n.longValue() : null;
         Integer batchSize = body.get("batchSize") instanceof Number n ? n.intValue() : null;
@@ -130,6 +135,7 @@ public class MetadataController {
     @PostMapping("/tables/{tableId}/ai-annotate")
     public Result<Map<String, Object>> aiAnnotateTable(@PathVariable Long tableId,
                                                        @RequestBody(required = false) Map<String, Object> body) {
+        aiRateLimiter.check(aiRateLimiter.currentKey(), 30, 60_000);
         Long taskId = body != null && body.get("taskId") instanceof Number n ? n.longValue() : null;
         String token = cn.dev33.satoken.context.SaHolder.getRequest().getHeader("token");
         return Result.success(metadataAiService.annotateTable(tableId, taskId, token));

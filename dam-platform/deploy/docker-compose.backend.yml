@@ -8,7 +8,7 @@ name: dam-platform-backend
 x-pg-env: &pg-env
   SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/damplatform
   SPRING_DATASOURCE_USERNAME: dam
-  SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-Cuhkszmc_2026}
+  SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
   TZ: Asia/Shanghai
 
 # 各服务 Nacos 注册/配置中心地址（容器内部地址）
@@ -43,7 +43,7 @@ services:
     environment:
       POSTGRES_DB: damplatform
       POSTGRES_USER: dam
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-Cuhkszmc_2026}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       TZ: Asia/Shanghai
     volumes:
       - pgdata:/var/lib/postgresql/data

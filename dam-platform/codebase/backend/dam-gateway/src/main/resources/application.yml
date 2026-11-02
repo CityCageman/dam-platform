@@ -55,9 +55,10 @@ spring:
           globalcors:
             cors-configurations:
               '[/**]':
-                allowedOriginPatterns: "*"
-                allowedMethods: "*"
-                allowedHeaders: "*"
+                allowedOriginPatterns:
+                  - ${DAM_CORS_ORIGINS:http://localhost:5173}
+                allowedMethods: "GET,POST,PUT,DELETE,OPTIONS"
+                allowedHeaders: "token,Content-Type,Authorization"
                 allowCredentials: true
 
 server:
@@ -69,4 +70,4 @@ sa-token:
   is-concurrent: true
   is-share: false
   token-style: jwt
-  jwt-secret-key: dam-platform-jwt-secret-key-2026
+  jwt-secret-key: ${SA_TOKEN_JWT_SECRET_KEY}

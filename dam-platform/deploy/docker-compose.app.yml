@@ -9,7 +9,7 @@ name: dam-platform-app
 x-pg-env: &pg-env
   SPRING_DATASOURCE_URL: jdbc:postgresql://${DB_HOST:-10.162.3.16}:${DB_PORT:-11001}/damplatform
   SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-dam}
-  SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-Cuhkszmc_2026}
+  SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
   TZ: Asia/Shanghai
 
 # Nacos 注册/配置中心地址（指向台3）

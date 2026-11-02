@@ -6,7 +6,7 @@ name: dam-platform
 x-pg-env: &pg-env
   SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/damplatform
   SPRING_DATASOURCE_USERNAME: dam
-  SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-Cuhkszmc_2026}
+  SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
   TZ: Asia/Shanghai
 
 services:
@@ -18,7 +18,7 @@ services:
     environment:
       POSTGRES_DB: damplatform
       POSTGRES_USER: dam
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-Cuhkszmc_2026}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       TZ: Asia/Shanghai
     volumes:
       - pgdata:/var/lib/postgresql/data

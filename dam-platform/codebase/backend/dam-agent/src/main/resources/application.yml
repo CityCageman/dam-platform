@@ -28,4 +28,4 @@ sa-token:
   is-concurrent: true
   is-share: false
   token-style: jwt
-  jwt-secret-key: dam-platform-jwt-secret-key-2026
+  jwt-secret-key: ${SA_TOKEN_JWT_SECRET_KEY}

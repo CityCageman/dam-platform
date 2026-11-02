@@ -1,6 +1,7 @@
 package com.dam.catalog.controller;
 
 import com.dam.catalog.entity.*;
+import com.dam.catalog.service.AiRateLimiter;
 import com.dam.catalog.service.AssetClassifyAiService;
 import com.dam.catalog.service.CatalogService;
 import com.dam.catalog.service.ConfigService;
@@ -42,6 +43,7 @@ public class CatalogController {
     private final DictService dictService;
     private final CryptoService cryptoService;
     private final AssetClassifyAiService assetClassifyAiService;
+    private final AiRateLimiter aiRateLimiter;
 
     // ==================== 分类接口 ====================
 
@@ -269,6 +271,7 @@ public class CatalogController {
      */
     @PostMapping("/assets/ai-classify")
     public Result<Map<String, Object>> aiClassifyAssets(@RequestBody Map<String, Object> body) {
+        aiRateLimiter.check(aiRateLimiter.currentKey(), 10, 60_000);
         Long dataSourceId = body.get("dataSourceId") instanceof Number n ? n.longValue() : null;
         Long afterId = body.get("afterId") instanceof Number n ? n.longValue() : null;
         Integer batchSize = body.get("batchSize") instanceof Number n ? n.intValue() : null;

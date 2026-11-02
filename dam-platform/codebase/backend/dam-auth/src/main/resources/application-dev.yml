@@ -2,5 +2,5 @@ spring:
   datasource:
     url: jdbc:postgresql://10.162.3.16:11001/damplatform
     username: dam
-    password: Cuhkszmc_2026
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
