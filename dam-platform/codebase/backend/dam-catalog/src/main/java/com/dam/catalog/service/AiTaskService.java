@@ -1,6 +1,8 @@
 package com.dam.catalog.service;
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dam.catalog.entity.AiTask;
@@ -32,6 +34,8 @@ public class AiTaskService {
 
     private final AiTaskMapper taskMapper;
     private final AiTaskItemMapper itemMapper;
+    private final MetadataAiService metadataAiService;
+    private final AssetClassifyAiService assetClassifyAiService;
 
     /**
      * 分页查询任务
@@ -142,6 +146,9 @@ public class AiTaskService {
         if (item == null || !taskId.equals(item.getTaskId())) {
             throw new IllegalArgumentException("任务明细不存在或不属于该任务");
         }
+        if (accept) {
+            applyDraft(item);
+        }
         LocalDateTime now = LocalDateTime.now();
         item.setStatus(accept ? "ACCEPTED" : "REJECTED");
         item.setReviewedBy(StrUtil.isNotBlank(reviewer) ? reviewer : "system");
@@ -191,6 +198,24 @@ public class AiTaskService {
         }
         task.setUpdatedAt(LocalDateTime.now());
         taskMapper.updateById(task);
+    }
+
+    /**
+     * 采纳时把草稿写回业务表
+     *
+     * @param item 草稿明细
+     */
+    private void applyDraft(AiTaskItem item) {
+        if (StrUtil.isBlank(item.getDraftContent())) {
+            throw new IllegalArgumentException("草稿内容为空，无法采纳");
+        }
+        JSONObject json = JSONUtil.parseObj(item.getDraftContent());
+        if ("COMMENT".equalsIgnoreCase(item.getItemType())) {
+            metadataAiService.applyAnnotationDraft(item.getTargetId(),
+                    json.getStr("tableComment"), json.getStr("subjectDomain"), json.getStr("securityLevel"));
+        } else if ("CLASSIFY".equalsIgnoreCase(item.getItemType())) {
+            assetClassifyAiService.applyClassificationDraft(item.getTargetId(), json.getLong("categoryId"));
+        }
     }
 
     /**

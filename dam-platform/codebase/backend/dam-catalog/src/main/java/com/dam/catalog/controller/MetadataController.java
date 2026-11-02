@@ -117,8 +117,11 @@ public class MetadataController {
         Integer batchSize = body.get("batchSize") instanceof Number n ? n.intValue() : null;
         boolean pendingOnly = Boolean.TRUE.equals(body.get("pendingOnly"))
                 || "true".equalsIgnoreCase(String.valueOf(body.get("pendingOnly")));
+        boolean draft = Boolean.TRUE.equals(body.get("draft"))
+                || "true".equalsIgnoreCase(String.valueOf(body.get("draft")));
+        Long taskId = body.get("taskId") instanceof Number n ? n.longValue() : null;
         String token = cn.dev33.satoken.context.SaHolder.getRequest().getHeader("token");
-        return Result.success(metadataAiService.annotate(dataSourceId, pendingOnly, afterId, batchSize, token));
+        return Result.success(metadataAiService.annotate(dataSourceId, pendingOnly, afterId, batchSize, token, draft, taskId));
     }
 
     /**

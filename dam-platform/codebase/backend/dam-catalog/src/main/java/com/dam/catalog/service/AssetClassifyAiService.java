@@ -2,11 +2,14 @@ package com.dam.catalog.service;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import cn.hutool.json.JSONUtil;
+import com.dam.catalog.entity.AiTaskItem;
 import com.dam.catalog.entity.AssetCategoryRel;
 import com.dam.catalog.entity.DamAsset;
 import com.dam.catalog.entity.DamCategory;
 import com.dam.catalog.entity.MetadataColumn;
 import com.dam.catalog.entity.MetadataTable;
+import com.dam.catalog.repository.AiTaskItemMapper;
 import com.dam.catalog.repository.AssetCategoryRelMapper;
 import com.dam.catalog.repository.DamAssetMapper;
 import com.dam.catalog.repository.DamCategoryMapper;
@@ -69,6 +72,8 @@ public class AssetClassifyAiService {
     private final DamCategoryMapper categoryMapper;
     private final MetadataTableMapper tableMapper;
     private final MetadataColumnMapper columnMapper;
+    /** AI 任务草稿明细 */
+    private final AiTaskItemMapper aiTaskItemMapper;
 
     /** dam-agent 服务地址 */
     @Value("${dam.agent-url:http://localhost:8089}")
@@ -87,6 +92,21 @@ public class AssetClassifyAiService {
     @Transactional
     public Map<String, Object> classify(Long dataSourceId, boolean pendingOnly, Long afterId,
                                         Integer batchSize, String token) {
+        return classify(dataSourceId, pendingOnly, afterId, batchSize, token, false, null);
+    }
+
+    /**
+     * 资产分类识别（支持草稿模式）
+     *
+     * @param draft  true=只写 ai_task_item 草稿，不改资产分类
+     * @param taskId 草稿所属任务ID（draft=true 时必填）
+     */
+    @Transactional
+    public Map<String, Object> classify(Long dataSourceId, boolean pendingOnly, Long afterId,
+                                        Integer batchSize, String token, boolean draft, Long taskId) {
+        if (draft && taskId == null) {
+            throw new BusinessException("草稿模式需要 taskId");
+        }
         int limit = batchSize == null || batchSize <= 0 ? DEFAULT_BATCH_SIZE : Math.min(batchSize, MAX_BATCH_SIZE);
         Long cursor = afterId == null || afterId <= 0 ? null : afterId;
 
@@ -100,7 +120,7 @@ public class AssetClassifyAiService {
         List<DamAsset> assets = assetMapper.selectList(
                 filterQuery(dataSourceId, pendingOnly, cursor, true).last("LIMIT " + limit));
         if (assets.isEmpty()) {
-            return batchResult(0, 0, 0, 0, null, false, limit);
+            return batchResult(0, 0, 0, 0, 0, null, false, limit);
         }
 
         long total = assetMapper.selectCount(filterQuery(dataSourceId, pendingOnly, null, false));
@@ -121,6 +141,7 @@ public class AssetClassifyAiService {
         }
         int classified = 0;
         int unmatched = 0;
+        int drafted = 0;
         java.time.LocalDateTime now = java.time.LocalDateTime.now();
         for (Map<String, Object> it : items) {
             DamCategory cat = matchCategory(targetCategories, str(it.get("categoryCode")), str(it.get("categoryName")));
@@ -134,6 +155,26 @@ public class AssetClassifyAiService {
             }
             if (matched == null || matched.isEmpty()) {
                 unmatched++;
+                continue;
+            }
+            // 草稿模式：只写 ai_task_item，等待人工采纳后再写资产分类
+            if (draft) {
+                for (DamAsset a : matched) {
+                    Map<String, Object> data = new LinkedHashMap<>();
+                    data.put("categoryId", cat.getId());
+                    data.put("categoryCode", cat.getCategoryCode());
+                    data.put("categoryName", cat.getCategoryName());
+                    AiTaskItem item = new AiTaskItem();
+                    item.setTaskId(taskId);
+                    item.setItemType("CLASSIFY");
+                    item.setTargetId(a.getId());
+                    item.setTargetName(a.getAssetName());
+                    item.setDraftContent(JSONUtil.toJsonStr(data));
+                    item.setStatus("DRAFT");
+                    item.setCreatedAt(java.time.LocalDateTime.now());
+                    aiTaskItemMapper.insert(item);
+                    drafted++;
+                }
                 continue;
             }
             for (DamAsset a : matched) {
@@ -159,7 +200,7 @@ public class AssetClassifyAiService {
         // 5. 游标与剩余数量
         Long nextCursor = assets.getLast().getId();
         long remaining = assetMapper.selectCount(filterQuery(dataSourceId, pendingOnly, nextCursor, false));
-        return batchResult(total, assets.size(), classified, remaining, nextCursor, remaining > 0, limit);
+        return batchResult(total, assets.size(), classified, drafted, remaining, nextCursor, remaining > 0, limit);
     }
 
     /**
@@ -190,13 +231,41 @@ public class AssetClassifyAiService {
         }
     }
 
+    /**
+     * 应用一条分类草稿（任务中心采纳时调用）
+     *
+     * @param assetId    资产ID
+     * @param categoryId 目标分类ID
+     */
+    @Transactional
+    public void applyClassificationDraft(Long assetId, Long categoryId) {
+        if (assetId == null || categoryId == null) {
+            throw new BusinessException("草稿缺少资产ID或分类ID");
+        }
+        DamAsset asset = assetMapper.selectById(assetId);
+        if (asset == null) {
+            throw new BusinessException("资产不存在: " + assetId);
+        }
+        DamCategory category = categoryMapper.selectById(categoryId);
+        if (category == null) {
+            throw new BusinessException("分类不存在: " + categoryId);
+        }
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        asset.setCategoryId(categoryId);
+        asset.setUpdatedAt(now);
+        asset.setUpdatedBy("ai-review");
+        assetMapper.updateById(asset);
+        upsertCategoryRel(assetId, category, now);
+    }
+
     /** 统一返回结构 */
-    private Map<String, Object> batchResult(long total, int processed, int classified, long remaining,
+    private Map<String, Object> batchResult(long total, int processed, int classified, int drafted, long remaining,
                                             Long nextCursor, boolean hasMore, int limit) {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("total", total);
         result.put("processed", processed);
         result.put("classified", classified);
+        result.put("drafted", drafted);
         result.put("remaining", remaining);
         result.put("nextCursor", nextCursor);
         result.put("hasMore", hasMore);

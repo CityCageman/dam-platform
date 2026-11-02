@@ -161,6 +161,10 @@ export const catalogApi = {
     /** 上一批返回的 nextCursor */
     afterId?: number
     batchSize?: number
+    /** true=只生成草稿，不直接写资产 */
+    draft?: boolean
+    /** 草稿所属任务ID */
+    taskId?: number
   }) {
     return request.post('/catalog/assets/ai-classify', payload, { timeout: 180000 })
   },
@@ -444,6 +448,10 @@ export const metadataApi = {
     /** 上一批返回的 nextCursor */
     afterId?: number
     batchSize?: number
+    /** true=只生成草稿，不直接写表/资产 */
+    draft?: boolean
+    /** 草稿所属任务ID */
+    taskId?: number
   }) {
     return request.post('/catalog/metadata/ai-annotate', payload, { timeout: 180000 })
   }

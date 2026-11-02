@@ -81,7 +81,9 @@
         <el-table :data="items" stripe size="small">
           <el-table-column prop="targetName" label="目标" min-width="150" show-overflow-tooltip />
           <el-table-column prop="fieldName" label="字段" width="130" show-overflow-tooltip />
-          <el-table-column prop="draftContent" label="AI 草稿" min-width="240" show-overflow-tooltip />
+          <el-table-column label="AI 草稿" min-width="260" show-overflow-tooltip>
+            <template #default="{ row }">{{ draftText(row) }}</template>
+          </el-table-column>
           <el-table-column label="置信度" width="80">
             <template #default="{ row }">{{ row.confidence ?? '-' }}</template>
           </el-table-column>
@@ -140,6 +142,21 @@ const typeTag = (v: string) => v === 'COMMENT' ? 'primary' : v === 'CLASSIFY' ? 
 const itemLabel = (v: string) => v === 'ACCEPTED' ? '已采纳' : v === 'REJECTED' ? '已驳回' : '草稿'
 const itemTag = (v: string) => v === 'ACCEPTED' ? 'success' : v === 'REJECTED' ? 'danger' : 'info'
 const formatTime = (v: string) => v ? String(v).replace('T', ' ').slice(0, 19) : '-'
+
+/** 草稿内容格式化：注释类显示“注释/主题域/分级”，分类类显示分类名 */
+function draftText(row: any) {
+  try {
+    const d = JSON.parse(row.draftContent || '{}')
+    if (row.itemType === 'CLASSIFY') return d.categoryName || d.categoryCode || row.draftContent
+    const parts: string[] = []
+    if (d.tableComment) parts.push('注释：' + d.tableComment)
+    if (d.subjectDomain) parts.push('主题域：' + d.subjectDomain)
+    if (d.securityLevel) parts.push('分级：' + d.securityLevel)
+    return parts.length ? parts.join('；') : (row.draftContent || '-')
+  } catch {
+    return row.draftContent || '-'
+  }
+}
 
 async function loadStats() {
   try {

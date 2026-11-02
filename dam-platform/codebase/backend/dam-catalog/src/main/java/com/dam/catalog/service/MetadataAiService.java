@@ -2,10 +2,13 @@ package com.dam.catalog.service;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import cn.hutool.json.JSONUtil;
+import com.dam.catalog.entity.AiTaskItem;
 import com.dam.catalog.entity.DamAsset;
 import com.dam.catalog.entity.MetadataColumn;
 import com.dam.catalog.entity.MetadataManagement;
 import com.dam.catalog.entity.MetadataTable;
+import com.dam.catalog.repository.AiTaskItemMapper;
 import com.dam.catalog.repository.DamAssetMapper;
 import com.dam.catalog.repository.MetadataColumnMapper;
 import com.dam.catalog.repository.MetadataManagementMapper;
@@ -67,6 +70,8 @@ public class MetadataAiService {
     private final MetadataColumnMapper columnMapper;
     private final MetadataManagementMapper managementMapper;
     private final DamAssetMapper assetMapper;
+    /** AI 任务草稿明细 */
+    private final AiTaskItemMapper aiTaskItemMapper;
 
     /** asset_info.description 列长度上限（超长截断，避免写库报错） */
     private static final int ASSET_DESC_MAX_LEN = 500;
@@ -87,6 +92,21 @@ public class MetadataAiService {
      */
     @Transactional
     public Map<String, Object> annotate(Long dataSourceId, boolean pendingOnly, Long afterId, Integer batchSize, String token) {
+        return annotate(dataSourceId, pendingOnly, afterId, batchSize, token, false, null);
+    }
+
+    /**
+     * 对数据源下的表执行 AI 自动标注（支持草稿模式）
+     *
+     * @param draft  true=只写 ai_task_item 草稿，不改表/资产；false=直接回写
+     * @param taskId 草稿所属任务ID（draft=true 时必填）
+     */
+    @Transactional
+    public Map<String, Object> annotate(Long dataSourceId, boolean pendingOnly, Long afterId, Integer batchSize,
+                                        String token, boolean draft, Long taskId) {
+        if (draft && taskId == null) {
+            throw new BusinessException("草稿模式需要 taskId");
+        }
         int limit = batchSize == null || batchSize <= 0 ? DEFAULT_BATCH_SIZE : Math.min(batchSize, MAX_BATCH_SIZE);
         Long cursor = afterId == null || afterId <= 0 ? null : afterId;
 
@@ -95,7 +115,7 @@ public class MetadataAiService {
                 filterQuery(dataSourceId, pendingOnly, cursor, true).last("LIMIT " + limit));
         if (tables.isEmpty()) {
             // 无待处理表：返回空批次，由前端提示「无可标注/无需补标注」
-            return batchResult(0, 0, 0, 0, 0, null, false, 0, limit);
+            return batchResult(0, 0, 0, 0, 0, 0, null, false, 0, limit);
         }
 
         // 2. 符合条件的表总数（用于前端展示进度）
@@ -112,7 +132,7 @@ public class MetadataAiService {
             byName.computeIfAbsent(normName(t.getTableName()), k -> new ArrayList<>()).add(t);
         }
 
-        int annotated = 0, domainAnnotated = 0, levelAnnotated = 0;
+        int annotated = 0, domainAnnotated = 0, levelAnnotated = 0, drafted = 0;
         // 表ID → AI 生成的中文注释（用于同步写回资产描述）
         Map<Long, String> commentByTable = new LinkedHashMap<>();
         for (Map<String, Object> it : items) {
@@ -123,6 +143,27 @@ public class MetadataAiService {
             String domain = str(it.get("subjectDomain"));
             String level = str(it.get("securityLevel"));
             if (StrUtil.isBlank(comment) && StrUtil.isBlank(domain) && StrUtil.isBlank(level)) continue;
+
+            // 草稿模式：只写 ai_task_item，等待人工采纳后再回写
+            if (draft) {
+                for (MetadataTable t : matched) {
+                    Map<String, Object> data = new LinkedHashMap<>();
+                    if (StrUtil.isNotBlank(comment)) data.put("tableComment", comment);
+                    if (StrUtil.isNotBlank(domain)) data.put("subjectDomain", domain);
+                    if (StrUtil.isNotBlank(level)) data.put("securityLevel", level);
+                    AiTaskItem item = new AiTaskItem();
+                    item.setTaskId(taskId);
+                    item.setItemType("COMMENT");
+                    item.setTargetId(t.getId());
+                    item.setTargetName(t.getTableName());
+                    item.setDraftContent(JSONUtil.toJsonStr(data));
+                    item.setStatus("DRAFT");
+                    item.setCreatedAt(LocalDateTime.now());
+                    aiTaskItemMapper.insert(item);
+                    drafted++;
+                }
+                continue;
+            }
 
             for (MetadataTable t : matched) {
                 if (StrUtil.isNotBlank(comment)) {
@@ -152,13 +193,53 @@ public class MetadataAiService {
         // 5. 计算游标与剩余数量，供前端续标
         Long nextCursor = tables.getLast().getId();
         long remaining = tableMapper.selectCount(filterQuery(dataSourceId, pendingOnly, nextCursor, false));
-        return batchResult(total, tables.size(), annotated, domainAnnotated, levelAnnotated,
+        return batchResult(total, tables.size(), annotated, domainAnnotated, levelAnnotated, drafted,
                 nextCursor, remaining > 0, remaining, limit);
+    }
+
+    /**
+     * 应用一条注释草稿（任务中心采纳时调用）
+     *
+     * @param tableId 表ID
+     * @param comment 表注释
+     * @param domain  主题域
+     * @param level   安全分级
+     */
+    @Transactional
+    public void applyAnnotationDraft(Long tableId, String comment, String domain, String level) {
+        if (tableId == null) {
+            throw new BusinessException("草稿缺少表ID");
+        }
+        MetadataTable table = tableMapper.selectById(tableId);
+        if (table == null) {
+            throw new BusinessException("表不存在: " + tableId);
+        }
+        LocalDateTime now = LocalDateTime.now();
+        boolean changed = false;
+        if (StrUtil.isNotBlank(comment)) {
+            table.setTableComment(comment);
+            changed = true;
+        }
+        if (StrUtil.isNotBlank(domain)) {
+            table.setSubjectDomain(domain);
+            changed = true;
+        }
+        if (changed) {
+            table.setUpdatedAt(now);
+            table.setUpdatedBy("ai-review");
+            tableMapper.updateById(table);
+        }
+        if (StrUtil.isNotBlank(comment)) {
+            syncAssetDescriptions(Map.of(tableId, comment));
+        }
+        if (StrUtil.isNotBlank(level)) {
+            upsertSecurity(tableId, level);
+        }
     }
 
     /** 统一返回结构 */
     private Map<String, Object> batchResult(long total, int processed, int annotated, int domainAnnotated,
-                                            int levelAnnotated, Long nextCursor, boolean hasMore,
+                                            int levelAnnotated, int drafted, Long nextCursor, boolean hasMore,
                                             long remaining, int limit) {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("total", total);
@@ -166,6 +247,7 @@ public class MetadataAiService {
         result.put("annotated", annotated);
         result.put("domainAnnotated", domainAnnotated);
         result.put("levelAnnotated", levelAnnotated);
+        result.put("drafted", drafted);
         result.put("nextCursor", nextCursor);
         result.put("hasMore", hasMore);
         result.put("remaining", remaining);
