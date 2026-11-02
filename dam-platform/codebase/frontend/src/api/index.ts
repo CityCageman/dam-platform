@@ -170,6 +170,10 @@ export const catalogApi = {
   }) {
     return request.post('/catalog/assets/ai-classify', payload, { timeout: 180000 })
   },
+  /** 资产分类（异步）：创建任务后立即返回，前端轮询任务状态 */
+  aiClassifyAsync(payload: { dataSourceId?: number; pendingOnly?: boolean; taskId: number }) {
+    return request.post('/catalog/assets/ai-classify/async', payload, { timeout: 30000 })
+  },
   getExactCount(assetId: number) {
     return request.post(`/catalog/assets/exact-count/${assetId}`)
   },
@@ -456,6 +460,10 @@ export const metadataApi = {
     taskId?: number
   }) {
     return request.post('/catalog/metadata/ai-annotate', payload, { timeout: 180000 })
+  },
+  /** 数据源级 AI 注释（异步）：创建任务后立即返回，前端轮询任务状态 */
+  aiAnnotateAsync(payload: { dataSourceId?: number; pendingOnly?: boolean; taskId: number }) {
+    return request.post('/catalog/metadata/ai-annotate/async', payload, { timeout: 30000 })
   },
   /** 单表 AI 注释草稿（任务中心单行入口） */
   aiAnnotateTable(tableId: number, taskId: number) {

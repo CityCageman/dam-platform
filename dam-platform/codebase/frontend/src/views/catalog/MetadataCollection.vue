@@ -2687,69 +2687,52 @@ async function finishAiTask(taskId: number | undefined, body: any) {
   }
 }
 
-/** AI 自动标注：表注释 + 业务主题域 + 安全分级。按主键游标分批循环调用，直到覆盖全部表 */
+/**
+ * 轮询 AI 任务直到结束（REVIEW/DONE/FAILED），最多 30 分钟
+ */
+async function waitAiTask(taskId: number, loading: any, label: string): Promise<any> {
+  for (let i = 0; i < 900; i++) {
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    try {
+      const res: any = await catalogApi.getAiTask(taskId)
+      const task = res.data?.task
+      if (task) {
+        loading.setText(`${label}中… 已生成草稿 ${task.totalCount || 0} 条`)
+        if (['REVIEW', 'DONE', 'FAILED'].includes(task.status)) {
+          return task
+        }
+      }
+    } catch (_e) {
+      // 轮询失败继续重试
+    }
+  }
+  throw new Error('AI 任务超时，请稍后到「AI 工作台 → 任务中心」查看')
+}
+
+/** AI 自动标注：后台任务 + 轮询，不再占用长请求 */
 async function aiAnnotate(row: any, pendingOnly = true) {
   if (!row || !row.id || row._aiLoading) return
   row._aiLoading = true
   const actionLabel = pendingOnly ? 'AI 补标注（仅未标注的表）' : 'AI 全量标注'
   const taskId = await createAiTask('COMMENT', `AI 注释 · ${row.dsName || row.id} · ${actionLabel}`, row)
-  const draftMode = !!taskId
+  if (!taskId) {
+    row._aiLoading = false
+    ElMessage.error('创建 AI 任务失败，请稍后重试')
+    return
+  }
   const loading = ElLoading.service({ lock: true, text: `${actionLabel}中…`, background: 'rgba(0,0,0,0.25)' })
-  let cursor: number | undefined
-  let scanned = 0
-  let annotated = 0
-  let domain = 0
-  let level = 0
-  let drafted = 0
-  let total = 0
-  let batches = 0
   try {
-    // 后端每批 40 张表（避免 Prompt 过大）、游标翻页；最多 100 批（4000 张表）防死循环
-    while (batches < 100) {
-      batches++
-      const res: any = await metadataApi.aiAnnotate({
-        dataSourceId: row.id,
-        pendingOnly,
-        afterId: cursor,
-        batchSize: 40,
-        draft: draftMode,
-        taskId
-      })
-      const d = res?.data || {}
-      if (!total) total = d.total || 0
-      scanned += d.processed || 0
-      annotated += d.annotated || 0
-      domain += d.domainAnnotated || 0
-      level += d.levelAnnotated || 0
-      if (draftMode) drafted += d.drafted || 0
-      loading.setText(
-        `${actionLabel}中… 已处理 ${scanned}${total ? ' / ' + total : ''} 张表，已生成草稿 ${drafted} 条，剩余 ${d.remaining ?? 0} 张`
-      )
-      cursor = d.nextCursor ?? undefined
-      if (!d.hasMore || !d.processed) break
+    await metadataApi.aiAnnotateAsync({ dataSourceId: row.id, pendingOnly, taskId })
+    const task = await waitAiTask(taskId, loading, actionLabel)
+    if (task.status === 'FAILED') {
+      throw new Error(task.errorMessage || 'AI 标注失败')
     }
-    if (scanned === 0) {
-      ElMessage.warning(pendingOnly ? '没有需要补标注的表' : '暂无可标注的表，请先同步表结构')
-    } else {
-      ElMessage.success(draftMode
-        ? `${pendingOnly ? '补标注' : '全量标注'}完成：处理 ${scanned} 张表，生成草稿 ${drafted} 条，请到「AI 工作台 → 任务中心」审核`
-        : `${pendingOnly ? '补标注' : '全量标注'}完成：处理 ${scanned} 张表，写入注释 ${annotated} 张，主题域 ${domain} 张，安全分级 ${level} 张`)
-    }
-    if (draftMode) {
-      await finishAiTask(taskId, {
-        status: drafted > 0 ? 'REVIEW' : 'DONE',
-        totalCount: drafted,
-        acceptedCount: 0,
-        rejectedCount: 0
-      })
-    }
+    ElMessage.success(`${actionLabel}完成：生成草稿 ${task.totalCount || 0} 条，请到「AI 工作台 → 任务中心」审核`)
     await loadSchemaStats()
     loadLayerOverview()
     if (selectedDsId.value === row.id) await loadDsTables()
   } catch (e: any) {
-    const msg = e?.message || 'AI 标注失败'
-    ElMessage.error(msg + (scanned ? `（已完成 ${scanned} 张，可重试「补标注」继续）` : ''))
-    await finishAiTask(taskId, { status: 'FAILED', totalCount: scanned, acceptedCount: annotated, rejectedCount: 0, errorMessage: String(msg).slice(0, 500) })
+    ElMessage.error(e?.message || 'AI 标注失败')
   } finally {
     row._aiLoading = false
     loading.close()
@@ -2794,61 +2777,27 @@ async function aiAnnotateRow(row: any) {
   }
 }
 
-/** AI 智能识别资产分类：按资产主键游标分批循环，直到覆盖全部未分类资产 */
+/** AI 智能识别资产分类：后台任务 + 轮询 */
 async function aiClassifyDs(row: any, pendingOnly = true) {
   if (!row || !row.id || row._aiClassifyLoading) return
   row._aiClassifyLoading = true
   const taskId = await createAiTask('CLASSIFY', `AI 分类 · ${row.dsName || row.id} · ${pendingOnly ? '未分类资产' : '全量资产'}`, row)
-  const draftMode = !!taskId
+  if (!taskId) {
+    row._aiClassifyLoading = false
+    ElMessage.error('创建 AI 任务失败，请稍后重试')
+    return
+  }
   const loading = ElLoading.service({ lock: true, text: 'AI 正在识别资产分类…', background: 'rgba(0,0,0,0.25)' })
-  let cursor: number | undefined
-  let scanned = 0
-  let classified = 0
-  let drafted = 0
-  let total = 0
-  let batches = 0
   try {
-    while (batches < 100) {
-      batches++
-      const res: any = await catalogApi.aiClassify({
-        dataSourceId: row.id,
-        pendingOnly,
-        afterId: cursor,
-        batchSize: 40,
-        draft: draftMode,
-        taskId
-      })
-      const d = res?.data || {}
-      if (!total) total = d.total || 0
-      scanned += d.processed || 0
-      classified += d.classified || 0
-      if (draftMode) drafted += d.drafted || 0
-      loading.setText(
-        `AI 识别资产分类中… 已处理 ${scanned}${total ? ' / ' + total : ''} 个资产，已生成草稿 ${drafted} 条，剩余 ${d.remaining ?? 0} 个`
-      )
-      cursor = d.nextCursor ?? undefined
-      if (!d.hasMore || !d.processed) break
+    await catalogApi.aiClassifyAsync({ dataSourceId: row.id, pendingOnly, taskId })
+    const task = await waitAiTask(taskId, loading, 'AI 分类')
+    if (task.status === 'FAILED') {
+      throw new Error(task.errorMessage || 'AI 分类失败')
     }
-    if (scanned === 0) {
-      ElMessage.warning('没有需要识别的资产（可能均已分类）')
-    } else {
-      ElMessage.success(draftMode
-        ? `AI 分类完成：处理 ${scanned} 个资产，生成草稿 ${drafted} 条，请到「AI 工作台 → 任务中心」审核`
-        : `AI 分类完成：处理 ${scanned} 个资产，归类 ${classified} 个`)
-    }
-    if (draftMode) {
-      await finishAiTask(taskId, {
-        status: drafted > 0 ? 'REVIEW' : 'DONE',
-        totalCount: drafted,
-        acceptedCount: 0,
-        rejectedCount: 0
-      })
-    }
+    ElMessage.success(`AI 分类完成：生成草稿 ${task.totalCount || 0} 条，请到「AI 工作台 → 任务中心」审核`)
     if (selectedDsId.value === row.id) await loadDsTables()
   } catch (e: any) {
-    const msg = e?.message || 'AI 分类失败'
-    ElMessage.error(msg + (scanned ? `（已处理 ${scanned} 个，可重试）` : ''))
-    await finishAiTask(taskId, { status: 'FAILED', totalCount: scanned, acceptedCount: classified, rejectedCount: 0, errorMessage: String(msg).slice(0, 500) })
+    ElMessage.error(e?.message || 'AI 分类失败')
   } finally {
     row._aiClassifyLoading = false
     loading.close()

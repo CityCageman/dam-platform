@@ -1,6 +1,8 @@
 package com.dam.catalog.controller;
 
 import com.dam.catalog.entity.*;
+import com.dam.catalog.service.AiTaskRunner;
+import com.dam.catalog.service.AiTaskService;
 import com.dam.catalog.service.AiRateLimiter;
 import com.dam.catalog.service.AssetClassifyAiService;
 import com.dam.catalog.service.CatalogService;
@@ -44,6 +46,8 @@ public class CatalogController {
     private final CryptoService cryptoService;
     private final AssetClassifyAiService assetClassifyAiService;
     private final AiRateLimiter aiRateLimiter;
+    private final AiTaskService aiTaskService;
+    private final AiTaskRunner aiTaskRunner;
 
     // ==================== 分类接口 ====================
 
@@ -269,6 +273,28 @@ public class CatalogController {
      *   <li>afterId：上一批返回的 nextCursor（首批不传）</li>
      * </ul>
      */
+    /**
+     * 资产分类（异步）：创建任务后立即返回，前端轮询任务状态
+     */
+    @PostMapping("/assets/ai-classify/async")
+    public Result<Map<String, Object>> aiClassifyAsync(@RequestBody Map<String, Object> body) {
+        aiRateLimiter.check(aiRateLimiter.currentKey(), 10, 60_000);
+        Long taskId = body.get("taskId") instanceof Number n ? n.longValue() : null;
+        Long dataSourceId = body.get("dataSourceId") instanceof Number n ? n.longValue() : null;
+        if (taskId == null) {
+            throw new com.dam.common.exception.BusinessException("缺少任务ID");
+        }
+        var task = aiTaskService.requireOwnedTask(taskId);
+        if (!"CLASSIFY".equalsIgnoreCase(task.getTaskType())) {
+            throw new com.dam.common.exception.BusinessException("任务类型不是 CLASSIFY");
+        }
+        boolean pendingOnly = Boolean.TRUE.equals(body.get("pendingOnly"))
+                || "true".equalsIgnoreCase(String.valueOf(body.get("pendingOnly")));
+        String token = cn.dev33.satoken.context.SaHolder.getRequest().getHeader("token");
+        aiTaskRunner.runClassify(taskId, dataSourceId, pendingOnly, token);
+        return Result.success(Map.of("taskId", taskId));
+    }
+
     @PostMapping("/assets/ai-classify")
     public Result<Map<String, Object>> aiClassifyAssets(@RequestBody Map<String, Object> body) {
         aiRateLimiter.check(aiRateLimiter.currentKey(), 10, 60_000);

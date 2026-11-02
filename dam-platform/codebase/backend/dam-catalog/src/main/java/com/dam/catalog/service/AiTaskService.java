@@ -357,6 +357,13 @@ public class AiTaskService {
     /**
      * 校验任务归属：只允许创建人访问/审核
      */
+    /**
+     * 获取当前用户有权访问的任务（供异步入口校验）
+     */
+    public AiTask requireOwnedTask(Long id) {
+        return ownedTask(id);
+    }
+
     private AiTask ownedTask(Long id) {
         AiTask task = taskMapper.selectById(id);
         if (task == null) {
