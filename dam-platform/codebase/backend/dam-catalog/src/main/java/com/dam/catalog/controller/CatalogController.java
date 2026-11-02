@@ -105,11 +105,12 @@ public class CatalogController {
             @RequestParam(required = false) Long dataSourceId,
             @RequestParam(required = false) String subjectDomain,
             @RequestParam(required = false) Long subjectDomainId,
+            @RequestParam(required = false) String schemaName,
             @RequestParam(required = false) String sortBy,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "20") Integer pageSize,
             @RequestParam(defaultValue = "false") boolean enforceDomainPermission) {
-        return Result.success(catalogService.searchAssets(keyword, assetType, categoryId, securityLevel, tagId, databaseName, dataSourceId, subjectDomain, subjectDomainId, sortBy, page, pageSize, enforceDomainPermission));
+        return Result.success(catalogService.searchAssets(keyword, assetType, categoryId, securityLevel, tagId, databaseName, dataSourceId, subjectDomain, subjectDomainId, schemaName, sortBy, page, pageSize, enforceDomainPermission));
     }
 
     /**

@@ -806,7 +806,19 @@ public class CatalogService {
                                               String sortBy,
                                               Integer page, Integer pageSize) {
         return searchAssets(keyword, assetType, categoryId, securityLevel, tagId, databaseName,
-                dataSourceId, subjectDomain, subjectDomainId, sortBy, page, pageSize, false);
+                dataSourceId, subjectDomain, subjectDomainId, null, sortBy, page, pageSize, false);
+    }
+
+    /**
+     * 资产检索（兼容旧调用：不按 Schema 过滤）
+     */
+    public PageResult<DamAsset> searchAssets(String keyword, String assetType, Long categoryId,
+                                              String securityLevel, Long tagId, String databaseName,
+                                              Long dataSourceId, String subjectDomain, Long subjectDomainId,
+                                              String sortBy, Integer page, Integer pageSize,
+                                              boolean enforceDomainPermission) {
+        return searchAssets(keyword, assetType, categoryId, securityLevel, tagId, databaseName,
+                dataSourceId, subjectDomain, subjectDomainId, null, sortBy, page, pageSize, enforceDomainPermission);
     }
 
     /**
@@ -817,7 +829,7 @@ public class CatalogService {
     public PageResult<DamAsset> searchAssets(String keyword, String assetType, Long categoryId,
                                               String securityLevel, Long tagId, String databaseName,
                                               Long dataSourceId, String subjectDomain, Long subjectDomainId,
-                                              String sortBy,
+                                              String schemaName, String sortBy,
                                               Integer page, Integer pageSize,
                                               boolean enforceDomainPermission) {
         Page<DamAsset> p = new Page<>(page, pageSize);
@@ -829,6 +841,10 @@ public class CatalogService {
         // 按资产类型过滤（新表用 source_metadata_type 承载 TABLE/VIEW/FILE/API 类型）
         if (StrUtil.isNotBlank(assetType)) {
             wrapper.eq(DamAsset::getSourceMetadataType, assetType.toUpperCase());
+        }
+        // 按 Schema 过滤（元数据页左侧选择 Schema 后收窄表列表）
+        if (StrUtil.isNotBlank(schemaName)) {
+            wrapper.eq(DamAsset::getSchemaName, schemaName);
         }
         // 按数据源过滤：优先 dataSourceId，其次按 databaseName 解析数据源后按 data_source_id 过滤
         if (dataSourceId != null) {

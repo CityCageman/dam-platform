@@ -48,7 +48,8 @@
                     <el-tag size="small" :type="dataLayerTagType(ds.dataLayer)">{{ dataLayerLabel(ds.dataLayer) }}</el-tag>
                   </div>
                   <div v-if="selectedDsId === ds.id && schemaStats[ds.id]?.schemas?.length" class="rail-schemas">
-                    <div v-for="s in schemaStats[ds.id].schemas" :key="s.schemaId" class="rail-schema">
+                    <div v-for="s in schemaStats[ds.id].schemas" :key="s.schemaId" class="rail-schema"
+                         :class="{ active: dbTableSchema === s.schemaName }" @click.stop="selectSchema(s.schemaName)">
                       <span>{{ s.schemaName || 'public' }}</span><em>{{ s.tableCount }}</em>
                     </div>
                   </div>
@@ -197,6 +198,7 @@
                   <el-option v-for="s in subjectDomainOptions" :key="s.value" :label="`${s.value}-${s.label}`" :value="s.value" />
                   <el-option label="未设置" value="NONE" />
                 </el-select>
+                <el-tag v-if="dbTableSchema" closable type="primary" @close="clearSchema">Schema：{{ dbTableSchema }}</el-tag>
                 <el-button type="primary" @click="loadDsTables">查询</el-button>
                 <el-button @click="loadDsTables">刷新</el-button>
                 <div class="toolbar-spacer"></div>
@@ -206,6 +208,13 @@
             <div class="panel">
               <el-table :data="dbTableAssets" stripe @row-click="openDbTableDetail" style="cursor: pointer;" v-loading="dbTableLoading">
                 <el-table-column prop="assetName" label="表名" min-width="160" show-overflow-tooltip />
+                <el-table-column label="分层" width="130">
+                  <template #default="{ row }">
+                    <el-tag size="small" :type="dataLayerTagType(row.dataLayer || selectedDs?.dataLayer)">
+                      {{ dataLayerLabel(row.dataLayer || selectedDs?.dataLayer) }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
                 <el-table-column label="数据源" width="130" show-overflow-tooltip>
                   <template #default="{ row }">{{ getDataSourceName(row.databaseName) }}</template>
                 </el-table-column>
@@ -1327,6 +1336,8 @@ function selectTechTypeByCode(code: TabPaneName) {
 
 // 数据库表清单
 const dbTableKeyword = ref('')
+// Schema 筛选（点击左侧 Schema 后收窄表列表）
+const dbTableSchema = ref('')
 // 主题域筛选（NONE=未设置主题域）
 const dbTableSubjectDomain = ref('')
 const dbTableAssets = ref<any[]>([])
@@ -2753,8 +2764,23 @@ function onDsRowClick(row: any, column: any) {
 async function selectDataSource(ds: any) {
   selectedDsId.value = ds.id
   selectedDs.value = ds
+  dbTableSchema.value = ''
   selectedTable.value = null
   technicalData.value = null
+  dbTablePage.value = 1
+  loadDsTables()
+}
+
+/** 点击左侧 Schema：按 Schema 过滤右侧表列表 */
+function selectSchema(name: string) {
+  dbTableSchema.value = name || ''
+  dbTablePage.value = 1
+  loadDsTables()
+}
+
+/** 清除 Schema 过滤 */
+function clearSchema() {
+  dbTableSchema.value = ''
   dbTablePage.value = 1
   loadDsTables()
 }
@@ -2773,6 +2799,7 @@ async function loadDsTables() {
       keyword: dbTableKeyword.value || undefined,
       assetType: 'table',
       dataSourceId: selectedDs.value.id,
+      schemaName: dbTableSchema.value || undefined,
       subjectDomain: dbTableSubjectDomain.value || undefined,
       sortBy: 'name',
       page: dbTablePage.value,
@@ -2795,6 +2822,7 @@ async function loadDsTables() {
 function backToDataSourceList() {
   selectedDsId.value = 0
   selectedDs.value = null
+  dbTableSchema.value = ''
   selectedTable.value = null
   dbTableAssets.value = []
   dbTableTotal.value = 0
@@ -3184,6 +3212,7 @@ const extData = computed(() => {
 .rail-schemas { margin: 2px 0 6px 26px; border-left: 1px solid var(--med-border); padding-left: 8px; }
 .rail-schema { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px; font-size: 10.5px; color: var(--med-text-secondary); border-radius: 5px; }
 .rail-schema:hover { background: #F8FAFD; }
+.rail-schema.active { background: var(--med-primary-lighter); color: var(--med-primary); font-weight: 600; }
 .rail-schema em { font-style: normal; color: var(--med-text-light); }
 .meta-main { min-width: 0; }
 @media (max-width: 1200px) {
