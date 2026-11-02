@@ -14,6 +14,29 @@
       </div>
     </div>
 
+    <div class="stat-grid" style="margin-bottom: 14px;">
+      <div class="stat-card">
+        <div class="stat-label">报表总数</div>
+        <div class="stat-value">{{ total }}</div>
+        <div class="stat-foot">当前维度/关键字范围内</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">本页 SQL 报表</div>
+        <div class="stat-value">{{ sqlCount }}</div>
+        <div class="stat-foot">可直接在线取数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">本页外链/接口</div>
+        <div class="stat-value">{{ externalCount }}</div>
+        <div class="stat-foot">跳转外部页面</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">当前维度值</div>
+        <div class="stat-value">{{ currentValues.length }}</div>
+        <div class="stat-foot">{{ currentDim?.name || '-' }}</div>
+      </div>
+    </div>
+
     <!-- 维度 -->
     <div class="panel" style="margin-bottom: 14px;">
       <el-tabs v-model="activeDim" @tab-change="onDimChange">
@@ -92,6 +115,8 @@
 
         <div class="run-bar">
           <el-button type="primary" :loading="running" @click="runReport">在线查看</el-button>
+          <el-link v-if="detail.report.endpointUrl && (detail.report.execType === 'IFRAME' || detail.report.execType === 'HTTP')"
+                   :href="detail.report.endpointUrl" target="_blank" type="primary">打开报表地址</el-link>
           <el-button @click="openEdit(detail.report)">编辑</el-button>
           <el-button type="danger" plain @click="removeReport(detail.report)">删除</el-button>
           <span v-if="runResult" class="run-meta">
@@ -202,6 +227,8 @@ const currentDim = computed(() => dims.value.find((d: any) => d.code === activeD
 const currentValues = computed(() => currentDim.value?.values || [])
 const freqValues = computed(() => dims.value.find((d: any) => d.code === 'UPDATE_FREQ')?.values || [])
 const paramDefs = computed(() => (detail.value?.paramDefs || []) as any[])
+const sqlCount = computed(() => cards.value.filter(c => c.execType === 'SQL' || c.execType === 'PROC').length)
+const externalCount = computed(() => cards.value.filter(c => c.execType === 'IFRAME' || c.execType === 'HTTP').length)
 
 const EXEC_LABEL: Record<string, string> = {
   SQL: 'SQL 查询', PROC: '存储过程', IFRAME: '外链页面', HTTP: 'HTTP 接口', STATIC: '静态'

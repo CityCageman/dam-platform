@@ -45,7 +45,44 @@
       </div>
     </section>
 
-    <!-- 模块三：治理能力 -->
+    <!-- 模块三：运营协同 -->
+    <section class="module">
+      <div class="module-head">
+        <h3 class="module-title">运营协同</h3>
+        <div class="module-links">
+          <router-link to="/operations" class="module-link">工单中心 →</router-link>
+          <router-link to="/quality" class="module-link">数据质量 →</router-link>
+        </div>
+      </div>
+      <div class="chart-grid">
+        <div class="panel">
+          <h4 class="panel-title">工单状态分布</h4>
+          <div ref="ticketChart" class="chart"></div>
+        </div>
+        <div class="panel">
+          <h4 class="panel-title">治理待办</h4>
+          <div class="todo-list">
+            <router-link to="/operations" class="todo-item">
+              <span class="todo-dot" style="background:#D97706;"></span>
+              <div><b>待处理工单</b><span>及时响应数据申请/质量问题</span></div>
+              <em>{{ stats.find(s => s.label === '待办工单')?.value ?? '-' }}</em>
+            </router-link>
+            <router-link to="/quality" class="todo-item">
+              <span class="todo-dot" style="background:#2563EB;"></span>
+              <div><b>质量检测</b><span>执行规则并查看异常样例</span></div>
+              <em>进入</em>
+            </router-link>
+            <router-link to="/security" class="todo-item">
+              <span class="todo-dot" style="background:#DC2626;"></span>
+              <div><b>安全审批</b><span>处理数据访问申请与权限</span></div>
+              <em>进入</em>
+            </router-link>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 模块四：治理能力 -->
     <section class="module">
       <div class="module-head">
         <h3 class="module-title">治理能力</h3>
@@ -93,6 +130,7 @@ const entries = [
 
 const trendChart = shallowRef<HTMLElement>()
 const hotChart = shallowRef<HTMLElement>()
+const ticketChart = shallowRef<HTMLElement>()
 const charts: echarts.ECharts[] = []
 
 const AXIS_COLOR = '#8a94a6'
@@ -154,6 +192,26 @@ async function load() {
           tooltip: { trigger: 'axis' }
         })
       }
+
+      if (data.ticketOverview) {
+        const t = data.ticketOverview
+        mount(ticketChart.value, {
+          tooltip: { trigger: 'item' },
+          legend: { bottom: 0, textStyle: { color: AXIS_COLOR } },
+          series: [{
+            type: 'pie',
+            radius: ['45%', '70%'],
+            center: ['50%', '44%'],
+            data: [
+              { name: '待处理', value: t.pending || 0, itemStyle: { color: '#D97706' } },
+              { name: '处理中', value: t.processing || 0, itemStyle: { color: '#2563EB' } },
+              { name: '已完成', value: t.completed || 0, itemStyle: { color: '#16A34A' } },
+              { name: '已驳回', value: t.rejected || 0, itemStyle: { color: '#DC2626' } }
+            ],
+            label: { show: false }
+          }]
+        })
+      }
     }
   } catch (_e) {
     // 接口异常时给空图，避免整页报错
@@ -206,4 +264,13 @@ onBeforeUnmount(disposeCharts)
 @media (max-width: 1200px) {
   .chart-grid { grid-template-columns: 1fr; }
 }
+
+.todo-list { display: flex; flex-direction: column; gap: 10px; }
+.todo-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--med-border); border-radius: 10px; text-decoration: none; color: inherit; }
+.todo-item:hover { background: #F8FAFD; }
+.todo-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; }
+.todo-item div { flex: 1; min-width: 0; }
+.todo-item b { display: block; font-size: 12.5px; color: var(--med-text); }
+.todo-item span { font-size: 10.5px; color: var(--med-text-light); }
+.todo-item em { font-style: normal; font-size: 13px; font-weight: 600; color: var(--med-primary); }
 </style>
