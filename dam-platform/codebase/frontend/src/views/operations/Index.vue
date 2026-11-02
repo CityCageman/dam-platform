@@ -28,9 +28,9 @@
         <div class="stat-foot">已闭环</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">活跃用户</div>
-        <div class="stat-value">{{ overview.activeUsers ?? 0 }}</div>
-        <div class="stat-foot">近 30 天</div>
+        <div class="stat-label">SLA 超期</div>
+        <div class="stat-value" style="color: #DC2626;">{{ overdueCount }}</div>
+        <div class="stat-foot">未完成且已超期</div>
       </div>
     </div>
 
@@ -66,6 +66,14 @@
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
             <el-tag size="small" :type="statusTag(row.status)">{{ statusLabel(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="SLA" width="100">
+          <template #default="{ row }">
+            <el-tag v-if="slaFor(row)" size="small" :type="slaFor(row)?.isOverdue ? 'danger' : slaFor(row)?.slaStatus === '即将超期' ? 'warning' : 'info'">
+              {{ slaFor(row)?.slaStatus || '-' }}
+            </el-tag>
+            <span v-else class="muted">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="assigneeId" label="处理人" width="90">
@@ -110,7 +118,8 @@
           <el-descriptions-item label="处理人">{{ current.assigneeId || '-' }}</el-descriptions-item>
           <el-descriptions-item label="期望完成">{{ formatTime(current.expectedCompleteTime) }}</el-descriptions-item>
           <el-descriptions-item label="实际完成">{{ formatTime(current.actualCompleteTime) }}</el-descriptions-item>
-          <el-descriptions-item label="描述" :span="3">{{ current.description || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="关联资产">{{ current.relatedAssetId || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="描述" :span="2">{{ current.description || '-' }}</el-descriptions-item>
         </el-descriptions>
 
         <div class="sla-row">
@@ -175,7 +184,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { operationsApi } from '@/api'
 import { ElMessage } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
@@ -200,6 +209,7 @@ const loading = ref(false)
 const ticketType = ref('')
 const ticketStatus = ref('')
 const overview = ref<any>({})
+const slaStatuses = ref<any[]>([])
 
 const showDetail = ref(false)
 const current = ref<any>(null)
@@ -211,6 +221,8 @@ const assigneeId = ref<number>()
 const showCreate = ref(false)
 const form = ref<any>({ ticketType: 'data_access', priority: 'medium' })
 
+const overdueCount = computed(() => slaStatuses.value.filter((s: any) => s.isOverdue && Number(s.status) < 2).length)
+const slaFor = (row: any) => slaStatuses.value.find((s: any) => Number(s.ticketId) === Number(row.id))
 const typeLabel = (v: string) => TYPE_OPTIONS.find(t => t.value === v)?.label || v || '-'
 const typeTag = (v: string) => v === 'data_access' ? 'primary' : v === 'quality_issue' ? 'warning' : 'info'
 const priorityLabel = (v: string) => v === 'high' ? '高' : v === 'medium' ? '中' : '低'
@@ -219,7 +231,7 @@ const statusTag = (v: any) => Number(v) === 2 ? 'success' : Number(v) === 3 ? 'd
 const formatTime = (v: string) => v ? String(v).replace('T', ' ').slice(0, 16) : '-'
 
 async function loadAll() {
-  await Promise.all([loadTickets(), loadDashboard()])
+  await Promise.all([loadTickets(), loadDashboard(), loadSlaStatuses()])
 }
 
 async function loadDashboard() {
@@ -227,6 +239,13 @@ async function loadDashboard() {
     const res: any = await operationsApi.getDashboard()
     overview.value = res.data?.overview || {}
   } catch (_e) { overview.value = {} }
+}
+
+async function loadSlaStatuses() {
+  try {
+    const res: any = await operationsApi.getSlaStatuses()
+    slaStatuses.value = res.data || []
+  } catch (_e) { slaStatuses.value = [] }
 }
 
 async function loadTickets() {
@@ -288,6 +307,8 @@ async function changeStatus(status: string) {
     ElMessage.success('状态已更新')
     await loadAll()
     await refreshSla()
+    const c: any = await operationsApi.getTicketComments(current.value.id)
+    comments.value = c.data || []
   } catch (e: any) { ElMessage.error(e.message || '更新失败') }
 }
 

@@ -128,6 +128,29 @@ public class OperationsService {
             ticket.setActualCompleteTime(LocalDateTime.now());
         }
         ticketMapper.updateById(ticket);
+        // 状态流转写入处理记录，便于追溯
+        try {
+            DamTicketComment log = new DamTicketComment();
+            log.setTicketId(id);
+            String label = switch (status == null ? "" : status.toLowerCase()) {
+                case "processing" -> "处理中";
+                case "completed" -> "已完成";
+                case "rejected" -> "已驳回";
+                case "pending" -> "待处理";
+                default -> status;
+            };
+            log.setContent("状态更新为「" + label + "」" + (StrUtil.isNotBlank(comment) ? "：" + comment : ""));
+            log.setCommenterId("system");
+            log.setStatus(1);
+            LocalDateTime now = LocalDateTime.now();
+            log.setCreatedAt(now);
+            log.setUpdatedAt(now);
+            log.setCreatedBy("system");
+            log.setUpdatedBy("system");
+            commentMapper.insert(log);
+        } catch (Exception e) {
+            // 流转日志失败不影响主状态更新
+        }
         return ticket;
     }
 
