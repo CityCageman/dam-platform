@@ -7,6 +7,7 @@ import com.dam.quality.entity.DamQualityRule;
 import com.dam.quality.repository.DamQualityCheckMapper;
 import com.dam.quality.repository.DamQualityRuleMapper;
 import com.dam.quality.repository.DynamicQueryMapper;
+import com.dam.quality.repository.QualityTableMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -51,6 +52,9 @@ public class QualityScanService {
     /** 动态 SQL 查询 Mapper（执行规则表达式） */
     private final DynamicQueryMapper dynamicQueryMapper;
 
+    /** 目标表查询（补全规则条件式 SQL） */
+    private final QualityTableMapper qualityTableMapper;
+
     /**
      * 执行单条质量规则的检测
      * <p>
@@ -83,11 +87,31 @@ public class QualityScanService {
 
             // 规则表达式（新表真实列 rule_expression）非空时才执行 SQL 检测
             if (rule.getRuleExpression() != null && !rule.getRuleExpression().isBlank()) {
-                // SQL 安全校验：白名单（仅 SELECT）+ 黑名单（危险关键字）
+                // 规则表达式：条件式或完整 SELECT
                 String conditionSql = rule.getRuleExpression();
-                if (!SAFE_SQL_PATTERN.matcher(conditionSql).matches()
-                        || DANGEROUS_SQL_PATTERN.matcher(conditionSql).find()) {
-                    log.warn("质量规则 [{}] 的 SQL 存在安全风险, 已跳过: {}", rule.getRuleCode(), conditionSql);
+                // 目标表名：用于补全“条件式”规则并统计总记录数
+                String tableName = null;
+                if (rule.getTargetTableId() != null) {
+                    tableName = qualityTableMapper.findTableName(rule.getTargetTableId());
+                }
+                if (tableName != null && !tableName.matches("[A-Za-z_][A-Za-z0-9_]*")) {
+                    throw new BusinessException("目标表名不合法");
+                }
+                // 兼容两种写法：条件式（patient_id IS NULL）或完整 SELECT
+                String errorSqlBody = conditionSql.trim();
+                if (!errorSqlBody.regionMatches(true, 0, "SELECT", 0, 6)) {
+                    if (tableName == null) {
+                        throw new BusinessException("规则为条件表达式时必须配置目标表");
+                    }
+                    errorSqlBody = "SELECT * FROM " + tableName + " WHERE " + errorSqlBody;
+                }
+                // 如果表达式使用 __ERROR__ 占位，异常查询替换为恒真
+                errorSqlBody = errorSqlBody.replace("__ERROR__", "1=1");
+
+                // SQL 安全校验：补全后再校验，保证条件式规则也能通过
+                if (!SAFE_SQL_PATTERN.matcher(errorSqlBody).matches()
+                        || DANGEROUS_SQL_PATTERN.matcher(errorSqlBody).find()) {
+                    log.warn("质量规则 [{}] 的 SQL 存在安全风险, 已跳过: {}", rule.getRuleCode(), errorSqlBody);
                     check.setStatus(2);
                     check.setUpdatedAt(LocalDateTime.now());
                     check.setUpdatedBy("system");
@@ -95,8 +119,11 @@ public class QualityScanService {
                     checkMapper.updateById(check);
                     return check;
                 }
-                // 总记录数（将异常标记 __ERROR__ 替换为恒假条件统计全量）
-                String totalSql = "SELECT COUNT(*) FROM (" + conditionSql.replace("__ERROR__", "1=0") + ") t";
+
+                // 总记录数：优先按目标表统计；无目标表时退化为异常查询子集
+                String totalSql = tableName != null
+                        ? "SELECT COUNT(*) FROM " + tableName
+                        : "SELECT COUNT(*) FROM (" + errorSqlBody + ") t";
                 List<Map<String, Object>> totalResult = dynamicQueryMapper.executeQuery(totalSql);
                 if (!totalResult.isEmpty()) {
                     Map<String, Object> row = totalResult.getFirst();
@@ -104,8 +131,8 @@ public class QualityScanService {
                             .map(v -> ((Number) v).intValue()).orElse(0);
                 }
 
-                // 异常记录数（直接执行规则表达式，返回不满足条件的行数）
-                String errorSql = "SELECT COUNT(*) FROM (" + conditionSql + ") t";
+                // 异常记录数：规则表达式返回的异常行数
+                String errorSql = "SELECT COUNT(*) FROM (" + errorSqlBody + ") t";
                 List<Map<String, Object>> errorResult = dynamicQueryMapper.executeQuery(errorSql);
                 if (!errorResult.isEmpty()) {
                     Map<String, Object> row = errorResult.getFirst();
