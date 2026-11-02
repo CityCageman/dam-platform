@@ -107,6 +107,17 @@ public class StandardController {
     /**
      * 发布标准（状态置为启用）
      */
+    @PutMapping("/values/{id}")
+    public Result<DamStandardValue> updateValue(@PathVariable Long id, @RequestBody DamStandardValue value) {
+        return Result.success(standardService.updateStandardValue(id, value));
+    }
+
+    @DeleteMapping("/values/{id}")
+    public Result<Void> deleteValue(@PathVariable Long id) {
+        standardService.deleteStandardValue(id);
+        return Result.success();
+    }
+
     @PostMapping("/{id}/publish")
     public Result<DamStandard> publish(@PathVariable Long id) {
         return Result.success(standardService.publishStandard(id));

@@ -308,6 +308,8 @@ export const standardApi = {
   deleteStandard(id: number) { return request.delete(`/standard/${id}`) },
   getStandardValues(stdId: number) { return request.get(`/standard/${stdId}/values`) },
   createStandardValue(data: any) { return request.post('/standard/values', data) },
+  updateStandardValue(id: number, data: any) { return request.put(`/standard/values/${id}`, data) },
+  deleteStandardValue(id: number) { return request.delete(`/standard/values/${id}`) },
   publishStandard(id: number) { return request.post(`/standard/${id}/publish`) },
   approveStandard(id: number, approved: boolean) { return request.post(`/standard/${id}/approve`, { approved }) },
   archiveStandard(id: number) { return request.post(`/standard/${id}/archive`) },

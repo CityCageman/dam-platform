@@ -192,7 +192,13 @@ public class StandardService {
         wrapper.eq(DamStandardValue::getCodeTableId, stdId);
         // 按排序号升序
         wrapper.orderByAsc(DamStandardValue::getSortOrder);
-        return standardValueMapper.selectList(wrapper);
+        List<DamStandardValue> list = standardValueMapper.selectList(wrapper);
+        // 兼容旧字段 valueCode/valueName
+        for (DamStandardValue v : list) {
+            if (v.getValueCode() == null) v.setValueCode(v.getCodeValue());
+            if (v.getValueName() == null) v.setValueName(v.getCodeName());
+        }
+        return list;
     }
 
     /**
@@ -203,6 +209,12 @@ public class StandardService {
      */
     @Transactional
     public DamStandardValue createStandardValue(DamStandardValue value) {
+        // 兼容旧字段
+        if (value.getCodeTableId() == null && value.getStdId() != null) value.setCodeTableId(value.getStdId());
+        if (StrUtil.isBlank(value.getCodeValue()) && StrUtil.isNotBlank(value.getValueCode())) value.setCodeValue(value.getValueCode());
+        if (StrUtil.isBlank(value.getCodeName()) && StrUtil.isNotBlank(value.getValueName())) value.setCodeName(value.getValueName());
+        if (value.getCodeTableId() == null) throw new BusinessException("标准ID不能为空");
+        if (StrUtil.isBlank(value.getCodeValue())) throw new BusinessException("码值不能为空");
         // 默认状态启用
         if (value.getStatus() == null) value.setStatus(1);
         // 补全审计字段
@@ -213,6 +225,35 @@ public class StandardService {
         if (value.getUpdatedBy() == null) value.setUpdatedBy("system");
         standardValueMapper.insert(value);
         return value;
+    }
+
+    /**
+     * 更新标准码值（仅更新传入的非空字段）
+     */
+    @Transactional
+    public DamStandardValue updateStandardValue(Long id, DamStandardValue value) {
+        DamStandardValue existing = standardValueMapper.selectById(id);
+        if (existing == null) throw new BusinessException("码值不存在");
+        if (StrUtil.isNotBlank(value.getCodeValue())) existing.setCodeValue(value.getCodeValue());
+        if (StrUtil.isNotBlank(value.getCodeName())) existing.setCodeName(value.getCodeName());
+        if (value.getParentCodeId() != null) existing.setParentCodeId(value.getParentCodeId());
+        if (value.getSortOrder() != null) existing.setSortOrder(value.getSortOrder());
+        if (value.getDescription() != null) existing.setDescription(value.getDescription());
+        if (value.getStatus() != null) existing.setStatus(value.getStatus());
+        existing.setUpdatedAt(java.time.LocalDateTime.now());
+        existing.setUpdatedBy("system");
+        standardValueMapper.updateById(existing);
+        if (existing.getValueCode() == null) existing.setValueCode(existing.getCodeValue());
+        if (existing.getValueName() == null) existing.setValueName(existing.getCodeName());
+        return existing;
+    }
+
+    /**
+     * 删除标准码值
+     */
+    @Transactional
+    public void deleteStandardValue(Long id) {
+        standardValueMapper.deleteById(id);
     }
 
     // ==================== 标准发布审批 ====================
@@ -309,6 +350,10 @@ public class StandardService {
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalStandards", totalStandards);
         stats.put("totalMappings", totalMappings);
+        stats.put("publishedStandards", standardMapper.selectCount(
+                new LambdaQueryWrapper<DamStandard>().eq(DamStandard::getStatus, 1)));
+        stats.put("draftStandards", standardMapper.selectCount(
+                new LambdaQueryWrapper<DamStandard>().eq(DamStandard::getStatus, 0)));
         // 覆盖率 = 映射数 / 标准数（百分比，保留两位）
         stats.put("coverageRate", totalStandards > 0 ?
                 Math.round((double) totalMappings / totalStandards * 10000) / 100.0 : 0);
