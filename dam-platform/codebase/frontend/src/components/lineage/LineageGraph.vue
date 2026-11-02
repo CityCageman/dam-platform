@@ -171,7 +171,24 @@ function loadExternal() {
 }
 
 // ==================== 布局计算（dagre 分层布局，自动最小化连线交叉） ====================
+// 六列泳道（DIM 合并进 DWD 列，保持 6 列）
+const LANES = [
+  { key: 'SOURCE', label: '源库' },
+  { key: 'ODS', label: 'ODS' },
+  { key: 'DWD', label: 'DWD / DIM' },
+  { key: 'DWS', label: 'DWS' },
+  { key: 'ADS', label: 'ADS' },
+  { key: 'REPORT', label: '报表' }
+]
+const LANE_KEYS = LANES.map(l => l.key)
+let laneMode = false
+let laneHeight = 420
+
 function computeLayout(nodeList: any[], edgeList: any[]) {
+  // 有层级信息时使用六列泳道；AI 预览等无层级场景继续用 dagre
+  if (nodeList.some((n: any) => n.layer)) {
+    return computeLaneLayout(nodeList)
+  }
   const g = new dagre.graphlib.Graph()
   g.setGraph({ rankdir: 'LR', nodesep: 50, ranksep: 110, marginx: 30, marginy: 30 })
   g.setDefaultEdgeLabel(() => ({}))
@@ -191,7 +208,28 @@ function computeLayout(nodeList: any[], edgeList: any[]) {
     const pts = g.edge(e).points || []
     paths.set(`${e.v}->${e.w}`, pts.map((p: any) => ({ x: p.x, y: p.y })))
   })
-  return { out, paths }
+  return { out, paths, laneMode: false, height: 0 }
+}
+
+/** 六列泳道布局：x 按层固定，y 在列内均匀展开 */
+function computeLaneLayout(nodeList: any[]) {
+  const groups = new Map<string, any[]>(LANE_KEYS.map(k => [k, []]))
+  for (const n of nodeList) {
+    const key = n.layer === 'DIM' ? 'DWD' : (groups.has(n.layer) ? n.layer : 'SOURCE')
+    groups.get(key)!.push(n)
+  }
+  const maxCount = Math.max(1, ...Array.from(groups.values()).map(a => a.length))
+  const laneGap = 280
+  const nodeGap = 64
+  const height = Math.max(420, maxCount * nodeGap + 150)
+  const out = new Map<string, { x: number; y: number }>()
+  LANES.forEach((lane, i) => {
+    const list = groups.get(lane.key) || []
+    const x = 130 + i * laneGap
+    const startY = 80 + (maxCount - list.length) * nodeGap / 2
+    list.forEach((n: any, j: number) => out.set(String(n.id), { x, y: startY + j * nodeGap }))
+  })
+  return { out, paths: new Map<string, { x: number; y: number }[]>(), laneMode: true, height, laneGap, laneX0: 130 }
 }
 
 /** 计算每个节点距离中心节点的层级（BFS，用于背景带与透明度分级） */
@@ -242,6 +280,10 @@ function pos(key: string): { x: number; y: number } | undefined {
 function edgePathD(d: any) {
   const s = pos(String(d.source)), t = pos(String(d.target))
   const key = `${String(d.source)}->${String(d.target)}`
+  if (laneMode && s && t) {
+    const dx = Math.max(60, Math.abs(t.x - s.x) * 0.45)
+    return `M${s.x},${s.y} C${s.x + dx},${s.y} ${t.x - dx},${t.y} ${t.x},${t.y}`
+  }
   const pts = edgePaths.get(key)
   if (fixedPositions.size > 0 || !pts || pts.length < 2) {
     return `M${s?.x ?? 0},${s?.y ?? 0} L${t?.x ?? 0},${t?.y ?? 0}`
@@ -260,15 +302,39 @@ function render() {
 
   const width = containerRef.value?.clientWidth || 700
   const height = containerRef.value?.clientHeight || 400
-  const layout = computeLayout(nodes.value, edges.value)
+  const layout: any = computeLayout(nodes.value, edges.value)
   positions = layout.out
   edgePaths = layout.paths
+  laneMode = !!layout.laneMode
+  laneHeight = layout.height || height
   rankMap = computeRanks(nodes.value, edges.value, centerId.value)
   neighborMap = buildNeighbors()
   highlightSet = null
 
   const g = svg.append('g')
 
+  if (laneMode) {
+    // 六列泳道背景与列标题
+    LANES.forEach((lane, i) => {
+      const x = 130 + i * 280
+      g.append('rect')
+        .attr('x', x - 110)
+        .attr('y', 24)
+        .attr('width', 220)
+        .attr('height', laneHeight)
+        .attr('fill', i % 2 === 0 ? '#eef3f8' : '#f8fafc')
+        .attr('rx', 10)
+      g.append('text')
+        .attr('x', x)
+        .attr('y', 14)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', 11)
+        .attr('font-weight', 700)
+        .attr('fill', '#64748b')
+        .attr('pointer-events', 'none')
+        .text(lane.label)
+    })
+  } else {
   // 层级背景带（有中心按 BFS 层级；无中心按 dagre 分层 x 坐标，从左到右交替着色）
   const bandW = 240
   const hasCenter = centerId.value != null && centerId.value !== ''
@@ -311,6 +377,7 @@ function render() {
       .attr('pointer-events', 'none')
       .text(b.label)
   })
+  }
 
   // 缩放/平移
   const zoom = d3.zoom<SVGSVGElement, unknown>()
@@ -502,9 +569,11 @@ function resetView() {
     const svg = d3.select(svgRef.value)
     svg.call(d3.zoom<SVGSVGElement, unknown>().transform as any, d3.zoomIdentity)
   }
-  const layout = computeLayout(nodes.value, edges.value)
+  const layout: any = computeLayout(nodes.value, edges.value)
   positions = layout.out
   edgePaths = layout.paths
+  laneMode = !!layout.laneMode
+  laneHeight = layout.height || 420
   updatePositions()
 }
 

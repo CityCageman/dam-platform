@@ -41,6 +41,18 @@ public class MetadataLineageSource {
     /** 资产分类ID（dam_asset.asset_category.id，可空；用于分类树组织血缘节点） */
     private Long categoryId;
 
+    /** 数仓层级（SOURCE/ODS/DWD/DIM/DWS/ADS/REPORT，可空；为空时按数据源/Schema/名称推断） */
+    private String layer;
+
+    /** 所属数据源ID（metadata_datasource.id，可空） */
+    private Long datasourceId;
+
+    /** 所属 Schema 名称（可空） */
+    private String schemaName;
+
+    /** 对应技术元数据表ID（metadata_table.id，可空） */
+    private Long tableId;
+
     /** 描述 */
     private String description;
 

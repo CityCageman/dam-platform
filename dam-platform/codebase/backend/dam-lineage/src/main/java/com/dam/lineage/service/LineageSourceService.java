@@ -122,6 +122,22 @@ public class LineageSourceService {
     }
 
     /**
+     * 回写节点层级（不改变其他字段）
+     *
+     * @param node  节点
+     * @param layer 层级
+     */
+    @Transactional
+    public void updateLayer(MetadataLineageSource node, String layer) {
+        if (node == null || StrUtil.isBlank(layer) || layer.equals(node.getLayer())) {
+            return;
+        }
+        node.setLayer(layer);
+        node.setUpdatedAt(LocalDateTime.now());
+        sourceMapper.updateById(node);
+    }
+
+    /**
      * 新增节点（手动注册）
      */
     @Transactional

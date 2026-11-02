@@ -44,4 +44,28 @@ public interface LineageNodeMetaMapper {
             </script>
             """)
     List<Map<String, Object>> selectNodeMeta(@Param("ids") List<Long> ids);
+
+    /**
+     * 按表名批量查询数据源层级与 Schema（用于解析落库时写 layer 字段）
+     *
+     * @param names 表名列表
+     * @return [{table_name, data_layer, schema_name}]
+     */
+    @Select("""
+            <script>
+            SELECT DISTINCT ON (t.table_name)
+                   t.table_name     AS table_name,
+                   ds.data_layer    AS data_layer,
+                   ms.schema_name   AS schema_name
+              FROM dam_metadata.metadata_table t
+              LEFT JOIN dam_metadata.metadata_schema ms
+                     ON ms.id = t.schema_id
+              LEFT JOIN dam_metadata.metadata_datasource ds
+                     ON ds.id = t.datasource_id
+             WHERE t.table_name IN
+             <foreach collection="names" item="name" open="(" separator="," close=")">#{name}</foreach>
+             ORDER BY t.table_name, t.id
+            </script>
+            """)
+    List<Map<String, Object>> selectTableLayers(@Param("names") List<String> names);
 }

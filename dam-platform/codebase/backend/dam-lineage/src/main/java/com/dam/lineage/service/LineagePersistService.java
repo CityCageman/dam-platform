@@ -49,6 +49,8 @@ public class LineagePersistService {
     private final MetadataReportSqlParserMapper reportParserMapper;
     private final DamLineageMapper lineageMapper;
     private final LineageSQLParser sqlParser;
+    /** 层级解析（数据源优先） */
+    private final LineageLayerResolver layerResolver;
 
     /**
      * 保存报表/视图 SQL 并完成全链路血缘落库
@@ -134,6 +136,14 @@ public class LineagePersistService {
         // 递归收集主查询与子查询内部全部表引用（子查询穿透落库依赖内部表节点，如 ia 内部的 DHC_INVPRT）
         List<LineageSQLParser.TableRef> allTables = new ArrayList<>();
         collectAllTables(pr, allTables);
+        // 批量解析表层级（数据源 > Schema > 表名），报表节点固定 REPORT
+        Set<String> layerNames = new LinkedHashSet<>();
+        for (LineageSQLParser.TableRef tr : allTables) {
+            layerNames.add(tr.name);
+        }
+        layerNames.add(reportCode);
+        Map<String, String> layers = layerResolver.resolve(layerNames);
+        sourceService.updateLayer(reportNode, LineageLayer.REPORT);
         Set<String> registeredTables = new HashSet<>();
         for (LineageSQLParser.TableRef tableRef : allTables) {
             // 同表（含子查询内重复引用）只注册一次节点
@@ -155,6 +165,14 @@ public class LineagePersistService {
             if (upNode == null || downNode == null) continue;
             String downType = "REPORT".equals(link.target()) ? type : downNode.getSourceTypeId();
             String downCode = "REPORT".equals(link.target()) ? reportCode : link.target();
+            String upLayer = layers.getOrDefault(link.source(), LineageLayer.of(NODE_TYPE_TABLE, link.source()));
+            String downLayer = "REPORT".equals(link.target())
+                    ? LineageLayer.REPORT
+                    : layers.getOrDefault(link.target(), LineageLayer.of(NODE_TYPE_TABLE, link.target()));
+            sourceService.updateLayer(upNode, upLayer);
+            if (!"REPORT".equals(link.target())) {
+                sourceService.updateLayer(downNode, downLayer);
+            }
 
             // 分层精细边（upstream=来源，downstream=目标）
             MetadataLineageHierarchy hierarchy = new MetadataLineageHierarchy();
@@ -163,6 +181,9 @@ public class LineagePersistService {
             hierarchy.setDownstreamSourceId(downNode.getId());
             hierarchy.setDownstreamTypeId(downType);
             hierarchy.setLayerLevel(link.layerLevel());
+            hierarchy.setUpstreamLayer(upLayer);
+            hierarchy.setDownstreamLayer(downLayer);
+            hierarchy.setIsCrossLayer(LineageLayer.isCross(upLayer, downLayer));
             hierarchy.setRelationTypeId(link.relationType());
             hierarchy.setDependencyDepth(link.depth());
             hierarchy.setIsDirectDependency(true);
@@ -599,6 +620,15 @@ public class LineagePersistService {
         String sys = StrUtil.isNotBlank(sourceSystem) ? sourceSystem : "DATA_PLATFORM";
         Long colId = collectionId != null ? collectionId : 0L;
         Map<String, MetadataLineageSource> nodeCache = new HashMap<>();
+        // 批量解析表层级，供节点与分层边使用
+        Set<String> layerNames = new HashSet<>();
+        if (tableLineages != null) {
+            for (Map<String, Object> tl : tableLineages) {
+                if (StrUtil.isNotBlank(str(tl.get("sourceTable")))) layerNames.add(str(tl.get("sourceTable")));
+                if (StrUtil.isNotBlank(str(tl.get("targetTable")))) layerNames.add(str(tl.get("targetTable")));
+            }
+        }
+        Map<String, String> layers = layerResolver.resolve(layerNames);
 
         // 1. 表级血缘（宏观投影）
         if (tableLineages != null) {
@@ -629,6 +659,36 @@ public class LineagePersistService {
                 fillLineageAudit(proj);
                 lineageMapper.insert(proj);
                 tableCreated++;
+                // 补分层边（AI 入口同样落 hierarchy，供六列泳道使用）
+                String upLayer = layers.getOrDefault(src, LineageLayer.of(NODE_TYPE_TABLE, src));
+                String downLayer = layers.getOrDefault(tgt, LineageLayer.of(NODE_TYPE_TABLE, tgt));
+                sourceService.updateLayer(srcNode, upLayer);
+                sourceService.updateLayer(tgtNode, downLayer);
+                Long hExists = hierarchyMapper.selectCount(new LambdaQueryWrapper<MetadataLineageHierarchy>()
+                        .eq(MetadataLineageHierarchy::getUpstreamSourceId, srcNode.getId())
+                        .eq(MetadataLineageHierarchy::getDownstreamSourceId, tgtNode.getId())
+                        .eq(MetadataLineageHierarchy::getRelationTypeId, relType));
+                if (hExists == null || hExists == 0) {
+                    MetadataLineageHierarchy h = new MetadataLineageHierarchy();
+                    h.setUpstreamSourceId(srcNode.getId());
+                    h.setUpstreamTypeId(NODE_TYPE_TABLE);
+                    h.setDownstreamSourceId(tgtNode.getId());
+                    h.setDownstreamTypeId(NODE_TYPE_TABLE);
+                    h.setUpstreamLayer(upLayer);
+                    h.setDownstreamLayer(downLayer);
+                    h.setIsCrossLayer(LineageLayer.isCross(upLayer, downLayer));
+                    h.setLayerLevel(LineageLayer.rank(downLayer));
+                    h.setRelationTypeId(relType);
+                    h.setDependencyDepth(1);
+                    h.setIsDirectDependency(true);
+                    h.setTransformRule(proj.getTransformRule());
+                    h.setTransformTypeId("DIRECT");
+                    h.setLineagePath(src + " -> " + tgt);
+                    h.setDiscoveredById(discoveredBy);
+                    h.setStatus(1);
+                    fillAudit(h);
+                    hierarchyMapper.insert(h);
+                }
             }
         }
 

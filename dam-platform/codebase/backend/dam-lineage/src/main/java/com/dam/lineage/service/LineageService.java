@@ -1,5 +1,6 @@
 package com.dam.lineage.service;
 
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dam.common.vo.PageResult;
@@ -10,6 +11,8 @@ import com.dam.lineage.repository.DamLineageMapper;
 import com.dam.lineage.repository.MetadataColumnLineageMapper;
 import com.dam.lineage.repository.MetadataLineageSourceMapper;
 import com.dam.lineage.repository.LineageNodeMetaMapper;
+import com.dam.lineage.repository.MetadataLineageHierarchyMapper;
+import com.dam.lineage.entity.MetadataLineageHierarchy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,6 +44,12 @@ public class LineageService {
     private final MetadataLineageSourceMapper sourceMapper;
     /** 节点所属数据源/Schema（用于层级判定） */
     private final LineageNodeMetaMapper nodeMetaMapper;
+    /** 分层边 */
+    private final MetadataLineageHierarchyMapper hierarchyMapper;
+    /** 节点注册 */
+    private final LineageSourceService sourceService;
+    /** 层级解析 */
+    private final LineageLayerResolver layerResolver;
     /** 字段级血缘 Mapper（图谱字段级展开） */
     private final MetadataColumnLineageMapper columnLineageMapper;
 
@@ -385,29 +394,91 @@ public class LineageService {
      */
     @Transactional
     public List<DamLineage> parseAndCreate(String sql, String jobName, String sourceSystem) {
-        // 调用 SQL 解析器提取血缘关系
+        // 1. 解析 SQL（INSERT/CTAS/CTE），得到表级与字段级关系
         List<LineageSQLParser.LineageRelation> relations = sqlParser.parseSql(sql, jobName, sourceSystem);
-        List<DamLineage> created = new ArrayList<>();
+
+        // 2. 批量解析所有表的层级（数据源优先，源库表名无需 ods_/dwd_ 前缀）
+        Set<String> tableNames = new LinkedHashSet<>();
         for (LineageSQLParser.LineageRelation rel : relations) {
+            if (StrUtil.isNotBlank(rel.sourceTable())) tableNames.add(rel.sourceTable());
+            if (StrUtil.isNotBlank(rel.targetTable())) tableNames.add(rel.targetTable());
+        }
+        Map<String, String> layers = layerResolver.resolve(tableNames);
+
+        List<DamLineage> created = new ArrayList<>();
+        Map<String, MetadataLineageSource> nodeCache = new HashMap<>();
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+
+        for (LineageSQLParser.LineageRelation rel : relations) {
+            String src = rel.sourceTable();
+            String tgt = rel.targetTable();
+            if (StrUtil.isBlank(src) || StrUtil.isBlank(tgt) || src.equalsIgnoreCase(tgt)) {
+                continue;
+            }
+            // 字段级关系由 metadata_column_lineage 承载，这里只落表级分层边，避免重复
+            if (StrUtil.isNotBlank(rel.sourceField()) || StrUtil.isNotBlank(rel.targetField())) {
+                continue;
+            }
+
+            // 3. 注册节点（复用已有节点，ID 与图谱一致）
+            MetadataLineageSource upNode = nodeCache.computeIfAbsent(src,
+                    k -> sourceService.upsert(k, k, NODE_TYPE_TABLE));
+            MetadataLineageSource downNode = nodeCache.computeIfAbsent(tgt,
+                    k -> sourceService.upsert(k, k, NODE_TYPE_TABLE));
+            String upLayer = layers.getOrDefault(src, LineageLayer.of(NODE_TYPE_TABLE, src));
+            String downLayer = layers.getOrDefault(tgt, LineageLayer.of(NODE_TYPE_TABLE, tgt));
+            applyNodeLayer(upNode, upLayer);
+            applyNodeLayer(downNode, downLayer);
+
+            // 4. 分层边（metadata_lineage_hierarchy）去重后写入
+            Long hierarchyExists = hierarchyMapper.selectCount(new LambdaQueryWrapper<MetadataLineageHierarchy>()
+                    .eq(MetadataLineageHierarchy::getUpstreamSourceId, upNode.getId())
+                    .eq(MetadataLineageHierarchy::getDownstreamSourceId, downNode.getId())
+                    .eq(MetadataLineageHierarchy::getRelationTypeId, "FLOW"));
+            if (hierarchyExists == null || hierarchyExists == 0) {
+                MetadataLineageHierarchy hierarchy = new MetadataLineageHierarchy();
+                hierarchy.setUpstreamSourceId(upNode.getId());
+                hierarchy.setUpstreamTypeId(NODE_TYPE_TABLE);
+                hierarchy.setDownstreamSourceId(downNode.getId());
+                hierarchy.setDownstreamTypeId(NODE_TYPE_TABLE);
+                hierarchy.setUpstreamLayer(upLayer);
+                hierarchy.setDownstreamLayer(downLayer);
+                hierarchy.setIsCrossLayer(LineageLayer.isCross(upLayer, downLayer));
+                hierarchy.setLayerLevel(LineageLayer.rank(downLayer));
+                hierarchy.setRelationTypeId("FLOW");
+                hierarchy.setDependencyDepth(1);
+                hierarchy.setIsDirectDependency(true);
+                hierarchy.setTransformRule(rel.sql());
+                hierarchy.setTransformTypeId("DIRECT");
+                hierarchy.setLineagePath(upNode.getSourceCode() + " -> " + downNode.getSourceCode());
+                hierarchy.setDiscoveredById(StrUtil.isNotBlank(jobName) ? jobName : "PARSER");
+                hierarchy.setStatus(1);
+                hierarchy.setCreatedAt(now);
+                hierarchy.setUpdatedAt(now);
+                hierarchy.setCreatedBy("system");
+                hierarchy.setUpdatedBy("system");
+                hierarchyMapper.insert(hierarchy);
+            }
+
+            // 5. 宏观投影（metadata_lineage）也用节点 ID，保证图谱能接上
+            Long projectionExists = lineageMapper.selectCount(new LambdaQueryWrapper<DamLineage>()
+                    .eq(DamLineage::getSourceId, upNode.getId())
+                    .eq(DamLineage::getTargetId, downNode.getId())
+                    .eq(DamLineage::getRelationType, "FLOW"));
+            if (projectionExists != null && projectionExists > 0) {
+                continue;
+            }
             DamLineage lineage = new DamLineage();
-            // 源节点：类型固定 TABLE，ID 由表名哈希得到
             lineage.setSourceType(NODE_TYPE_TABLE);
-            lineage.setSourceId(hashTableName(rel.sourceTable()));
-            // 目标节点：类型固定 TABLE，ID 由表名哈希得到
+            lineage.setSourceId(upNode.getId());
             lineage.setTargetType(NODE_TYPE_TABLE);
-            lineage.setTargetId(hashTableName(rel.targetTable()));
-            // 关系类型：数据流向（上游→下游）
-            lineage.setRelationType(rel.lineageType() != null ? rel.lineageType() : "FLOW");
-            // 转换规则：承载原始SQL片段
+            lineage.setTargetId(downNode.getId());
+            lineage.setRelationType("FLOW");
             lineage.setTransformRule(rel.sql());
-            // 依赖层级：默认1级
             lineage.setDependencyLevel(1);
-            // 来源系统：取自解析器或入参
-            lineage.setSourceSystem(rel.sourceSystem() != null ? rel.sourceSystem() : sourceSystem);
-            // 发现方式：自动解析
-            lineage.setDiscoveredBy(jobName);
-            // 补全审计字段
-            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            lineage.setSourceSystem(StrUtil.isNotBlank(rel.sourceSystem()) ? rel.sourceSystem() : sourceSystem);
+            lineage.setDiscoveredBy(StrUtil.isNotBlank(jobName) ? jobName : "PARSER");
+            lineage.setStatus(1);
             lineage.setCreatedAt(now);
             lineage.setUpdatedAt(now);
             lineage.setCreatedBy("system");
@@ -416,6 +487,21 @@ public class LineageService {
             created.add(lineage);
         }
         return created;
+    }
+
+    /**
+     * 回写节点层级（与图谱展示口径一致）
+     *
+     * @param node  血缘节点
+     * @param layer 层级
+     */
+    private void applyNodeLayer(MetadataLineageSource node, String layer) {
+        if (node == null || layer == null || layer.equals(node.getLayer())) {
+            return;
+        }
+        node.setLayer(layer);
+        node.setUpdatedAt(java.time.LocalDateTime.now());
+        sourceMapper.updateById(node);
     }
 
     // ==================== 影响分析 ====================

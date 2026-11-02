@@ -44,6 +44,15 @@ public class MetadataLineageHierarchy {
     /** 分层层级（lineage_layer 字典：1-应用层/2-逻辑层/3-物理层/4-字典层） */
     private Integer layerLevel;
 
+    /** 上游所在数仓层级（SOURCE/ODS/DWD/DIM/DWS/ADS/REPORT） */
+    private String upstreamLayer;
+
+    /** 下游所在数仓层级 */
+    private String downstreamLayer;
+
+    /** 是否跨层（上下游层级不同） */
+    private Boolean isCrossLayer;
+
     /** 关系类型（relation_type 字典：FLOW/COPY/TRANSFORM/DEPEND/REFERENCE/GENERATE） */
     private String relationTypeId;
 
