@@ -9,7 +9,9 @@ import com.dam.lineage.entity.MetadataLineageSource;
 import com.dam.lineage.repository.DamLineageMapper;
 import com.dam.lineage.repository.MetadataColumnLineageMapper;
 import com.dam.lineage.repository.MetadataLineageSourceMapper;
+import com.dam.lineage.repository.LineageNodeMetaMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +27,7 @@ import java.util.stream.Collectors;
  * 说明：血缘节点ID（source_id/target_id）为 metadata_lineage_source.id，与资产ID解耦；
  *      资产场景下沿用资产ID写入，两者均可通过本服务按 ID 查询。
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LineageService {
@@ -36,6 +39,8 @@ public class LineageService {
     private final LineageSQLParser sqlParser;
     /** 血缘节点注册表 Mapper（用于图谱节点名称回填） */
     private final MetadataLineageSourceMapper sourceMapper;
+    /** 节点所属数据源/Schema（用于层级判定） */
+    private final LineageNodeMetaMapper nodeMetaMapper;
     /** 字段级血缘 Mapper（图谱字段级展开） */
     private final MetadataColumnLineageMapper columnLineageMapper;
 
@@ -515,9 +520,34 @@ public class LineageService {
      * @param edges 边
      */
     private void enrichLayers(List<Map<String, Object>> nodes, List<Map<String, Object>> edges) {
+        // 批量取节点所属数据源层级与 Schema；源库表名无 ods_/dwd_ 前缀时以此为准
+        Map<Long, Map<String, Object>> metaById = new HashMap<>();
+        try {
+            List<Long> ids = new ArrayList<>();
+            for (Map<String, Object> n : nodes) {
+                if (n.get("id") instanceof Number num) {
+                    ids.add(num.longValue());
+                }
+            }
+            if (!ids.isEmpty()) {
+                for (Map<String, Object> row : nodeMetaMapper.selectNodeMeta(ids)) {
+                    if (row.get("source_id") instanceof Number num) {
+                        metaById.put(num.longValue(), row);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // data_layer 列缺失或元数据未采集时降级为表名前缀推断，不影响图谱展示
+            log.debug("血缘节点层级元信息查询失败，降级按名称推断: {}", e.getMessage());
+        }
         Map<String, String> layerById = new HashMap<>();
         for (Map<String, Object> n : nodes) {
-            String layer = LineageLayer.of(str(n.get("type")), str(n.get("label")));
+            Map<String, Object> meta = n.get("id") instanceof Number num ? metaById.get(num.longValue()) : null;
+            String layer = LineageLayer.of(
+                    str(n.get("type")),
+                    str(n.get("label")),
+                    meta == null ? null : str(meta.get("data_layer")),
+                    meta == null ? null : str(meta.get("schema_name")));
             n.put("layer", layer);
             layerById.put(String.valueOf(n.get("id")), layer);
         }

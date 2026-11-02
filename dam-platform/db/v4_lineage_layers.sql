@@ -30,21 +30,49 @@ BEGIN
     END IF;
 END $$;
 
--- 1. 表层级：按 schema 名称推断（未识别时归为 SOURCE）
+-- 1. 表层级：优先取数据源层级（源库表名无 ods_/dwd_ 前缀），其次按 schema 名称推断
 UPDATE dam_metadata.metadata_table t
-SET layer = CASE
-        WHEN s.schema_name ILIKE 'ads%' THEN 'ADS'
-        WHEN s.schema_name ILIKE 'dws%' THEN 'DWS'
-        WHEN s.schema_name ILIKE 'dwd%' THEN 'DWD'
-        WHEN s.schema_name ILIKE 'dim%' THEN 'DIM'
-        WHEN s.schema_name ILIKE 'ods%' THEN 'ODS'
-        ELSE 'SOURCE'
-    END
+SET layer = COALESCE(
+        NULLIF(ds.data_layer, ''),
+        CASE
+            WHEN s.schema_name ILIKE 'ads%' THEN 'ADS'
+            WHEN s.schema_name ILIKE 'dws%' THEN 'DWS'
+            WHEN s.schema_name ILIKE 'dwd%' THEN 'DWD'
+            WHEN s.schema_name ILIKE 'dim%' THEN 'DIM'
+            WHEN s.schema_name ILIKE 'ods%' THEN 'ODS'
+            ELSE 'SOURCE'
+        END)
 FROM dam_metadata.metadata_schema s
+LEFT JOIN dam_metadata.metadata_datasource ds ON ds.id = s.datasource_id
 WHERE t.schema_id = s.id
   AND (t.layer IS NULL OR t.layer = '');
 
--- 2. 血缘节点层级：报表固定 REPORT，其余按节点编码前缀推断
+-- 2.1 表节点层级：按“表名 → 数据源层级”回填（源库表名不需要前缀）
+UPDATE dam_metadata.metadata_lineage_source ls
+SET layer = m.layer
+FROM (
+    SELECT DISTINCT ON (t.table_name)
+           t.table_name,
+           COALESCE(NULLIF(ds.data_layer, ''),
+               CASE
+                   WHEN ms.schema_name ILIKE 'ads%' THEN 'ADS'
+                   WHEN ms.schema_name ILIKE 'dws%' THEN 'DWS'
+                   WHEN ms.schema_name ILIKE 'dwd%' THEN 'DWD'
+                   WHEN ms.schema_name ILIKE 'dim%' THEN 'DIM'
+                   WHEN ms.schema_name ILIKE 'ods%' THEN 'ODS'
+                   ELSE 'SOURCE'
+               END) AS layer
+      FROM dam_metadata.metadata_table t
+      LEFT JOIN dam_metadata.metadata_schema ms ON ms.id = t.schema_id
+      LEFT JOIN dam_metadata.metadata_datasource ds ON ds.id = t.datasource_id
+     WHERE t.status = 1
+     ORDER BY t.table_name, t.id
+) m
+WHERE ls.source_code = m.table_name
+  AND (ls.layer IS NULL OR ls.layer = '')
+  AND UPPER(COALESCE(ls.source_type_id, '')) <> 'REPORT';
+
+-- 2.2 剩余节点（报表/未匹配到表的节点）：报表固定 REPORT，其余按编码前缀兜底
 UPDATE dam_metadata.metadata_lineage_source
 SET layer = CASE
         WHEN UPPER(COALESCE(source_type_id, '')) = 'REPORT' THEN 'REPORT'

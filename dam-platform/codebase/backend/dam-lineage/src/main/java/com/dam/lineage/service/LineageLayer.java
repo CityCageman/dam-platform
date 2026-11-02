@@ -40,9 +40,43 @@ public final class LineageLayer {
      * @return 层级编码
      */
     public static String of(String type, String label) {
+        return of(type, label, null, null);
+    }
+
+    /**
+     * 推断节点层级（优先级：报表类型 > 数据源层级 > Schema > 表名前缀）
+     * <p>
+     * 源库表名通常没有 ods_/dwd_ 前缀，不能靠表名判断；
+     * 只要数据源配置了“所属层级”（如 HIS 生产库 = SOURCE），其下所有表都归入该层。
+     *
+     * @param type          节点类型
+     * @param label         节点编码/名称
+     * @param dataLayer     所属数据源的层级（metadata_datasource.data_layer，可空）
+     * @param schemaName    所属 Schema（可空）
+     * @return 层级编码
+     */
+    public static String of(String type, String label, String dataLayer, String schemaName) {
         if (type != null && REPORT.equalsIgnoreCase(type)) {
             return REPORT;
         }
+        String fromDs = normalizeLayer(dataLayer);
+        if (fromDs != null) {
+            return fromDs;
+        }
+        String fromSchema = layerFromSchema(schemaName);
+        if (fromSchema != null) {
+            return fromSchema;
+        }
+        return ofName(label);
+    }
+
+    /**
+     * 按表名/编码前缀推断层级
+     *
+     * @param label 名称
+     * @return 层级
+     */
+    private static String ofName(String label) {
         String name = normalize(label);
         if (name.isEmpty()) {
             return SOURCE;
@@ -63,6 +97,57 @@ public final class LineageLayer {
             return ODS;
         }
         return SOURCE;
+    }
+
+    /**
+     * 规范化数据源层级值（兼容 DWA 等历史写法）
+     *
+     * @param dataLayer 数据源层级
+     * @return 合法层级，无法识别返回 null
+     */
+    private static String normalizeLayer(String dataLayer) {
+        if (dataLayer == null || dataLayer.isBlank()) {
+            return null;
+        }
+        String v = dataLayer.trim().toUpperCase(Locale.ROOT);
+        if (RANK.containsKey(v)) {
+            return v;
+        }
+        return switch (v) {
+            case "DWA" -> DWS;
+            case "APP" -> ADS;
+            case "ODS_LAYER" -> ODS;
+            default -> null;
+        };
+    }
+
+    /**
+     * 按 Schema 名推断层级
+     *
+     * @param schemaName Schema 名称
+     * @return 层级，无法识别返回 null
+     */
+    private static String layerFromSchema(String schemaName) {
+        if (schemaName == null || schemaName.isBlank()) {
+            return null;
+        }
+        String s = schemaName.trim().toLowerCase(Locale.ROOT);
+        if (s.startsWith("ads")) {
+            return ADS;
+        }
+        if (s.startsWith("dws")) {
+            return DWS;
+        }
+        if (s.startsWith("dwd")) {
+            return DWD;
+        }
+        if (s.startsWith("dim")) {
+            return DIM;
+        }
+        if (s.startsWith("ods")) {
+            return ODS;
+        }
+        return null;
     }
 
     /**
