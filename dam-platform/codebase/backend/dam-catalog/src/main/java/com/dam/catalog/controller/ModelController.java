@@ -29,7 +29,7 @@ public class ModelController {
     // ==================== 模型接口 ====================
 
     /**
-     * 查询模型列表（支持关键字/分类过滤）
+     * 查询模型列表（支持关键字过滤）
      */
     @GetMapping
     public Result<List<DamDataModel>> getModels(

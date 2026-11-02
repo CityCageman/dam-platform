@@ -237,8 +237,11 @@ public class ModelService {
         if (StrUtil.isBlank(field.getTargetColumnName())) {
             throw new BusinessException("目标字段名不能为空");
         }
-        // 默认排序号与启用状态
+        // 默认排序号/类型/主外键/启用状态
         if (field.getSortOrder() == null) field.setSortOrder(0);
+        if (StrUtil.isBlank(field.getModelType())) field.setModelType("FACT");
+        if (field.getIsPrimaryKey() == null) field.setIsPrimaryKey(0);
+        if (field.getIsForeignKey() == null) field.setIsForeignKey(0);
         if (field.getStatus() == null) field.setStatus(1);
         // 补全审计字段
         java.time.LocalDateTime now = java.time.LocalDateTime.now();
@@ -271,8 +274,14 @@ public class ModelService {
         if (StrUtil.isNotBlank(field.getModelType())) existing.setModelType(field.getModelType());
         if (field.getSourceTableId() != null) existing.setSourceTableId(field.getSourceTableId());
         if (field.getSourceColumnId() != null) existing.setSourceColumnId(field.getSourceColumnId());
+        if (field.getIsPrimaryKey() != null) existing.setIsPrimaryKey(field.getIsPrimaryKey());
+        if (field.getIsForeignKey() != null) existing.setIsForeignKey(field.getIsForeignKey());
+        if (field.getRefDimensionId() != null) existing.setRefDimensionId(field.getRefDimensionId());
         if (field.getTransformRule() != null) existing.setTransformRule(field.getTransformRule());
         if (field.getSortOrder() != null) existing.setSortOrder(field.getSortOrder());
+        if (field.getStatus() != null) existing.setStatus(field.getStatus());
+        existing.setUpdatedAt(java.time.LocalDateTime.now());
+        existing.setUpdatedBy("system");
         modelFieldMapper.updateById(existing);
         return existing;
     }

@@ -403,7 +403,7 @@ export const modelApi = {
   getModelFields(modelId: number) { return request.get(`/catalog/models/${modelId}/fields`) },
   createModelField(modelId: number, data: any) { return request.post(`/catalog/models/${modelId}/fields`, data) },
   updateModelField(data: any) { return request.put(`/catalog/models/${data.modelId}/fields`, data) },
-  deleteModelField(modelId: number, fieldId: number) { return request.delete(`/catalog/models/${modelId}/fields/${fieldId}`) },
+  deleteModelField(fieldId: number) { return request.delete(`/catalog/models/fields/${fieldId}`) },
   // 模型对比
   getComparableAssets() { return request.get('/catalog/models/compare/assets') },
   compareModelWithAsset(modelId: number, assetId: number) { return request.post('/catalog/models/compare', { modelId, assetId }) }
