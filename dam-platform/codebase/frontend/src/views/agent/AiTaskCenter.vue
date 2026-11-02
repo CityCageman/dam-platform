@@ -32,7 +32,6 @@
         <el-button type="primary" @click="loadTasks">查询</el-button>
         <el-button @click="loadAll">刷新</el-button>
         <div style="flex: 1;" />
-        <el-button @click="createDemo">新建注释任务</el-button>
       </div>
 
       <el-table :data="tasks" stripe v-loading="loading" style="cursor: pointer;" @row-click="openDetail">
@@ -49,7 +48,7 @@
         </el-table-column>
         <el-table-column label="进度" width="150">
           <template #default="{ row }">
-            <span class="progress-text">{{ row.acceptedCount || 0 }} 采纳 / {{ row.rejectedCount || 0 }} 驳回 / {{ row.totalCount || 0 }} 条</span>
+            <span class="progress-text">已处理 {{ row.acceptedCount || 0 }} / 共 {{ row.totalCount || 0 }} 条</span>
           </template>
         </el-table-column>
         <el-table-column prop="model" label="模型" width="140" show-overflow-tooltip />
@@ -184,20 +183,6 @@ async function review(item: any, accept: boolean) {
     await openDetail(current.value)
     await loadAll()
   } catch (e: any) { ElMessage.error(e.message || '操作失败') }
-}
-
-/** 新建一个空的注释任务（占位，后续 AI 生成流程会写入草稿明细） */
-async function createDemo() {
-  try {
-    await catalogApi.createAiTask({
-      taskType: 'COMMENT',
-      title: 'AI 注释任务 ' + new Date().toLocaleString(),
-      targetType: 'DATASOURCE',
-      status: 'PENDING'
-    })
-    ElMessage.success('任务已创建')
-    await loadAll()
-  } catch (e: any) { ElMessage.error(e.message || '创建失败') }
 }
 
 onMounted(loadAll)

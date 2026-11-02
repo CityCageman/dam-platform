@@ -70,6 +70,7 @@ export const catalogApi = {
   getAiTaskStats() { return request.get('/catalog/ai/tasks/stats') },
   getAiTask(id: number) { return request.get(`/catalog/ai/tasks/${id}`) },
   createAiTask(data: any) { return request.post('/catalog/ai/tasks', data) },
+  updateAiTaskStatus(id: number, data: any) { return request.post(`/catalog/ai/tasks/${id}/status`, data) },
   reviewAiTaskItem(taskId: number, itemId: number, accept: boolean, reviewer?: string) {
     return request.post(`/catalog/ai/tasks/${taskId}/items/${itemId}/review`, null, { params: { accept, reviewer } })
   },

@@ -166,6 +166,34 @@ public class AiTaskService {
     }
 
     /**
+     * 更新任务状态/进度（AI 运行中或结束后回写）
+     *
+     * @param id   任务ID
+     * @param body status/totalCount/acceptedCount/rejectedCount/errorMessage
+     */
+    @Transactional
+    public void updateStatus(Long id, Map<String, Object> body) {
+        AiTask task = taskMapper.selectById(id);
+        if (task == null) {
+            return;
+        }
+        if (StrUtil.isNotBlank(str(body.get("status")))) {
+            task.setStatus(str(body.get("status")));
+        }
+        Integer total = toInt(body.get("totalCount"));
+        if (total != null) task.setTotalCount(total);
+        Integer accepted = toInt(body.get("acceptedCount"));
+        if (accepted != null) task.setAcceptedCount(accepted);
+        Integer rejected = toInt(body.get("rejectedCount"));
+        if (rejected != null) task.setRejectedCount(rejected);
+        if (body.containsKey("errorMessage")) {
+            task.setErrorMessage(str(body.get("errorMessage")));
+        }
+        task.setUpdatedAt(LocalDateTime.now());
+        taskMapper.updateById(task);
+    }
+
+    /**
      * 任务状态统计
      */
     public Map<String, Object> stats() {
@@ -186,6 +214,15 @@ public class AiTaskService {
         if (o == null) return null;
         try {
             return Long.valueOf(String.valueOf(o));
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private Integer toInt(Object o) {
+        if (o == null) return null;
+        try {
+            return Integer.valueOf(String.valueOf(o));
         } catch (NumberFormatException e) {
             return null;
         }

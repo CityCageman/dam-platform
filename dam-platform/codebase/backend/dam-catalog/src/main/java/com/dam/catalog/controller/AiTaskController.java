@@ -45,6 +45,12 @@ public class AiTaskController {
         return Result.success(taskService.create(body));
     }
 
+    @PostMapping("/{id}/status")
+    public Result<Void> updateStatus(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        taskService.updateStatus(id, body);
+        return Result.success(null);
+    }
+
     @PostMapping("/{id}/items/{itemId}/review")
     public Result<Void> review(@PathVariable Long id,
                                @PathVariable Long itemId,
