@@ -65,6 +65,14 @@ export const catalogApi = {
   getScanJobDetail(id: number) { return request.get(`/catalog/scan-jobs/${id}`) },
   // 资产
   searchAssets(params: any) { return request.get('/catalog/assets/search', { params }) },
+  // ===== AI 任务中心 =====
+  listAiTasks(params: any) { return request.get('/catalog/ai/tasks', { params }) },
+  getAiTaskStats() { return request.get('/catalog/ai/tasks/stats') },
+  getAiTask(id: number) { return request.get(`/catalog/ai/tasks/${id}`) },
+  createAiTask(data: any) { return request.post('/catalog/ai/tasks', data) },
+  reviewAiTaskItem(taskId: number, itemId: number, accept: boolean, reviewer?: string) {
+    return request.post(`/catalog/ai/tasks/${taskId}/items/${itemId}/review`, null, { params: { accept, reviewer } })
+  },
   getAssetDetail(id: number) { return request.get(`/catalog/assets/${id}`) },
   createAsset(data: any) { return request.post('/catalog/assets', data) },
   updateAsset(data: any) { return request.put('/catalog/assets', data) },

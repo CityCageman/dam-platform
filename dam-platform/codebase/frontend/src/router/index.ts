@@ -20,7 +20,7 @@ const routes = [
       { path: 'security', component: () => import('@/views/security/Index.vue'), meta: { title: '安全管控', icon: 'Lock' } },
       { path: 'lifecycle', component: () => import('@/views/lifecycle/Index.vue'), meta: { title: '生命周期', icon: 'Timer' } },
       { path: 'operations', component: () => import('@/views/operations/Index.vue'), meta: { title: '工单中心', icon: 'Tickets' } },
-      { path: 'agent', component: () => import('@/views/agent/AgentChat.vue'), meta: { title: '智能助手', icon: 'ChatDotRound' } },
+      { path: 'agent', component: () => import('@/views/agent/AgentWorkbench.vue'), meta: { title: 'AI 工作台', icon: 'ChatDotRound' } },
       { path: 'profile', component: () => import('@/views/system/Profile.vue'), meta: { title: '个人中心', hidden: true } },
       { path: 'system-config', component: () => import('@/views/system/SystemConfig.vue'), meta: { title: '系统配置', hidden: true } },
     ]
