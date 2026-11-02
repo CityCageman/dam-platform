@@ -35,6 +35,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class LineageService {
 
+    /** 单次图谱最大边数，避免稠密图拖垮服务 */
+    private static final int MAX_GRAPH_EDGES = 2000;
+
     /** 血缘节点类型常量：表级血缘 */
     private static final String NODE_TYPE_TABLE = "TABLE";
 
@@ -164,7 +167,8 @@ public class LineageService {
      */
     public Map<String, Object> getLineageGraph(Long nodeId, Integer depth, Boolean includeFields,
                                                String layers, Boolean crossOnly, String direction) {
-        int maxDepth = (depth == null || depth < 1) ? 1 : depth;
+        // 深度上限 10，避免恶意调用递归过深
+        int maxDepth = Math.clamp(depth == null ? 1 : depth, 1, 10);
         List<DamLineage> edges = new ArrayList<>();
         Set<String> edgeKeys = new HashSet<>();
         boolean includeUpstream = direction == null || !"DOWNSTREAM".equalsIgnoreCase(direction);
@@ -263,6 +267,7 @@ public class LineageService {
     /** 沿来源方向递归收集上游链路（metadata_lineage 中 target=nodeId 的边为直接上游），最大 maxDepth 跳 */
     private void collectUpstream(Long nodeId, Set<Long> visited, List<DamLineage> out,
                                  Set<String> edgeKeys, int depth, int maxDepth) {
+        if (out.size() >= MAX_GRAPH_EDGES) return;
         if (nodeId == null || depth >= maxDepth || !visited.add(nodeId)) return;
         List<DamLineage> edges = lineageMapper.selectList(
                 new LambdaQueryWrapper<DamLineage>().eq(DamLineage::getTargetId, nodeId));
@@ -415,8 +420,8 @@ public class LineageService {
             if (StrUtil.isBlank(src) || StrUtil.isBlank(tgt) || src.equalsIgnoreCase(tgt)) {
                 continue;
             }
-            // 字段级关系由 metadata_column_lineage 承载，这里只落表级分层边，避免重复
-            if (StrUtil.isNotBlank(rel.sourceField()) || StrUtil.isNotBlank(rel.targetField())) {
+            // CTE 内部别名不是物理表，跳过避免生成假节点
+            if (rel.lineageType() != null && rel.lineageType().startsWith("cte")) {
                 continue;
             }
 
@@ -429,6 +434,12 @@ public class LineageService {
             String downLayer = layers.getOrDefault(tgt, LineageLayer.of(NODE_TYPE_TABLE, tgt));
             applyNodeLayer(upNode, upLayer);
             applyNodeLayer(downNode, downLayer);
+
+            // 字段级关系：写 metadata_column_lineage（保留字段级血缘）
+            if (StrUtil.isNotBlank(rel.sourceField()) || StrUtil.isNotBlank(rel.targetField())) {
+                saveColumnLineage(rel, upNode, downNode, jobName);
+                continue;
+            }
 
             // 4. 分层边（metadata_lineage_hierarchy）去重后写入
             Long hierarchyExists = hierarchyMapper.selectCount(new LambdaQueryWrapper<MetadataLineageHierarchy>()
@@ -487,6 +498,49 @@ public class LineageService {
             created.add(lineage);
         }
         return created;
+    }
+
+    /**
+     * 写入字段级血缘（ETL SQL 的字段映射）
+     *
+     * @param rel   解析关系
+     * @param up    上游表节点
+     * @param down  下游表节点
+     * @param jobName 作业名
+     */
+    private void saveColumnLineage(LineageSQLParser.LineageRelation rel,
+                                   MetadataLineageSource up, MetadataLineageSource down, String jobName) {
+        if (StrUtil.isBlank(rel.sourceField()) || StrUtil.isBlank(rel.targetField())) {
+            return;
+        }
+        Long exists = columnLineageMapper.selectCount(new LambdaQueryWrapper<MetadataColumnLineage>()
+                .eq(MetadataColumnLineage::getSourceTableId, up.getId())
+                .eq(MetadataColumnLineage::getSourceColumnName, rel.sourceField())
+                .eq(MetadataColumnLineage::getTargetTableId, down.getId())
+                .eq(MetadataColumnLineage::getTargetColumnName, rel.targetField()));
+        if (exists != null && exists > 0) {
+            return;
+        }
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        MetadataColumnLineage col = new MetadataColumnLineage();
+        col.setSourceTableId(up.getId());
+        col.setSourceColumnId(0L);
+        col.setSourceColumnName(rel.sourceField());
+        col.setTargetTableId(down.getId());
+        col.setTargetColumnId(0L);
+        col.setTargetColumnName(rel.targetField());
+        col.setMappingTypeId("DIRECT");
+        col.setTransformExpression(rel.sql());
+        col.setIsPrimarySource(true);
+        col.setConfidenceScore(new java.math.BigDecimal("0.90"));
+        col.setCollectionId(0L);
+        col.setDiscoveredById(StrUtil.isNotBlank(jobName) ? jobName : "PARSER");
+        col.setStatus(1);
+        col.setCreatedAt(now);
+        col.setUpdatedAt(now);
+        col.setCreatedBy("system");
+        col.setUpdatedBy("system");
+        columnLineageMapper.insert(col);
     }
 
     /**

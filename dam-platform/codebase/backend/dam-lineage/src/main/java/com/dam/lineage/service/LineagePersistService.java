@@ -165,10 +165,12 @@ public class LineagePersistService {
             if (upNode == null || downNode == null) continue;
             String downType = "REPORT".equals(link.target()) ? type : downNode.getSourceTypeId();
             String downCode = "REPORT".equals(link.target()) ? reportCode : link.target();
-            String upLayer = layers.getOrDefault(link.source(), LineageLayer.of(NODE_TYPE_TABLE, link.source()));
+            String upLayer = layers.getOrDefault(upNode.getSourceCode(),
+                    LineageLayer.of(NODE_TYPE_TABLE, upNode.getSourceCode()));
             String downLayer = "REPORT".equals(link.target())
                     ? LineageLayer.REPORT
-                    : layers.getOrDefault(link.target(), LineageLayer.of(NODE_TYPE_TABLE, link.target()));
+                    : layers.getOrDefault(downNode.getSourceCode(),
+                    LineageLayer.of(NODE_TYPE_TABLE, downNode.getSourceCode()));
             sourceService.updateLayer(upNode, upLayer);
             if (!"REPORT".equals(link.target())) {
                 sourceService.updateLayer(downNode, downLayer);

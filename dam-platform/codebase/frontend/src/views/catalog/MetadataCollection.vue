@@ -2693,6 +2693,7 @@ async function aiAnnotate(row: any, pendingOnly = true) {
   row._aiLoading = true
   const actionLabel = pendingOnly ? 'AI 补标注（仅未标注的表）' : 'AI 全量标注'
   const taskId = await createAiTask('COMMENT', `AI 注释 · ${row.dsName || row.id} · ${actionLabel}`, row)
+  const draftMode = !!taskId
   const loading = ElLoading.service({ lock: true, text: `${actionLabel}中…`, background: 'rgba(0,0,0,0.25)' })
   let cursor: number | undefined
   let scanned = 0
@@ -2711,7 +2712,7 @@ async function aiAnnotate(row: any, pendingOnly = true) {
         pendingOnly,
         afterId: cursor,
         batchSize: 40,
-        draft: true,
+        draft: draftMode,
         taskId
       })
       const d = res?.data || {}
@@ -2720,7 +2721,7 @@ async function aiAnnotate(row: any, pendingOnly = true) {
       annotated += d.annotated || 0
       domain += d.domainAnnotated || 0
       level += d.levelAnnotated || 0
-      drafted += d.drafted || 0
+      if (draftMode) drafted += d.drafted || 0
       loading.setText(
         `${actionLabel}中… 已处理 ${scanned}${total ? ' / ' + total : ''} 张表，已生成草稿 ${drafted} 条，剩余 ${d.remaining ?? 0} 张`
       )
@@ -2730,16 +2731,18 @@ async function aiAnnotate(row: any, pendingOnly = true) {
     if (scanned === 0) {
       ElMessage.warning(pendingOnly ? '没有需要补标注的表' : '暂无可标注的表，请先同步表结构')
     } else {
-      ElMessage.success(
-        `${pendingOnly ? '补标注' : '全量标注'}完成：处理 ${scanned} 张表，生成草稿 ${drafted} 条，请到「AI 工作台 → 任务中心」审核`
-      )
+      ElMessage.success(draftMode
+        ? `${pendingOnly ? '补标注' : '全量标注'}完成：处理 ${scanned} 张表，生成草稿 ${drafted} 条，请到「AI 工作台 → 任务中心」审核`
+        : `${pendingOnly ? '补标注' : '全量标注'}完成：处理 ${scanned} 张表，写入注释 ${annotated} 张，主题域 ${domain} 张，安全分级 ${level} 张`)
     }
-    await finishAiTask(taskId, {
-      status: drafted > 0 ? 'REVIEW' : 'DONE',
-      totalCount: drafted,
-      acceptedCount: 0,
-      rejectedCount: 0
-    })
+    if (draftMode) {
+      await finishAiTask(taskId, {
+        status: drafted > 0 ? 'REVIEW' : 'DONE',
+        totalCount: drafted,
+        acceptedCount: 0,
+        rejectedCount: 0
+      })
+    }
     await loadSchemaStats()
     loadLayerOverview()
     if (selectedDsId.value === row.id) await loadDsTables()
@@ -2796,6 +2799,7 @@ async function aiClassifyDs(row: any, pendingOnly = true) {
   if (!row || !row.id || row._aiClassifyLoading) return
   row._aiClassifyLoading = true
   const taskId = await createAiTask('CLASSIFY', `AI 分类 · ${row.dsName || row.id} · ${pendingOnly ? '未分类资产' : '全量资产'}`, row)
+  const draftMode = !!taskId
   const loading = ElLoading.service({ lock: true, text: 'AI 正在识别资产分类…', background: 'rgba(0,0,0,0.25)' })
   let cursor: number | undefined
   let scanned = 0
@@ -2811,14 +2815,14 @@ async function aiClassifyDs(row: any, pendingOnly = true) {
         pendingOnly,
         afterId: cursor,
         batchSize: 40,
-        draft: true,
+        draft: draftMode,
         taskId
       })
       const d = res?.data || {}
       if (!total) total = d.total || 0
       scanned += d.processed || 0
       classified += d.classified || 0
-      drafted += d.drafted || 0
+      if (draftMode) drafted += d.drafted || 0
       loading.setText(
         `AI 识别资产分类中… 已处理 ${scanned}${total ? ' / ' + total : ''} 个资产，已生成草稿 ${drafted} 条，剩余 ${d.remaining ?? 0} 个`
       )
@@ -2828,14 +2832,18 @@ async function aiClassifyDs(row: any, pendingOnly = true) {
     if (scanned === 0) {
       ElMessage.warning('没有需要识别的资产（可能均已分类）')
     } else {
-      ElMessage.success(`AI 分类完成：处理 ${scanned} 个资产，生成草稿 ${drafted} 条，请到「AI 工作台 → 任务中心」审核`)
+      ElMessage.success(draftMode
+        ? `AI 分类完成：处理 ${scanned} 个资产，生成草稿 ${drafted} 条，请到「AI 工作台 → 任务中心」审核`
+        : `AI 分类完成：处理 ${scanned} 个资产，归类 ${classified} 个`)
     }
-    await finishAiTask(taskId, {
-      status: drafted > 0 ? 'REVIEW' : 'DONE',
-      totalCount: drafted,
-      acceptedCount: 0,
-      rejectedCount: 0
-    })
+    if (draftMode) {
+      await finishAiTask(taskId, {
+        status: drafted > 0 ? 'REVIEW' : 'DONE',
+        totalCount: drafted,
+        acceptedCount: 0,
+        rejectedCount: 0
+      })
+    }
     if (selectedDsId.value === row.id) await loadDsTables()
   } catch (e: any) {
     const msg = e?.message || 'AI 分类失败'

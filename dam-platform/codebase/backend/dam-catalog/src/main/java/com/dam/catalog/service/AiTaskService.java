@@ -33,6 +33,18 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AiTaskService {
 
+    /** 单页上限，避免 pageSize 过大拖垮数据库 */
+    private static final int MAX_PAGE_SIZE = 100;
+    /** 单任务手写草稿上限 */
+    private static final int MAX_ITEMS = 1000;
+    /** 单次批量审核上限 */
+    private static final int MAX_BATCH_REVIEW = 5000;
+    /** 草稿内容长度上限 */
+    private static final int MAX_DRAFT_LEN = 20000;
+    /** 合法任务类型/状态 */
+    private static final java.util.Set<String> TASK_TYPES = java.util.Set.of("COMMENT", "CLASSIFY", "LINEAGE", "REPORT");
+    private static final java.util.Set<String> STATUSES = java.util.Set.of("PENDING", "RUNNING", "REVIEW", "DONE", "FAILED");
+
     private final AiTaskMapper taskMapper;
     private final AiTaskItemMapper itemMapper;
     private final MetadataAiService metadataAiService;
@@ -43,6 +55,8 @@ public class AiTaskService {
      */
     public PageResult<AiTask> page(String status, String taskType, String keyword,
                                    Integer page, Integer pageSize) {
+        int p = Math.max(1, page == null ? 1 : page);
+        int size = Math.clamp(pageSize == null ? 20 : pageSize, 1, MAX_PAGE_SIZE);
         LambdaQueryWrapper<AiTask> wrapper = new LambdaQueryWrapper<>();
         if (StrUtil.isNotBlank(status)) {
             wrapper.eq(AiTask::getStatus, status);
@@ -51,11 +65,12 @@ public class AiTaskService {
             wrapper.eq(AiTask::getTaskType, taskType);
         }
         if (StrUtil.isNotBlank(keyword)) {
-            wrapper.and(w -> w.like(AiTask::getTitle, keyword)
-                    .or().like(AiTask::getTargetType, keyword));
+            String kw = keyword.length() > 100 ? keyword.substring(0, 100) : keyword;
+            wrapper.and(w -> w.like(AiTask::getTitle, kw)
+                    .or().like(AiTask::getTargetType, kw));
         }
         wrapper.orderByDesc(AiTask::getId);
-        return PageResult.of(taskMapper.selectPage(new Page<>(page, pageSize), wrapper));
+        return PageResult.of(taskMapper.selectPage(new Page<>(p, size), wrapper));
     }
 
     /**
@@ -75,13 +90,15 @@ public class AiTaskService {
      * 任务明细分页
      */
     public PageResult<AiTaskItem> itemPage(Long taskId, Integer page, Integer pageSize, String status) {
+        int p = Math.max(1, page == null ? 1 : page);
+        int size = Math.clamp(pageSize == null ? 20 : pageSize, 1, MAX_PAGE_SIZE);
         LambdaQueryWrapper<AiTaskItem> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(AiTaskItem::getTaskId, taskId);
         if (StrUtil.isNotBlank(status)) {
             wrapper.eq(AiTaskItem::getStatus, status);
         }
         wrapper.orderByAsc(AiTaskItem::getId);
-        return PageResult.of(itemMapper.selectPage(new Page<>(page, pageSize), wrapper));
+        return PageResult.of(itemMapper.selectPage(new Page<>(p, size), wrapper));
     }
 
     /**
@@ -101,11 +118,17 @@ public class AiTaskService {
         if (all) {
             wrapper.eq(AiTaskItem::getStatus, "DRAFT");
         } else if (itemIds != null && !itemIds.isEmpty()) {
+            if (itemIds.size() > MAX_BATCH_REVIEW) {
+                throw new IllegalArgumentException("单次批量审核不能超过 " + MAX_BATCH_REVIEW + " 条，请分批处理");
+            }
             wrapper.in(AiTaskItem::getId, itemIds);
         } else {
             return 0;
         }
         List<AiTaskItem> items = itemMapper.selectList(wrapper);
+        if (items.size() > MAX_BATCH_REVIEW) {
+            throw new IllegalArgumentException("单次批量审核不能超过 " + MAX_BATCH_REVIEW + " 条，请分批处理");
+        }
         java.time.LocalDateTime now = java.time.LocalDateTime.now();
         int count = 0;
         for (AiTaskItem item : items) {
@@ -134,19 +157,30 @@ public class AiTaskService {
         if (StrUtil.isBlank(title)) {
             throw new IllegalArgumentException("任务标题不能为空");
         }
+        if (title.length() > 200) {
+            title = title.substring(0, 200);
+        }
+        String taskType = StrUtil.isNotBlank(str(body.get("taskType"))) ? str(body.get("taskType")) : "COMMENT";
+        if (!TASK_TYPES.contains(taskType)) {
+            throw new IllegalArgumentException("不支持的任务类型: " + taskType);
+        }
+        String status = StrUtil.isNotBlank(str(body.get("status"))) ? str(body.get("status")) : "PENDING";
+        if (!STATUSES.contains(status)) {
+            throw new IllegalArgumentException("不支持的任务状态: " + status);
+        }
         LocalDateTime now = LocalDateTime.now();
         AiTask task = new AiTask();
-        task.setTaskType(StrUtil.isNotBlank(str(body.get("taskType"))) ? str(body.get("taskType")) : "COMMENT");
+        task.setTaskType(taskType);
         task.setTitle(title);
-        task.setTargetType(str(body.get("targetType")));
+        task.setTargetType(cut(str(body.get("targetType")), 32));
         task.setTargetId(toLong(body.get("targetId")));
-        task.setStatus(StrUtil.isNotBlank(str(body.get("status"))) ? str(body.get("status")) : "PENDING");
+        task.setStatus(status);
         task.setTotalCount(0);
         task.setAcceptedCount(0);
         task.setRejectedCount(0);
-        task.setModel(str(body.get("model")));
-        task.setPrompt(str(body.get("prompt")));
-        task.setCreatedBy(StrUtil.isNotBlank(str(body.get("createdBy"))) ? str(body.get("createdBy")) : "system");
+        task.setModel(cut(str(body.get("model")), 100));
+        task.setPrompt(cut(str(body.get("prompt")), 20000));
+        task.setCreatedBy(cut(StrUtil.isNotBlank(str(body.get("createdBy"))) ? str(body.get("createdBy")) : "system", 100));
         task.setCreatedAt(now);
         task.setUpdatedAt(now);
         taskMapper.insert(task);
@@ -154,15 +188,20 @@ public class AiTaskService {
         int total = 0;
         Object itemsObj = body.get("items");
         if (itemsObj instanceof List<?> items) {
+            if (items.size() > MAX_ITEMS) {
+                throw new IllegalArgumentException("单个任务草稿不能超过 " + MAX_ITEMS + " 条");
+            }
             for (Object o : items) {
                 if (!(o instanceof Map<?, ?> item)) continue;
                 AiTaskItem row = new AiTaskItem();
                 row.setTaskId(task.getId());
-                row.setItemType(str(item.get("itemType")));
+                row.setItemType(cut(str(item.get("itemType")), 32));
                 row.setTargetId(toLong(item.get("targetId")));
-                row.setTargetName(str(item.get("targetName")));
-                row.setFieldName(str(item.get("fieldName")));
-                row.setDraftContent(str(item.get("draftContent")));
+                row.setTargetName(cut(str(item.get("targetName")), 200));
+                row.setFieldName(cut(str(item.get("fieldName")), 100));
+                String draft = str(item.get("draftContent"));
+                row.setDraftContent(draft != null && draft.length() > MAX_DRAFT_LEN
+                        ? draft.substring(0, MAX_DRAFT_LEN) : draft);
                 Object conf = item.get("confidence");
                 if (conf != null && StrUtil.isNotBlank(String.valueOf(conf))) {
                     try {
@@ -242,17 +281,21 @@ public class AiTaskService {
         if (task == null) {
             return;
         }
-        if (StrUtil.isNotBlank(str(body.get("status")))) {
-            task.setStatus(str(body.get("status")));
+        String status = str(body.get("status"));
+        if (StrUtil.isNotBlank(status)) {
+            if (!STATUSES.contains(status)) {
+                throw new IllegalArgumentException("不支持的任务状态: " + status);
+            }
+            task.setStatus(status);
         }
         Integer total = toInt(body.get("totalCount"));
-        if (total != null) task.setTotalCount(total);
+        if (total != null) task.setTotalCount(Math.max(0, total));
         Integer accepted = toInt(body.get("acceptedCount"));
-        if (accepted != null) task.setAcceptedCount(accepted);
+        if (accepted != null) task.setAcceptedCount(Math.max(0, accepted));
         Integer rejected = toInt(body.get("rejectedCount"));
-        if (rejected != null) task.setRejectedCount(rejected);
+        if (rejected != null) task.setRejectedCount(Math.max(0, rejected));
         if (body.containsKey("errorMessage")) {
-            task.setErrorMessage(str(body.get("errorMessage")));
+            task.setErrorMessage(cut(str(body.get("errorMessage")), 500));
         }
         task.setUpdatedAt(LocalDateTime.now());
         taskMapper.updateById(task);
@@ -291,6 +334,11 @@ public class AiTaskService {
 
     private String str(Object o) {
         return o == null ? null : String.valueOf(o);
+    }
+
+    /** 按数据库列长度截断，避免超长写入报错 */
+    private String cut(String s, int max) {
+        return s == null || s.length() <= max ? s : s.substring(0, max);
     }
 
     private Long toLong(Object o) {

@@ -9,6 +9,7 @@ import com.dam.catalog.entity.MetadataColumn;
 import com.dam.catalog.entity.MetadataManagement;
 import com.dam.catalog.entity.MetadataTable;
 import com.dam.catalog.repository.AiTaskItemMapper;
+import com.dam.catalog.repository.AiTaskMapper;
 import com.dam.catalog.repository.DamAssetMapper;
 import com.dam.catalog.repository.MetadataColumnMapper;
 import com.dam.catalog.repository.MetadataManagementMapper;
@@ -72,6 +73,7 @@ public class MetadataAiService {
     private final DamAssetMapper assetMapper;
     /** AI 任务草稿明细 */
     private final AiTaskItemMapper aiTaskItemMapper;
+    private final AiTaskMapper aiTaskMapper;
 
     /** asset_info.description 列长度上限（超长截断，避免写库报错） */
     private static final int ASSET_DESC_MAX_LEN = 500;
@@ -104,8 +106,8 @@ public class MetadataAiService {
     @Transactional
     public Map<String, Object> annotate(Long dataSourceId, boolean pendingOnly, Long afterId, Integer batchSize,
                                         String token, boolean draft, Long taskId) {
-        if (draft && taskId == null) {
-            throw new BusinessException("草稿模式需要 taskId");
+        if (draft && (taskId == null || aiTaskMapper.selectById(taskId) == null)) {
+            throw new BusinessException("草稿模式需要有效的 taskId");
         }
         int limit = batchSize == null || batchSize <= 0 ? DEFAULT_BATCH_SIZE : Math.min(batchSize, MAX_BATCH_SIZE);
         Long cursor = afterId == null || afterId <= 0 ? null : afterId;
@@ -247,8 +249,8 @@ public class MetadataAiService {
      */
     @Transactional
     public Map<String, Object> annotateTable(Long tableId, Long taskId, String token) {
-        if (taskId == null) {
-            throw new BusinessException("单表 AI 注释需要 taskId");
+        if (taskId == null || aiTaskMapper.selectById(taskId) == null) {
+            throw new BusinessException("单表 AI 注释需要有效的 taskId");
         }
         MetadataTable table = tableMapper.selectById(tableId);
         if (table == null) {

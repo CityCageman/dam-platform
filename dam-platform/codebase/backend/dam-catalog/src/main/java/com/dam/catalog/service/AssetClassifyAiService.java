@@ -10,6 +10,7 @@ import com.dam.catalog.entity.DamCategory;
 import com.dam.catalog.entity.MetadataColumn;
 import com.dam.catalog.entity.MetadataTable;
 import com.dam.catalog.repository.AiTaskItemMapper;
+import com.dam.catalog.repository.AiTaskMapper;
 import com.dam.catalog.repository.AssetCategoryRelMapper;
 import com.dam.catalog.repository.DamAssetMapper;
 import com.dam.catalog.repository.DamCategoryMapper;
@@ -74,6 +75,7 @@ public class AssetClassifyAiService {
     private final MetadataColumnMapper columnMapper;
     /** AI 任务草稿明细 */
     private final AiTaskItemMapper aiTaskItemMapper;
+    private final AiTaskMapper aiTaskMapper;
 
     /** dam-agent 服务地址 */
     @Value("${dam.agent-url:http://localhost:8089}")
@@ -104,8 +106,8 @@ public class AssetClassifyAiService {
     @Transactional
     public Map<String, Object> classify(Long dataSourceId, boolean pendingOnly, Long afterId,
                                         Integer batchSize, String token, boolean draft, Long taskId) {
-        if (draft && taskId == null) {
-            throw new BusinessException("草稿模式需要 taskId");
+        if (draft && (taskId == null || aiTaskMapper.selectById(taskId) == null)) {
+            throw new BusinessException("草稿模式需要有效的 taskId");
         }
         int limit = batchSize == null || batchSize <= 0 ? DEFAULT_BATCH_SIZE : Math.min(batchSize, MAX_BATCH_SIZE);
         Long cursor = afterId == null || afterId <= 0 ? null : afterId;

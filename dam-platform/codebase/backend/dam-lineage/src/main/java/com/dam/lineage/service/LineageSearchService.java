@@ -50,6 +50,7 @@ public class LineageSearchService {
     private final LineageSearchMapper searchMapper;
     private final MetadataLineageSourceMapper sourceMapper;
     private final LineageService lineageService;
+    private final LineageLayerResolver layerResolver;
 
     /**
      * 按中文关键字检索血缘
@@ -59,7 +60,12 @@ public class LineageSearchService {
      * @return {keyword,total,columns,tables}
      */
     public Map<String, Object> search(String keyword, Integer limit) {
-        String kw = keyword == null ? "" : keyword.trim();
+        // 去除 LIKE 通配符并限制长度，避免 %/_ 触发全表扫描
+        String kw = keyword == null ? "" : keyword.trim()
+                .replace("%", "").replace("_", "");
+        if (kw.length() > 50) {
+            kw = kw.substring(0, 50);
+        }
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("keyword", kw);
         if (kw.isEmpty()) {
@@ -83,6 +89,16 @@ public class LineageSearchService {
             return result;
         }
 
+        // 层级统一按“数据源 > Schema > 表名”解析，与图谱口径一致
+        Set<String> tableNames = new LinkedHashSet<>();
+        for (Map<String, Object> c : columns) {
+            if (c.get("table_name") != null) tableNames.add(String.valueOf(c.get("table_name")));
+        }
+        for (Map<String, Object> t : tables) {
+            if (t.get("table_name") != null) tableNames.add(String.valueOf(t.get("table_name")));
+        }
+        Map<String, String> layerMap = layerResolver.resolve(tableNames);
+
         // 同一张表只展开一次血缘
         Map<String, List<String>> reportCache = new LinkedHashMap<>();
         Map<String, List<String>> tableCache = new LinkedHashMap<>();
@@ -94,7 +110,7 @@ public class LineageSearchService {
                 expand(tableName, reportCache, tableCache, nodeCache);
                 expanded++;
             }
-            col.put("layer", LineageLayer.of("TABLE", tableName));
+            col.put("layer", layerMap.getOrDefault(tableName, LineageLayer.of("TABLE", tableName)));
             col.put("nodeId", nodeCache.get(tableName));
             col.put("relatedReports", reportCache.getOrDefault(tableName, List.of()));
             col.put("relatedTables", tableCache.getOrDefault(tableName, List.of()));
@@ -105,7 +121,7 @@ public class LineageSearchService {
                 expand(tableName, reportCache, tableCache, nodeCache);
                 expanded++;
             }
-            tab.put("layer", LineageLayer.of("TABLE", tableName));
+            tab.put("layer", layerMap.getOrDefault(tableName, LineageLayer.of("TABLE", tableName)));
             tab.put("nodeId", nodeCache.get(tableName));
             tab.put("relatedReports", reportCache.getOrDefault(tableName, List.of()));
             tab.put("relatedTables", tableCache.getOrDefault(tableName, List.of()));
