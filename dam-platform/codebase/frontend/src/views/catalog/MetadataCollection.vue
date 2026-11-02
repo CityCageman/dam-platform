@@ -15,33 +15,46 @@
     <el-row :gutter="16">
       <!-- 右侧：主内容（全宽） -->
       <el-col :span="24">
-        <div class="meta-layout" :class="{ 'no-rail': !(isMetaType('technical') && isTableType) }">
+        <div class="meta-layout" :class="{ 'no-rail': !isMetaType('technical') }">
           <!-- 左侧：数据源 / Schema 导航 -->
-          <aside class="meta-rail" v-if="isMetaType('technical') && isTableType">
-            <div class="rail-head">
-              <span>数据源</span>
-              <el-button text size="small" :icon="Refresh" title="刷新" @click="loadDataSources" />
-            </div>
-            <div class="rail-list">
-              <div class="rail-item" :class="{ active: !selectedDsId }" @click="backToDataSourceList">
-                <el-icon><Grid /></el-icon>
-                <div class="rail-main"><b>全部数据源</b><span>{{ dataSources.length }} 个</span></div>
+          <aside class="meta-rail" v-if="isMetaType('technical')">
+            <div class="rail-section">
+              <div class="rail-head"><span>元数据类型</span></div>
+              <div class="rail-list">
+                <div v-for="t in displayTechTypes" :key="t.configCode" class="rail-item rail-type"
+                     :class="{ active: selectedTechType === t.configCode }"
+                     @click="selectTechTypeByCode(t.configCode)">
+                  <el-icon><component :is="techTypeIcon(t.configCode)" /></el-icon>
+                  <div class="rail-main"><b>{{ t.configName }}</b></div>
+                </div>
               </div>
-              <template v-for="ds in filteredDataSources" :key="ds.id">
-                <div class="rail-item" :class="{ active: selectedDsId === ds.id }" @click="onDsRowClick(ds, null)">
-                  <div class="rail-main">
-                    <b>{{ ds.dsName }}</b>
-                    <span>{{ ds.dsType }} · {{ schemaStats[ds.id]?.tableCount ?? '-' }} 张表</span>
-                  </div>
-                  <el-tag size="small" :type="dataLayerTagType(ds.dataLayer)">{{ dataLayerLabel(ds.dataLayer) }}</el-tag>
+            </div>
+            <div class="rail-section" v-if="isTableType">
+              <div class="rail-head">
+                <span>数据源</span>
+                <el-button text size="small" :icon="Refresh" title="刷新" @click="loadDataSources" />
+              </div>
+              <div class="rail-list">
+                <div class="rail-item" :class="{ active: !selectedDsId }" @click="backToDataSourceList">
+                  <el-icon><Grid /></el-icon>
+                  <div class="rail-main"><b>全部数据源</b><span>{{ dataSources.length }} 个</span></div>
                 </div>
-                <div v-if="selectedDsId === ds.id && schemaStats[ds.id]?.schemas?.length" class="rail-schemas">
-                  <div v-for="s in schemaStats[ds.id].schemas" :key="s.schemaId" class="rail-schema">
-                    <span>{{ s.schemaName || 'public' }}</span><em>{{ s.tableCount }}</em>
+                <template v-for="ds in filteredDataSources" :key="ds.id">
+                  <div class="rail-item" :class="{ active: selectedDsId === ds.id }" @click="onDsRowClick(ds, null)">
+                    <div class="rail-main">
+                      <b>{{ ds.dsName }}</b>
+                      <span>{{ ds.dsType }} · {{ schemaStats[ds.id]?.tableCount ?? '-' }} 张表</span>
+                    </div>
+                    <el-tag size="small" :type="dataLayerTagType(ds.dataLayer)">{{ dataLayerLabel(ds.dataLayer) }}</el-tag>
                   </div>
-                </div>
-              </template>
-              <el-empty v-if="!filteredDataSources.length" description="暂无数据源" :image-size="50" />
+                  <div v-if="selectedDsId === ds.id && schemaStats[ds.id]?.schemas?.length" class="rail-schemas">
+                    <div v-for="s in schemaStats[ds.id].schemas" :key="s.schemaId" class="rail-schema">
+                      <span>{{ s.schemaName || 'public' }}</span><em>{{ s.tableCount }}</em>
+                    </div>
+                  </div>
+                </template>
+                <el-empty v-if="!filteredDataSources.length" description="暂无数据源" :image-size="50" />
+              </div>
             </div>
           </aside>
 
@@ -53,9 +66,6 @@
           </el-card>
         </template>
         <template v-if="isMetaType('technical')">
-          <el-tabs v-model="selectedTechType" @tab-change="selectTechTypeByCode" style="margin-bottom: 8px;">
-            <el-tab-pane v-for="t in techTypes" :key="t.configCode" :label="t.configName" :name="t.configCode" />
-          </el-tabs>
           <!-- 数据表（技术元数据 TABLE）：数据源列表 / 数据源下表列表 -->
           <template v-if="isTableType">
           <template v-if="!selectedDsId">
@@ -1234,6 +1244,24 @@ const metaTypeLabel = computed(() => {
 // 技术元数据类型
 const techTypes = ref<any[]>([])
 const selectedTechType = ref<string>('TABLE')
+
+/** 元数据标准分类：配置中心缺失时兜底展示，保证左侧分类始终完整 */
+const DEFAULT_TECH_TYPES = [
+  { configCode: 'TABLE', configName: '数据表' },
+  { configCode: 'VIEW', configName: '视图' },
+  { configCode: 'FILE', configName: '文件' },
+  { configCode: 'API', configName: 'API' },
+  { configCode: 'REPORT', configName: '报表' }
+]
+const displayTechTypes = computed(() => {
+  const list = [...techTypes.value]
+  for (const d of DEFAULT_TECH_TYPES) {
+    if (!list.some((t: any) => String(t.configCode).toUpperCase() === d.configCode)) {
+      list.push({ ...d })
+    }
+  }
+  return list
+})
 
 // 是否“数据表”技术类型（数据源采集/表列表挂在该类型下）
 const isTableType = computed(() => String(selectedTechType.value || '').toUpperCase() === 'TABLE')
@@ -3162,4 +3190,10 @@ const extData = computed(() => {
   .meta-layout { grid-template-columns: minmax(0, 1fr); }
   .meta-rail { position: static; max-height: 260px; }
 }
+
+/* ===== 元数据分类 / 数据源 分组 ===== */
+.rail-section + .rail-section { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--med-border); }
+.rail-type .rail-main b { font-size: 12.5px; }
+.rail-type .el-icon { color: var(--med-text-secondary); }
+.rail-type.active .el-icon { color: var(--med-primary); }
 </style>
