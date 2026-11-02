@@ -7,6 +7,8 @@
       </div>
       <div class="head-actions">
         <el-button @click="loadAll"><el-icon><Refresh /></el-icon>刷新</el-button>
+        <el-button @click="triggerImport"><el-icon><Upload /></el-icon>导入模型</el-button>
+        <input ref="importInput" type="file" accept=".json,application/json" style="display: none;" @change="onImportFile" />
         <el-button type="primary" @click="openCreateModel"><el-icon><Plus /></el-icon>新建模型</el-button>
       </div>
     </div>
@@ -74,6 +76,8 @@
             </div>
             <div class="mh-actions">
               <el-button size="small" @click="openEditModel">编辑</el-button>
+              <el-button size="small" @click="openCloneModel">复制</el-button>
+              <el-button size="small" @click="exportModel">导出</el-button>
               <el-button v-if="Number(selectedModel.status) !== 1" size="small" type="success" plain @click="publishModel">发布</el-button>
               <el-button v-else size="small" type="warning" plain @click="archiveModel">归档</el-button>
               <el-button size="small" type="danger" plain @click="removeModel">删除</el-button>
@@ -113,8 +117,10 @@
                   <el-table-column label="转换规则" min-width="160" show-overflow-tooltip>
                     <template #default="{ row }">{{ row.transformRule || '-' }}</template>
                   </el-table-column>
-                  <el-table-column label="操作" width="120" fixed="right">
+                  <el-table-column label="操作" width="190" fixed="right">
                     <template #default="{ row }">
+                      <el-button text size="small" :disabled="modelFields[0]?.id === row.id" @click="moveField(row, -1)">↑</el-button>
+                      <el-button text size="small" :disabled="modelFields[modelFields.length - 1]?.id === row.id" @click="moveField(row, 1)">↓</el-button>
                       <el-button text type="primary" size="small" @click="editField(row)">编辑</el-button>
                       <el-button text type="danger" size="small" @click="removeField(row)">删除</el-button>
                     </template>
@@ -206,6 +212,18 @@
       </template>
     </el-dialog>
 
+    <el-dialog v-model="showClone" title="复制模型" width="500px" top="20vh">
+      <el-form :model="cloneForm" label-width="90px">
+        <el-form-item label="新模型名称" required><el-input v-model="cloneForm.domainName" /></el-form-item>
+        <el-form-item label="新模型编码" required><el-input v-model="cloneForm.domainCode" /></el-form-item>
+        <el-form-item label="描述"><el-input v-model="cloneForm.description" type="textarea" :rows="2" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showClone = false">取消</el-button>
+        <el-button type="primary" :loading="cloning" @click="submitClone">复制</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 添加/编辑字段 -->
     <el-dialog v-model="showFieldForm" :title="isEditField ? '编辑字段' : '添加字段'" width="640px" top="12vh">
       <el-form :model="fieldForm" label-width="100px">
@@ -277,7 +295,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { modelApi, catalogApi } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Refresh, Search } from '@element-plus/icons-vue'
+import { Plus, Refresh, Search, Upload } from '@element-plus/icons-vue'
 
 const TYPE_OPTIONS = ['VARCHAR(100)', 'VARCHAR(200)', 'VARCHAR(500)', 'CHAR(10)', 'INT', 'BIGINT', 'DECIMAL(18,2)', 'FLOAT', 'DATE', 'DATETIME', 'TIMESTAMP', 'TEXT', 'BOOLEAN']
 
@@ -293,6 +311,10 @@ const loading = ref(false)
 const showForm = ref(false)
 const isEdit = ref(false)
 const form = ref<any>({})
+const showClone = ref(false)
+const cloning = ref(false)
+const cloneForm = ref<any>({})
+const importInput = ref<HTMLInputElement>()
 
 const showFieldForm = ref(false)
 const isEditField = ref(false)
@@ -541,6 +563,139 @@ async function doCompare() {
     compareResult.value = res.data
     rightTab.value = 'compare'
   } catch (e: any) { ElMessage.error(e.message || '对比失败') }
+}
+
+function openCloneModel() {
+  if (!selectedModel.value) return
+  cloneForm.value = {
+    domainName: selectedModel.value.domainName + ' 副本',
+    domainCode: selectedModel.value.domainCode + '_COPY',
+    description: selectedModel.value.description || ''
+  }
+  showClone.value = true
+}
+
+async function submitClone() {
+  if (!cloneForm.value.domainName?.trim() || !cloneForm.value.domainCode?.trim()) {
+    ElMessage.warning('名称和编码不能为空'); return
+  }
+  cloning.value = true
+  try {
+    const res: any = await modelApi.createModel({ ...cloneForm.value, status: 0 })
+    const newModel = res.data
+    for (const f of modelFields.value) {
+      await modelApi.createModelField(newModel.id, {
+        modelType: f.modelType || 'FACT',
+        sourceTableId: f.sourceTableId,
+        sourceColumnId: f.sourceColumnId,
+        targetColumnName: f.targetColumnName,
+        targetColumnType: f.targetColumnType,
+        isPrimaryKey: f.isPrimaryKey,
+        isForeignKey: f.isForeignKey,
+        refDimensionId: f.refDimensionId,
+        transformRule: f.transformRule,
+        sortOrder: f.sortOrder,
+        status: 1
+      })
+    }
+    ElMessage.success(`已复制模型和 ${modelFields.value.length} 个字段`)
+    showClone.value = false
+    selectedModelId.value = newModel.id
+    await loadModels()
+  } catch (e: any) { ElMessage.error(e.message || '复制失败') }
+  finally { cloning.value = false }
+}
+
+function exportModel() {
+  if (!selectedModel.value) return
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    model: {
+      domainName: selectedModel.value.domainName,
+      domainCode: selectedModel.value.domainCode,
+      description: selectedModel.value.description
+    },
+    fields: modelFields.value.map(f => ({
+      modelType: f.modelType,
+      sourceTableId: f.sourceTableId,
+      sourceColumnId: f.sourceColumnId,
+      targetColumnName: f.targetColumnName,
+      targetColumnType: f.targetColumnType,
+      isPrimaryKey: f.isPrimaryKey,
+      isForeignKey: f.isForeignKey,
+      refDimensionId: f.refDimensionId,
+      transformRule: f.transformRule,
+      sortOrder: f.sortOrder
+    }))
+  }
+  downloadJson(payload, `${selectedModel.value.domainCode || 'model'}.json`)
+}
+
+function downloadJson(data: any, filename: string) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function triggerImport() { importInput.value?.click() }
+
+async function onImportFile(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  try {
+    const data = JSON.parse(await file.text())
+    if (!data.model?.domainName || !data.model?.domainCode) throw new Error('文件缺少 model.domainName/domainCode')
+    await ElMessageBox.confirm(`导入模型「${data.model.domainName}」及 ${(data.fields || []).length} 个字段？`, '导入确认', { type: 'info' })
+    const res: any = await modelApi.createModel({
+      domainName: data.model.domainName,
+      domainCode: data.model.domainCode,
+      description: data.model.description || '',
+      status: 0
+    })
+    for (const f of (data.fields || [])) {
+      await modelApi.createModelField(res.data.id, {
+        modelType: f.modelType || 'FACT',
+        sourceTableId: f.sourceTableId,
+        sourceColumnId: f.sourceColumnId,
+        targetColumnName: f.targetColumnName,
+        targetColumnType: f.targetColumnType,
+        isPrimaryKey: f.isPrimaryKey ?? 0,
+        isForeignKey: f.isForeignKey ?? 0,
+        refDimensionId: f.refDimensionId,
+        transformRule: f.transformRule,
+        sortOrder: f.sortOrder,
+        status: 1
+      })
+    }
+    ElMessage.success('模型导入成功')
+    selectedModelId.value = res.data.id
+    await loadModels()
+  } catch (e: any) {
+    if (e !== 'cancel' && e !== 'close') ElMessage.error(e.message || '导入失败')
+  } finally {
+    input.value = ''
+  }
+}
+
+async function moveField(row: any, direction: number) {
+  const index = modelFields.value.findIndex(f => f.id === row.id)
+  const target = index + direction
+  if (index < 0 || target < 0 || target >= modelFields.value.length) return
+  const other = modelFields.value[target]
+  const a = row.sortOrder ?? index + 1
+  const b = other.sortOrder ?? target + 1
+  try {
+    await Promise.all([
+      modelApi.updateModelField({ ...row, sortOrder: b }),
+      modelApi.updateModelField({ ...other, sortOrder: a })
+    ])
+    await loadFields(selectedModelId.value)
+  } catch (e: any) { ElMessage.error(e.message || '排序失败') }
 }
 
 async function copyDdl() {

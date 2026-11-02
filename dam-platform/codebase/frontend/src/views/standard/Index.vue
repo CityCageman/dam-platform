@@ -119,6 +119,7 @@
             <span class="muted" style="margin-left: 8px;">{{ detail.codeTableCode }}</span>
           </div>
           <div>
+            <el-button size="small" @click="exportStandard">导出</el-button>
             <el-button size="small" @click="openEdit(detail)">编辑</el-button>
             <el-button v-if="Number(detail.status) !== 1" size="small" type="success" plain @click="publish(detail)">发布</el-button>
             <el-button v-else size="small" type="warning" plain @click="archive(detail)">归档</el-button>
@@ -468,6 +469,41 @@ async function removeMapping(row: any) {
     await loadDetail(detail.value.id)
     await loadCoverage()
   } catch (_e) { /* 取消 */ }
+}
+
+function exportStandard() {
+  if (!detail.value) return
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    standard: {
+      codeTableName: detail.value.codeTableName,
+      codeTableCode: detail.value.codeTableCode,
+      codeTableType: detail.value.codeTableType,
+      description: detail.value.description,
+      status: detail.value.status
+    },
+    values: values.value.map(v => ({
+      codeValue: v.codeValue,
+      codeName: v.codeName,
+      sortOrder: v.sortOrder,
+      description: v.description,
+      status: v.status
+    })),
+    mappings: mappings.value.map(m => ({
+      sourceTableId: m.sourceTableId,
+      sourceColumn: m.sourceColumn,
+      sourceValue: m.sourceValue,
+      standardCodeValue: m.standardCodeValue,
+      mappingRule: m.mappingRule
+    }))
+  }
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${detail.value.codeTableCode || 'standard'}.json`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 async function autoValidate() {
