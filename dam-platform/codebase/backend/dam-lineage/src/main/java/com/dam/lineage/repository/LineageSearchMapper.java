@@ -33,8 +33,7 @@ public interface LineageSearchMapper {
                    c.column_type     AS column_type,
                    t.id              AS table_id,
                    t.table_name      AS table_name,
-                   t.table_comment   AS table_comment,
-                   t.layer           AS layer
+                   t.table_comment   AS table_comment
               FROM dam_metadata.metadata_column c
               JOIN dam_metadata.metadata_table t ON t.id = c.table_id
              WHERE (
@@ -59,8 +58,7 @@ public interface LineageSearchMapper {
     @Select("""
             SELECT t.id            AS table_id,
                    t.table_name    AS table_name,
-                   t.table_comment AS table_comment,
-                   t.layer         AS layer
+                   t.table_comment AS table_comment
               FROM dam_metadata.metadata_table t
              WHERE (
                      LOWER(COALESCE(t.table_comment, '')) LIKE LOWER(CONCAT('%', #{keyword}, '%'))

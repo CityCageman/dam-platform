@@ -134,13 +134,35 @@ public class LineageService {
      * @return 图数据 { nodes: [{id,label,type,isCenter}], edges: [{source,target,relationType,dependencyLevel,count,labels}] }
      */
     public Map<String, Object> getLineageGraph(Long nodeId, Integer depth, Boolean includeFields) {
+        return getLineageGraph(nodeId, depth, includeFields, null, null, null);
+    }
+
+    /**
+     * 构建血缘图（支持层级过滤 / 仅跨层 / 方向）
+     *
+     * @param nodeId        中心节点ID
+     * @param depth         依赖深度
+     * @param includeFields 是否附带字段级
+     * @param layers        层级过滤，逗号分隔（如 ADS,DWS,REPORT；空表示全部）
+     * @param crossOnly     是否只看跨层边
+     * @param direction     方向：UPSTREAM / DOWNSTREAM / 空=双向
+     * @return 图数据
+     */
+    public Map<String, Object> getLineageGraph(Long nodeId, Integer depth, Boolean includeFields,
+                                               String layers, Boolean crossOnly, String direction) {
         int maxDepth = (depth == null || depth < 1) ? 1 : depth;
         List<DamLineage> edges = new ArrayList<>();
         Set<String> edgeKeys = new HashSet<>();
+        boolean includeUpstream = direction == null || !"DOWNSTREAM".equalsIgnoreCase(direction);
+        boolean includeDownstream = direction == null || !"UPSTREAM".equalsIgnoreCase(direction);
         // 上游（数据来源）：target=nodeId 的边，递归 maxDepth 跳
-        collectUpstream(nodeId, new HashSet<>(), edges, edgeKeys, 0, maxDepth);
+        if (includeUpstream) {
+            collectUpstream(nodeId, new HashSet<>(), edges, edgeKeys, 0, maxDepth);
+        }
         // 下游（数据去向）：source=nodeId 的边，递归 maxDepth 跳
-        collectDownstream(nodeId, new HashSet<>(), edges, edgeKeys, 0, maxDepth);
+        if (includeDownstream) {
+            collectDownstream(nodeId, new HashSet<>(), edges, edgeKeys, 0, maxDepth);
+        }
 
         // 收集全部节点ID并回填节点名称
         Set<Long> nodeIds = new HashSet<>();
@@ -208,6 +230,10 @@ public class LineageService {
                     .toList());
             edgeList.add(edgeMap);
         }
+
+        // 层级标注 + 跨层标记 + 过滤（图层级来自节点编码前缀推断，报表固定 REPORT）
+        enrichLayers(nodes, edgeList);
+        filterGraph(nodes, edgeList, layers, crossOnly);
 
         Map<String, Object> result = new HashMap<>();
         result.put("nodes", nodes);
@@ -480,5 +506,61 @@ public class LineageService {
      */
     private Long hashTableName(String tableName) {
         return (long) Math.abs(tableName.hashCode());
+    }
+
+    /**
+     * 为节点标注层级，为边标注上下游层级与是否跨层
+     *
+     * @param nodes 节点
+     * @param edges 边
+     */
+    private void enrichLayers(List<Map<String, Object>> nodes, List<Map<String, Object>> edges) {
+        Map<String, String> layerById = new HashMap<>();
+        for (Map<String, Object> n : nodes) {
+            String layer = LineageLayer.of(str(n.get("type")), str(n.get("label")));
+            n.put("layer", layer);
+            layerById.put(String.valueOf(n.get("id")), layer);
+        }
+        for (Map<String, Object> e : edges) {
+            String sourceLayer = layerById.get(String.valueOf(e.get("source")));
+            String targetLayer = layerById.get(String.valueOf(e.get("target")));
+            e.put("sourceLayer", sourceLayer);
+            e.put("targetLayer", targetLayer);
+            e.put("isCrossLayer", LineageLayer.isCross(sourceLayer, targetLayer));
+        }
+    }
+
+    /**
+     * 按层级 / 跨层条件过滤图数据（中心节点与字段节点不参与层级过滤）
+     *
+     * @param nodes     节点
+     * @param edges     边
+     * @param layers    层级过滤串
+     * @param crossOnly 是否仅跨层
+     */
+    private void filterGraph(List<Map<String, Object>> nodes, List<Map<String, Object>> edges,
+                             String layers, Boolean crossOnly) {
+        Set<String> allowed = LineageLayer.parseLayers(layers);
+        if (!allowed.isEmpty()) {
+            nodes.removeIf(n -> !Boolean.TRUE.equals(n.get("isCenter"))
+                    && !"FIELD".equalsIgnoreCase(str(n.get("type")))
+                    && !allowed.contains(str(n.get("layer"))));
+            Set<String> ids = nodes.stream().map(n -> String.valueOf(n.get("id"))).collect(Collectors.toSet());
+            edges.removeIf(e -> !ids.contains(String.valueOf(e.get("source")))
+                    || !ids.contains(String.valueOf(e.get("target"))));
+        }
+        if (Boolean.TRUE.equals(crossOnly)) {
+            edges.removeIf(e -> !Boolean.TRUE.equals(e.get("isCrossLayer")));
+        }
+    }
+
+    /**
+     * 对象转字符串
+     *
+     * @param o 对象
+     * @return 字符串或 null
+     */
+    private String str(Object o) {
+        return o == null ? null : String.valueOf(o);
     }
 }

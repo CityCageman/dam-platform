@@ -6,10 +6,20 @@
         <span class="lg-center-name" :title="String(centerId)">{{ centerName || '血缘图谱' }}</span>
       </el-tooltip>
       <el-select v-model="depth" size="small" style="width: 92px;" @change="loadGraph">
-        <el-option :value="1" label="1跳" />
-        <el-option :value="2" label="2跳" />
-        <el-option :value="3" label="3跳" />
+        <el-option v-for="d in 6" :key="d" :value="d" :label="`${d}跳`" />
       </el-select>
+      <template v-if="!isExternal">
+        <el-select v-model="layerFilter" multiple collapse-tags clearable size="small" placeholder="全部层级"
+                   style="width: 150px;" @change="loadGraph">
+          <el-option v-for="l in LAYER_OPTIONS" :key="l.value" :label="l.label" :value="l.value" />
+        </el-select>
+        <el-select v-model="direction" size="small" style="width: 92px;" @change="loadGraph">
+          <el-option label="双向" value="" />
+          <el-option label="上游" value="UPSTREAM" />
+          <el-option label="下游" value="DOWNSTREAM" />
+        </el-select>
+        <el-checkbox v-model="crossOnly" size="small" @change="loadGraph">仅跨层</el-checkbox>
+      </template>
       <el-button size="small" text type="primary" @click="resetView">重置视图</el-button>
       <el-button v-if="history.length" size="small" text type="primary" @click="goBack">
         ← 返回 {{ history[history.length - 1].name || '上级' }}
@@ -41,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import * as d3 from 'd3'
 import * as dagre from 'dagre'
 import { lineageApi } from '@/api'
@@ -69,7 +79,7 @@ const svgRef = ref<SVGSVGElement>()
 const nodes = ref<any[]>([])
 const edges = ref<any[]>([])
 const loading = ref(false)
-const depth = ref(1)
+const depth = ref(4)
 const centerId = ref<any>(props.nodeId)
 const centerName = ref(props.nodeName || '')
 const history = ref<{ id: any; name: string }[]>([])
@@ -93,10 +103,30 @@ const TYPE_LABELS: Record<string, string> = {
   TABLE: '数据表', REPORT: '报表', VIEW: '视图', PROCEDURE: '存储过程',
   DICT: '字典表', ETL_JOB: 'ETL作业', CTE: 'CTE', FIELD: '字段'
 }
-const legendItems = Object.keys(TYPE_COLORS).map(k => ({ key: k, label: TYPE_LABELS[k] || k, color: TYPE_COLORS[k] }))
+const LAYER_COLORS: Record<string, string> = {
+  SOURCE: '#64748B', ODS: '#D97706', DWD: '#0D9488', DIM: '#EC4899',
+  DWS: '#2563EB', ADS: '#7C3AED', REPORT: '#DC2626'
+}
+const LAYER_LABELS: Record<string, string> = {
+  SOURCE: '源库', ODS: 'ODS', DWD: 'DWD', DIM: 'DIM', DWS: 'DWS', ADS: 'ADS', REPORT: '报表'
+}
+const LAYER_OPTIONS = Object.keys(LAYER_COLORS).map(k => ({ value: k, label: LAYER_LABELS[k], color: LAYER_COLORS[k] }))
+const typeLegendItems = Object.keys(TYPE_COLORS).map(k => ({ key: k, label: TYPE_LABELS[k] || k, color: TYPE_COLORS[k] }))
+
+// 优先展示层级图例（有 layer 数据时），否则回退到类型图例
+const legendItems = computed(() => {
+  const present = LAYER_OPTIONS.filter(l => nodes.value.some((n: any) => n.layer === l.value))
+  return present.length ? present.map(l => ({ key: l.value, label: l.label, color: l.color })) : typeLegendItems
+})
+
+const layerFilter = ref<string[]>([])
+const crossOnly = ref(false)
+const direction = ref('')
+const isExternal = computed(() => Array.isArray(props.externalNodes))
 
 function nodeColor(d: any): string {
   if (d.type === 'FIELD') return '#059669'
+  if (d.layer && LAYER_COLORS[d.layer]) return LAYER_COLORS[d.layer]
   return TYPE_COLORS[d.type] || '#3b82f6'
 }
 
@@ -104,7 +134,12 @@ function nodeColor(d: any): string {
 async function loadGraph() {
   loading.value = true
   try {
-    const res: any = await lineageApi.getLineageGraph(centerId.value, depth.value, false)
+    const res: any = await lineageApi.getLineageGraph(
+      centerId.value, depth.value, false,
+      layerFilter.value.length ? layerFilter.value.join(',') : undefined,
+      crossOnly.value || undefined,
+      direction.value || undefined
+    )
     nodes.value = res.data?.nodes || []
     edges.value = res.data?.edges || []
     const c = nodes.value.find((n: any) => String(n.id) === String(centerId.value))

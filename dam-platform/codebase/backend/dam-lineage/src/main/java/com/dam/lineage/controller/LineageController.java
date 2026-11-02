@@ -103,8 +103,11 @@ public class LineageController {
     @GetMapping("/graph/{assetId:\\d+}")
     public Result<Map<String, Object>> getLineageGraph(@PathVariable Long assetId,
                                                        @RequestParam(defaultValue = "1") Integer depth,
-                                                       @RequestParam(defaultValue = "false") Boolean includeFields) {
-        return Result.success(lineageService.getLineageGraph(assetId, depth, includeFields));
+                                                       @RequestParam(defaultValue = "false") Boolean includeFields,
+                                                       @RequestParam(required = false) String layers,
+                                                       @RequestParam(required = false) Boolean crossOnly,
+                                                       @RequestParam(required = false) String direction) {
+        return Result.success(lineageService.getLineageGraph(assetId, depth, includeFields, layers, crossOnly, direction));
     }
 
     /**

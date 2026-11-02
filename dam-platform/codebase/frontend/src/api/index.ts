@@ -243,7 +243,7 @@ export const configApi = {
 export const lineageApi = {
   getLineage(assetId: number) { return request.get(`/lineage/${assetId}`) },
   getLineagePage(nodeId: number, page: number, pageSize: number) { return request.get(`/lineage/page/${nodeId}`, { params: { page, pageSize } }) },
-  getLineageGraph(nodeId: number | string, depth = 1, includeFields = false) { return request.get(`/lineage/graph/${nodeId}`, { params: { depth, includeFields } }) },
+  getLineageGraph(nodeId: number | string, depth = 1, includeFields = false, layers?: string, crossOnly?: boolean, direction?: string) { return request.get(`/lineage/graph/${nodeId}`, { params: { depth, includeFields, layers, crossOnly, direction } }) },
   /** 按中文描述检索血缘（字段注释/表注释/字段名/表名） */
   searchLineage(keyword: string, limit = 20) { return request.get('/lineage/search', { params: { keyword, limit } }) },
   getNodeFieldsPage(sourceId: number, page: number, pageSize: number) { return request.get('/lineage/fields/page', { params: { sourceId, page, pageSize } }) },

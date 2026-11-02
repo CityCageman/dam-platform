@@ -94,6 +94,7 @@ public class LineageSearchService {
                 expand(tableName, reportCache, tableCache, nodeCache);
                 expanded++;
             }
+            col.put("layer", LineageLayer.of("TABLE", tableName));
             col.put("nodeId", nodeCache.get(tableName));
             col.put("relatedReports", reportCache.getOrDefault(tableName, List.of()));
             col.put("relatedTables", tableCache.getOrDefault(tableName, List.of()));
@@ -104,6 +105,7 @@ public class LineageSearchService {
                 expand(tableName, reportCache, tableCache, nodeCache);
                 expanded++;
             }
+            tab.put("layer", LineageLayer.of("TABLE", tableName));
             tab.put("nodeId", nodeCache.get(tableName));
             tab.put("relatedReports", reportCache.getOrDefault(tableName, List.of()));
             tab.put("relatedTables", tableCache.getOrDefault(tableName, List.of()));
