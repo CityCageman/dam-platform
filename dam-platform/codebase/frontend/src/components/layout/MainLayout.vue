@@ -6,8 +6,14 @@
         <div class="brand-mark">DA</div>
         <div class="brand-text">
           <div class="brand-title">数据资产管理平台</div>
-          <div class="brand-sub">Data Asset Platform</div>
+          <div class="brand-sub">DATA ASSET PLATFORM</div>
         </div>
+      </div>
+
+      <div class="workspace">
+        <span class="ws-dot"></span>
+        <span>生产环境 · 市一院</span>
+        <el-icon class="ws-caret"><ArrowDown /></el-icon>
       </div>
 
       <el-menu
@@ -43,8 +49,12 @@
       </el-menu>
 
       <div class="sidebar-foot">
-        <div class="dot"></div>
-        <span>服务运行中</span>
+        <div class="avatar-sm">{{ initial }}</div>
+        <div class="who">
+          <b>{{ userStore.userInfo?.realName || userStore.userInfo?.username || '管理员' }}</b>
+          <i>{{ userStore.userInfo?.department || '信息中心' }}</i>
+        </div>
+        <span class="online" title="服务运行中"></span>
       </div>
     </aside>
 
@@ -57,8 +67,15 @@
           <span class="crumb-current">{{ route.meta.title }}</span>
         </div>
         <div class="topbar-right">
-          <el-input v-model="keyword" class="global-search" placeholder="搜索资产名称 / 编码 / 标签"
+          <el-input v-model="keyword" class="global-search" placeholder="搜索资产 / 表 / 字段 / 指标"
                     :prefix-icon="Search" clearable @keyup.enter="goSearch" />
+          <el-button class="ai-assist" size="small" @click="router.push('/agent')">
+            <el-icon><MagicStick /></el-icon>AI 助手
+          </el-button>
+          <el-button class="bell-btn" text @click="showNotice">
+            <el-icon><Bell /></el-icon>
+            <span class="bell-dot"></span>
+          </el-button>
           <el-dropdown trigger="click" @command="handleHeaderCommand">
             <div class="user-inner">
               <el-avatar :size="30" class="avatar">{{ (userStore.userInfo?.realName || userStore.userInfo?.username || 'U').charAt(0).toUpperCase() }}</el-avatar>
@@ -89,7 +106,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Search, ArrowRight, ArrowDown, User, Setting, SwitchButton } from '@element-plus/icons-vue'
+import { Search, ArrowRight, ArrowDown, User, Setting, SwitchButton, MagicStick, Bell } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { authApi, catalogApi } from '@/api'
 import AgentFloat from '@/components/agent/AgentFloat.vue'
@@ -97,6 +115,8 @@ import AgentFloat from '@/components/agent/AgentFloat.vue'
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+const initial = computed(() => (userStore.userInfo?.realName || userStore.userInfo?.username || '管').charAt(0).toUpperCase())
+function showNotice() { ElMessage.info('暂无新的待处理通知') }
 
 const keyword = ref('')
 const navConfig = ref<any[]>([])
@@ -262,13 +282,12 @@ async function handleLogout() {
 </script>
 
 <style scoped>
+/* ================= 壳层：236 侧栏 + 64 顶栏 ================= */
 .layout {
   display: flex;
   min-height: 100vh;
   background: var(--med-bg);
 }
-
-/* ===== 深色渐变侧边栏 ===== */
 .sidebar {
   width: var(--med-sidebar-width);
   flex: 0 0 var(--med-sidebar-width);
@@ -283,111 +302,172 @@ async function handleLogout() {
   overflow-y: auto;
 }
 .sidebar::-webkit-scrollbar { width: 0; }
-.menu-icon-img { width: 16px; height: 16px; object-fit: contain; margin-right: 6px; vertical-align: middle; }
-.nav-group { color: #6f86a8; font-size: 11px; letter-spacing: .5px; padding: 14px 12px 6px; }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px 20px;
-}
+.brand { display: flex; align-items: center; gap: 10px; padding: 6px 8px 18px; }
 .brand-mark {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #2f7bff, #16c2c2);
-  color: #fff;
-  font-weight: 700;
-  font-size: 14px;
+  width: 36px; height: 36px; flex: 0 0 36px; border-radius: 10px;
+  background: linear-gradient(135deg, #3b82f6, #0d9488);
+  color: #fff; font-weight: 700; font-size: 14px; letter-spacing: .5px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 16px rgba(47, 123, 255, .35);
+}
+.brand-title { color: #fff; font-size: 14px; font-weight: 600; letter-spacing: .2px; }
+.brand-sub { color: #6f86a8; font-size: 9.5px; margin-top: 2px; letter-spacing: .8px; }
+
+/* 环境切换 */
+.workspace {
+  margin: 0 4px 12px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 9px;
+  background: #16233c;
+  border: 1px solid #22324f;
   display: flex;
   align-items: center;
-  justify-content: center;
-  letter-spacing: .5px;
-  box-shadow: 0 6px 16px rgba(47, 123, 255, .35);
-  flex: 0 0 36px;
+  gap: 8px;
+  color: #c7d2e5;
+  font-size: 11.5px;
+  cursor: pointer;
 }
-.brand-title { color: #fff; font-size: 14px; font-weight: 600; letter-spacing: .3px; }
-.brand-sub { color: #6f86a8; font-size: 11px; margin-top: 2px; letter-spacing: .4px; }
+.workspace:hover { border-color: #2f4468; }
+.ws-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; flex: 0 0 7px; }
+.ws-caret { margin-left: auto; color: #7c8ca8; font-size: 12px; }
 
-.nav { border-right: none; flex: 1; }
-:deep(.el-menu-item), :deep(.el-sub-menu__title) {
-  height: 40px;
-  line-height: 40px;
-  border-radius: 8px;
+/* 导航 */
+.nav { border-right: none; flex: 1; background: transparent; }
+.nav-group {
+  color: #5e769b;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 14px 12px 6px;
+}
+:deep(.el-menu) { border-right: none; background: transparent; }
+:deep(.el-menu-item),
+:deep(.el-sub-menu__title) {
+  height: 38px;
+  line-height: 38px;
+  border-radius: 9px;
   margin: 2px 0;
   font-size: 13px;
+  color: #b7c4d9;
+  position: relative;
 }
-:deep(.el-menu-item:hover), :deep(.el-sub-menu__title:hover) {
+:deep(.el-menu-item:hover),
+:deep(.el-sub-menu__title:hover) {
   background: rgba(255, 255, 255, .06) !important;
+  color: #fff;
 }
 :deep(.el-menu-item.is-active) {
-  background: linear-gradient(90deg, rgba(47, 123, 255, .9), rgba(47, 123, 255, .55)) !important;
-  box-shadow: 0 6px 14px rgba(47, 123, 255, .25);
+  background: linear-gradient(90deg, rgba(47, 123, 255, .95), rgba(29, 78, 216, .55)) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 14px rgba(47, 123, 255, .22);
+}
+:deep(.el-menu-item.is-active)::before {
+  content: "";
+  position: absolute;
+  left: 2px; top: 8px; bottom: 8px;
+  width: 3px; border-radius: 3px; background: #7fb0ff;
 }
 :deep(.el-sub-menu .el-menu) { background: transparent; }
+:deep(.el-sub-menu .el-menu-item) { padding-left: 44px !important; font-size: 12.5px; }
+:deep(.el-menu-item .el-icon),
+:deep(.el-sub-menu__title .el-icon) { font-size: 16px; }
+.menu-icon-img { width: 16px; height: 16px; object-fit: contain; margin-right: 6px; vertical-align: middle; }
 
+/* 侧栏底部用户 */
 .sidebar-foot {
   display: flex;
   align-items: center;
-  gap: 6px;
-  color: #5f7595;
-  font-size: 11px;
-  padding: 12px 10px 4px;
+  gap: 9px;
+  padding: 12px 8px 4px;
+  margin-top: auto;
   border-top: 1px solid rgba(255, 255, 255, .06);
 }
-.dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #2ee6a8;
-  box-shadow: 0 0 8px #2ee6a8;
+.avatar-sm {
+  width: 28px; height: 28px; flex: 0 0 28px; border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #0ea5e9);
+  color: #fff; font-size: 11px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
 }
+.who { min-width: 0; line-height: 1.3; }
+.who b { display: block; color: #d5deea; font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.who i { font-style: normal; color: #6f86a8; font-size: 10.5px; }
+.online { margin-left: auto; width: 6px; height: 6px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 8px rgba(34,197,94,.8); }
 
-/* ===== 右侧主体 ===== */
-.main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
+/* ================= 主区域 ================= */
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .topbar {
   height: var(--med-header-height);
+  flex: 0 0 var(--med-header-height);
   background: #fff;
-  border-bottom: 1px solid #e8ecf3;
+  border-bottom: 1px solid var(--med-border);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 16px;
   padding: 0 24px;
   position: sticky;
   top: 0;
   z-index: 10;
 }
+.crumb { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--med-text-light); white-space: nowrap; }
+.crumb-current { color: var(--med-text); font-weight: 600; }
+.crumb-sep { font-size: 11px; }
 
-.crumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #8a94a6; }
-.crumb-current { color: #1f2a3d; font-weight: 600; }
-.crumb-sep { font-size: 12px; }
-
-.topbar-right { display: flex; align-items: center; gap: 14px; }
-.global-search { width: 260px; }
-
-.user-inner {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  cursor: pointer;
-  padding: 5px 8px;
+.topbar-right { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+.global-search { width: 300px; }
+:deep(.global-search .el-input__wrapper) {
+  background: #f3f5f9;
+  box-shadow: none;
+  border: 1px solid #edf0f5;
   border-radius: 9px;
+  height: 32px;
 }
-.user-inner:hover { background: #f4f6fa; }
-.avatar { background: linear-gradient(135deg, #2f7bff, #7aa7ff); color: #fff; font-size: 13px; }
-.user-meta { font-size: 13px; color: #34405a; }
-.user-caret { color: #98a2b3; font-size: 12px; }
+:deep(.global-search .el-input__wrapper.is-focus) { border-color: var(--med-primary); background: #fff; }
+
+.ai-assist {
+  height: 32px;
+  border: 0;
+  border-radius: 9px;
+  padding: 0 12px;
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, .25);
+}
+.ai-assist:hover { color: #fff; background: linear-gradient(135deg, #1d4ed8, #6d28d9); }
+.bell-btn { position: relative; width: 32px; height: 32px; padding: 0; color: var(--med-text-secondary); }
+.bell-btn:hover { background: #f1f5f9; }
+.bell-dot {
+  position: absolute; right: 6px; top: 6px;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #dc2626; border: 1.5px solid #fff;
+}
+
+.user-inner { display: flex; align-items: center; gap: 9px; cursor: pointer; padding: 4px 6px; border-radius: 9px; }
+.user-inner:hover { background: #f5f7fb; }
+.avatar { background: linear-gradient(135deg, #3b82f6, #0ea5e9); color: #fff; font-size: 12px; font-weight: 600; }
+.user-meta { font-size: 12px; color: var(--med-text); line-height: 1.3; }
+.user-meta b { font-weight: 600; }
+.user-meta i { display: block; font-style: normal; font-size: 10.5px; color: var(--med-text-light); }
+.user-caret { color: var(--med-text-light); font-size: 12px; }
 
 .content {
-  padding: 20px 24px 32px;
+  padding: 24px;
+  width: 100%;
+  max-width: 1720px;
+  margin: 0 auto;
   flex: 1;
-  overflow-y: auto;
+}
+
+@media (max-width: 1280px) {
+  .global-search { width: 200px; }
+  .user-meta { display: none; }
+}
+@media (max-width: 900px) {
+  .workspace, .brand-text, .nav-group, .sidebar-foot .who { display: none; }
+  .sidebar { width: 72px; flex-basis: 72px; align-items: center; padding: 18px 8px; }
+  :deep(.el-menu-item), :deep(.el-sub-menu__title) { justify-content: center; padding: 0 !important; }
+  .global-search { display: none; }
+  .content { padding: 16px; }
 }
 </style>

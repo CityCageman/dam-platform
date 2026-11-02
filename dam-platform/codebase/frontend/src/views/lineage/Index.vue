@@ -1,5 +1,31 @@
 <template>
   <div class="page-container">
+    <el-card class="lineage-search" shadow="never">
+      <div class="ls-row">
+        <el-input v-model="lineageKeyword" placeholder="按中文描述搜索血缘，如：医嘱号、费用金额" clearable
+                  style="width: 380px;" @keyup.enter="doLineageSearch" @clear="clearLineageSearch">
+          <template #prefix><el-icon><Search /></el-icon></template>
+        </el-input>
+        <el-button type="primary" :loading="lineageSearching" @click="doLineageSearch">搜索血缘</el-button>
+        <span class="ls-hint">支持字段注释 / 表注释 / 字段名 / 表名，结果可直达图谱</span>
+      </div>
+      <div v-if="lineageResults.length" class="ls-results">
+        <div v-for="(r, i) in lineageResults" :key="i" class="ls-item" @click="openSearchResult(r)">
+          <el-tag size="small" :type="r.kind === '表' ? 'warning' : 'primary'">{{ r.kind }}</el-tag>
+          <div class="ls-main">
+            <div class="ls-name">{{ r.name }}<span class="ls-code">{{ r.code }}</span></div>
+            <div class="ls-meta">
+              {{ r.layer || '-' }}
+              <template v-if="r.reports.length"> · 相关报表：{{ r.reports.join('、') }}</template>
+              <template v-else> · 暂未发现下游报表</template>
+            </div>
+          </div>
+          <div class="ls-counts"><span>报表 {{ r.reports.length }}</span><span>表 {{ r.tables.length }}</span></div>
+          <el-button text type="primary" size="small" @click.stop="openSearchResult(r)">查看图谱</el-button>
+        </div>
+      </div>
+      <el-empty v-else-if="lineageSearched && !lineageSearching" description="没有找到相关血缘，试试「医嘱号」「费用金额」" :image-size="50" />
+    </el-card>
     <el-tabs v-model="activeTab">
       <!-- ==================== Tab1 血缘列表 ==================== -->
       <el-tab-pane label="血缘列表" name="list">
@@ -551,6 +577,68 @@ const sources = ref<any[]>([])
 const sourceKeyword = ref('')
 const selectedSourceId = ref<number>()
 const selectedSourceName = ref('')
+
+// ===== 中文血缘搜索 =====
+const lineageKeyword = ref('')
+const lineageSearching = ref(false)
+const lineageSearched = ref(false)
+const lineageResults = ref<any[]>([])
+
+/** 按中文注释/名称检索血缘，结果可直接打开图谱 */
+async function doLineageSearch() {
+  const kw = lineageKeyword.value.trim()
+  if (!kw) { clearLineageSearch(); return }
+  lineageSearching.value = true
+  try {
+    const res: any = await lineageApi.searchLineage(kw, 20)
+    const d = res.data || {}
+    const cols = (d.columns || []).map((c: any) => ({
+      kind: '字段',
+      name: c.column_comment || c.column_name,
+      code: `${c.table_name}.${c.column_name}`,
+      layer: c.layer,
+      nodeId: c.nodeId,
+      reports: c.relatedReports || [],
+      tables: c.relatedTables || []
+    }))
+    const tabs = (d.tables || []).map((x: any) => ({
+      kind: '表',
+      name: x.table_comment || x.table_name,
+      code: x.table_name,
+      layer: x.layer,
+      nodeId: x.nodeId,
+      reports: x.relatedReports || [],
+      tables: x.relatedTables || []
+    }))
+    lineageResults.value = [...cols, ...tabs]
+    lineageSearched.value = true
+  } catch (e: any) {
+    ElMessage.error(e?.message || '搜索失败')
+  } finally {
+    lineageSearching.value = false
+  }
+}
+
+/** 清空搜索结果 */
+function clearLineageSearch() {
+  lineageResults.value = []
+  lineageSearched.value = false
+}
+
+/** 点击搜索结果：定位到该节点并打开血缘图谱 */
+function openSearchResult(r: any) {
+  if (!r?.nodeId) {
+    ElMessage.warning('该对象尚未登记血缘节点，请先在「SQL分析」解析报表或手动注册节点')
+    return
+  }
+  selectedSourceId.value = r.nodeId
+  selectedSourceName.value = r.name || r.code
+  drawerNodeName.value = r.name || r.code
+  fieldGraphNodeId.value = r.nodeId
+  fieldGraphNodeName.value = r.name || r.code
+  drawerTab.value = 'graph'
+  drawerVisible.value = true
+}
 const sourceDialogVisible = ref(false)
 const sourceForm = ref<any>({})
 const sourceNameMap = ref<Record<number, string>>({})
@@ -1029,4 +1117,18 @@ function calcTypeLabel(t: string) { return calcMap[t] || t }
   flex-wrap: wrap;
 }
 .empty-text { color: #909399; font-size: 13px; }
+
+/* ===== 中文血缘搜索 ===== */
+.lineage-search { margin-bottom: 12px; }
+.ls-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ls-hint { color: #94A3B8; font-size: 12px; }
+.ls-results { margin-top: 12px; border-top: 1px solid #F1F4F9; padding-top: 6px; }
+.ls-item { display: flex; align-items: center; gap: 10px; padding: 9px 8px; border-radius: 8px; cursor: pointer; }
+.ls-item:hover { background: #F8FAFD; }
+.ls-main { flex: 1; min-width: 0; }
+.ls-name { font-size: 13px; color: #0F172A; font-weight: 500; }
+.ls-code { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #94A3B8; margin-left: 6px; }
+.ls-meta { font-size: 11px; color: #94A3B8; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ls-counts { display: flex; gap: 6px; }
+.ls-counts span { font-size: 10px; padding: 2px 7px; border-radius: 5px; background: #EFF6FF; color: #2563EB; }
 </style>

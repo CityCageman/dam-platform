@@ -3,6 +3,7 @@ package com.dam.lineage.controller;
 import cn.hutool.core.util.StrUtil;
 import com.dam.lineage.entity.*;
 import com.dam.lineage.service.LineagePersistService;
+import com.dam.lineage.service.LineageSearchService;
 import com.dam.lineage.service.LineageService;
 import com.dam.lineage.service.LineageSourceService;
 import com.dam.common.vo.PageResult;
@@ -41,6 +42,23 @@ public class LineageController {
     private final LineageSourceService sourceService;
     /** 血缘精细落库服务 */
     private final LineagePersistService persistService;
+    /** 血缘中文检索服务 */
+    private final LineageSearchService searchService;
+
+    /**
+     * 按中文描述检索血缘（如「医嘱号」）
+     * <p>
+     * 返回命中的字段/表，并附带该表相关的下游报表与数据表，供前端搜索框直接展示与定位。
+     *
+     * @param keyword 关键字（字段注释 / 表注释 / 字段名 / 表名）
+     * @param limit   每类最大条数（默认 20，上限 50）
+     * @return {keyword,total,columns,tables}
+     */
+    @GetMapping("/search")
+    public Result<Map<String, Object>> search(@RequestParam String keyword,
+                                              @RequestParam(required = false) Integer limit) {
+        return Result.success(searchService.search(keyword, limit));
+    }
 
     /**
      * 查询指定资产的血缘关系列表（作为源或目标节点）

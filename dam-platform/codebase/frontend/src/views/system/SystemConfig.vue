@@ -21,36 +21,74 @@
       <!-- 右侧：配置树 -->
       <el-col :span="19" style="height: calc(100vh - 110px);">
         <el-card style="height: 100%; display: flex; flex-direction: column;">
-          <!-- 字典管理（sys_dict_type / sys_dict_data） -->
+          <!-- 字典管理：左侧类型 / 右侧数据（master-detail） -->
           <template v-if="currentType === '__dict__'">
-            <div class="toolbar">
-              <span style="font-weight: 600; font-size: 14px;">字典类型</span>
-              <span style="color: #909399; font-size: 12px; margin-left: 8px;">共 {{ dictTypeTotal }} 个，点击行查看字典数据</span>
-              <div style="flex:1;" />
-              <el-input v-model="dictTypeKeyword" placeholder="搜索编码/名称" clearable style="width: 200px; margin-right: 8px;"
-                @keyup.enter="searchDictTypes" @clear="searchDictTypes" />
-              <el-button size="small" type="primary" @click="openDictTypeForm(null)"><el-icon><Plus /></el-icon> 新增类型</el-button>
-            </div>
-            <div style="flex:1; overflow-y: auto; display: flex; flex-direction: column;">
-              <el-table :data="dictTypes" size="small" stripe highlight-current-row max-height="calc(100vh - 260px)" @row-click="openDictDataDrawer" style="cursor: pointer;">
-                <el-table-column prop="dictTypeCode" label="类型编码" min-width="150" show-overflow-tooltip />
-                <el-table-column prop="dictTypeName" label="类型名称" min-width="130" show-overflow-tooltip />
-                <el-table-column prop="remark" label="备注" min-width="160" show-overflow-tooltip />
-                <el-table-column label="状态" width="70">
-                  <template #default="{ row }"><el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">{{ row.status === 1 ? '启用' : '停用' }}</el-tag></template>
-                </el-table-column>
-                <el-table-column label="操作" width="140">
-                  <template #default="{ row }">
-                    <el-button size="small" text class="dict-op-btn" @click.stop="openDictTypeForm(row)">编辑</el-button>
-                    <el-button size="small" text type="danger" class="dict-op-btn" @click.stop="removeDictType(row)">删除</el-button>
-                  </template>
-                </el-table-column>
-              </el-table>
-              <div style="margin-top: 12px; display: flex; justify-content: flex-end;">
-                <el-pagination v-model:current-page="dictTypePage" v-model:page-size="dictTypePageSize" :total="dictTypeTotal"
-                  layout="total, prev, pager, next, sizes" :page-sizes="[10, 20, 50]" background @change="loadDictTypesPage" />
+            <div class="dict-split">
+              <div class="dict-left">
+                <div class="dict-toolbar">
+                  <b>字典类型</b>
+                  <span>共 {{ dictTypeTotal }} 个</span>
+                  <div style="flex:1" />
+                  <el-input v-model="dictTypeKeyword" placeholder="搜索编码/名称" clearable size="small" style="width: 150px"
+                    @keyup.enter="searchDictTypes" @clear="searchDictTypes" />
+                  <el-button size="small" type="primary" @click="openDictTypeForm(null)"><el-icon><Plus /></el-icon>新增</el-button>
+                </div>
+                <div class="dict-type-list">
+                  <div v-for="row in dictTypes" :key="row.id" class="dict-type-item"
+                       :class="{ active: currentDictType?.id === row.id }" @click="selectDictType(row)">
+                    <div class="dict-type-main">
+                      <b>{{ row.dictTypeName }}</b>
+                      <span>{{ row.dictTypeCode }}</span>
+                    </div>
+                    <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">{{ row.status === 1 ? '启用' : '停用' }}</el-tag>
+                    <div class="dict-type-ops" @click.stop>
+                      <el-button text size="small" @click="openDictTypeForm(row)">编辑</el-button>
+                      <el-button text size="small" type="danger" @click="removeDictType(row)">删除</el-button>
+                    </div>
+                  </div>
+                  <el-empty v-if="!dictTypes.length" description="暂无字典类型" :image-size="56" />
+                </div>
+                <div class="dict-pager">
+                  <el-pagination v-model:current-page="dictTypePage" v-model:page-size="dictTypePageSize" :total="dictTypeTotal"
+                    layout="total, prev, pager, next" :page-sizes="[10, 20, 50]" small background @change="loadDictTypesPage" />
+                </div>
               </div>
-              <el-empty v-if="!dictTypes.length" description="暂无字典类型" :image-size="60" />
+
+              <div class="dict-right">
+                <div class="dict-toolbar">
+                  <b>{{ currentDictType?.dictTypeName || '字典数据' }}</b>
+                  <span v-if="currentDictType">
+                    {{ currentDictType.dictTypeCode }}<template v-if="currentDictType.remark"> · {{ currentDictType.remark }}</template>
+                  </span>
+                  <div style="flex:1" />
+                  <el-button size="small" type="primary" :disabled="!currentDictType" @click="openDictDataForm(null)">
+                    <el-icon><Plus /></el-icon>新增数据
+                  </el-button>
+                </div>
+                <div class="dict-data-table">
+                  <el-table :data="dictDataList" size="small" stripe height="100%" v-loading="dictDataLoading">
+                    <el-table-column prop="dictLabel" label="标签" :width="dictLabelWidth" min-width="110" show-overflow-tooltip />
+                    <el-table-column prop="dictValue" label="值" :width="dictValueWidth" min-width="90" show-overflow-tooltip />
+                    <el-table-column prop="dictExtra" label="扩展值" :width="dictExtraWidth" min-width="80" show-overflow-tooltip />
+                    <el-table-column prop="sortOrder" label="排序" width="60" />
+                    <el-table-column label="默认" width="60"><template #default="{ row }">{{ row.isDefault ? '是' : '' }}</template></el-table-column>
+                    <el-table-column label="状态" width="70">
+                      <template #default="{ row }"><el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">{{ row.status === 1 ? '启用' : '停用' }}</el-tag></template>
+                    </el-table-column>
+                    <el-table-column label="操作" width="130">
+                      <template #default="{ row }">
+                        <el-button size="small" text class="dict-op-btn" @click.stop="openDictDataForm(row)">编辑</el-button>
+                        <el-button size="small" text type="danger" class="dict-op-btn" @click.stop="removeDictData(row)">删除</el-button>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                  <el-empty v-if="currentDictType && !dictDataList.length" description="该类型下暂无字典数据" :image-size="56" />
+                </div>
+                <div class="dict-pager">
+                  <el-pagination v-model:current-page="dictDataPage" v-model:page-size="dictDataPageSize" :total="dictDataTotal"
+                    layout="total, prev, pager, next" :page-sizes="[10, 20, 50]" small background @change="loadDictDataPage" />
+                </div>
+              </div>
             </div>
           </template>
           <!-- 配置树（sys_config） -->
@@ -148,40 +186,6 @@
         <el-button type="primary" @click="submitDictTypeForm">保存</el-button>
       </template>
     </el-dialog>
-
-    <!-- 字典数据抽屉（点击字典类型后弹出，分页展示该类型的数据） -->
-    <el-drawer v-model="dictDataDrawerVisible" :title="`字典数据：${currentDictType?.dictTypeName || ''}`" size="55%" class="dict-data-drawer" @close="handleDictDataDrawerClose">
-      <div class="dict-drawer-body">
-        <div class="dict-drawer-header">
-          <el-tag size="small" type="info">{{ currentDictType?.dictTypeCode }}</el-tag>
-          <span v-if="currentDictType?.remark" style="margin-left: 8px; color: #909399; font-size: 13px;">{{ currentDictType.remark }}</span>
-          <div style="flex:1;" />
-          <el-button size="small" type="primary" @click="openDictDataForm(null)"><el-icon><Plus /></el-icon> 新增数据</el-button>
-        </div>
-        <div class="dict-drawer-table">
-          <el-table :data="dictDataList" size="small" stripe height="100%" v-loading="dictDataLoading">
-            <el-table-column prop="dictLabel" label="标签" :width="dictLabelWidth" min-width="110" show-overflow-tooltip />
-            <el-table-column prop="dictValue" label="值" :width="dictValueWidth" min-width="90" show-overflow-tooltip />
-            <el-table-column prop="dictExtra" label="扩展值" :width="dictExtraWidth" min-width="80" show-overflow-tooltip />
-            <el-table-column prop="sortOrder" label="排序" width="60" />
-            <el-table-column label="默认" width="60"><template #default="{ row }">{{ row.isDefault ? '是' : '' }}</template></el-table-column>
-            <el-table-column label="状态" width="70">
-              <template #default="{ row }"><el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">{{ row.status === 1 ? '启用' : '停用' }}</el-tag></template>
-            </el-table-column>
-            <el-table-column label="操作" width="140">
-              <template #default="{ row }">
-                <el-button size="small" text class="dict-op-btn" @click.stop="openDictDataForm(row)">编辑</el-button>
-                <el-button size="small" text type="danger" class="dict-op-btn" @click.stop="removeDictData(row)">删除</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
-        <div class="dict-drawer-footer">
-          <el-pagination v-model:current-page="dictDataPage" v-model:page-size="dictDataPageSize" :total="dictDataTotal"
-            layout="total, prev, pager, next, sizes" :page-sizes="[10, 20, 50]" background @change="loadDictDataPage" />
-        </div>
-      </div>
-    </el-drawer>
 
     <!-- 字典数据维护弹窗 -->
     <el-dialog v-model="showDictDataForm" :title="isEditDictData ? '编辑字典数据' : '新增字典数据'" width="460px" top="15vh">
@@ -425,7 +429,6 @@ const dictDataPage = ref(1)
 const dictDataPageSize = ref(10)
 const dictDataTotal = ref(0)
 const dictDataLoading = ref(false)
-const dictDataDrawerVisible = ref(false)
 const showDictTypeForm = ref(false)
 const isEditDictType = ref(false)
 const dictTypeForm = ref<any>({})
@@ -475,6 +478,11 @@ async function loadDictTypesPage() {
     const res: any = await catalogApi.getDictTypesPage(dictTypeKeyword.value, dictTypePage.value, dictTypePageSize.value)
     dictTypes.value = res.data?.records || []
     dictTypeTotal.value = res.data?.total || 0
+    // 首次进入或当前选中项已不在列表时，默认选中第一项，右侧直接出数据
+    if (dictTypes.value.length && (!currentDictType.value || !dictTypes.value.some((x: any) => x.id === currentDictType.value.id))) {
+      selectDictType(dictTypes.value[0])
+    }
+    if (!dictTypes.value.length) { currentDictType.value = null; dictDataList.value = []; dictDataTotal.value = 0 }
   } catch (_e) { dictTypes.value = []; dictTypeTotal.value = 0 }
 }
 
@@ -492,20 +500,12 @@ async function loadDictDataPage() {
   finally { dictDataLoading.value = false }
 }
 
-/** 点击字典类型行：右侧抽屉弹出该类型的字典数据（分页） */
-function openDictDataDrawer(row: any) {
+/** 选择左侧字典类型：右侧列表加载该类型的数据 */
+function selectDictType(row: any) {
   if (!row) return
   currentDictType.value = row
   dictDataPage.value = 1
-  dictDataDrawerVisible.value = true
   loadDictDataPage()
-}
-
-/** 关闭抽屉时重置分页状态 */
-function handleDictDataDrawerClose() {
-  dictDataList.value = []
-  dictDataTotal.value = 0
-  dictDataPage.value = 1
 }
 
 function openDictTypeForm(row: any) {
@@ -653,4 +653,23 @@ function selectIcon(icon: string) {
 .tree-icon-img { width: 16px; height: 16px; object-fit: contain; }
 .icon-item:hover { background: #ecf5ff; }
 .icon-item.active { background: #409eff; color: #fff; }
+
+/* ===== 字典管理：左侧类型 / 右侧数据 ===== */
+.dict-split { display: grid; grid-template-columns: 40% 60%; height: 100%; min-height: 0; }
+.dict-left { display: flex; flex-direction: column; min-height: 0; padding-right: 16px; border-right: 1px solid var(--med-border); }
+.dict-right { display: flex; flex-direction: column; min-height: 0; padding-left: 18px; }
+.dict-toolbar { display: flex; align-items: center; gap: 8px; padding: 2px 0 10px; flex-wrap: wrap; }
+.dict-toolbar b { font-size: 14px; color: var(--med-text); }
+.dict-toolbar span { font-size: 11.5px; color: var(--med-text-light); margin-left: 4px; }
+.dict-type-list { flex: 1; min-height: 0; overflow-y: auto; }
+.dict-type-item { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 9px; cursor: pointer; border: 1px solid transparent; }
+.dict-type-item:hover { background: #f5f7fb; }
+.dict-type-item.active { background: var(--med-primary-lighter); border-color: #d6e6ff; }
+.dict-type-main { flex: 1; min-width: 0; }
+.dict-type-main b { display: block; font-size: 12.5px; font-weight: 600; color: var(--med-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dict-type-main span { font-size: 10.5px; color: var(--med-text-light); font-family: ui-monospace, Menlo, monospace; }
+.dict-type-ops { display: none; gap: 0; }
+.dict-type-item:hover .dict-type-ops { display: flex; }
+.dict-pager { display: flex; justify-content: flex-end; padding-top: 10px; }
+.dict-data-table { flex: 1; min-height: 0; overflow: hidden; }
 </style>
