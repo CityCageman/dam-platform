@@ -237,8 +237,9 @@
                     <el-tag :type="row._qualityStatus === 'failed' ? 'danger' : row._qualityStatus === 'pass' ? 'success' : 'info'" size="small">{{ row._qualityLabel || '-' }}</el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column label="操作" width="75" fixed="right">
+                <el-table-column label="操作" width="140" fixed="right">
                   <template #default="{ row }">
+                    <el-button text type="primary" :loading="row._aiRowLoading" @click.stop="aiAnnotateRow(row)">AI 注释</el-button>
                     <el-button text @click.stop="openEditDbTable(row)">
                       <el-icon><Edit /></el-icon>
                     </el-button>
@@ -2660,13 +2661,14 @@ async function loadSchemaStats() {
 }
 
 /** 创建 AI 任务（失败不阻断主流程） */
-async function createAiTask(taskType: string, title: string, row: any): Promise<number | undefined> {
+async function createAiTask(taskType: string, title: string, row: any,
+                            targetType = 'DATASOURCE', targetId?: number): Promise<number | undefined> {
   try {
     const res: any = await catalogApi.createAiTask({
       taskType,
       title,
-      targetType: 'DATASOURCE',
-      targetId: row.id,
+      targetType,
+      targetId: targetId ?? row.id,
       status: 'RUNNING'
     })
     return res.data?.id
@@ -2747,6 +2749,44 @@ async function aiAnnotate(row: any, pendingOnly = true) {
     await finishAiTask(taskId, { status: 'FAILED', totalCount: scanned, acceptedCount: annotated, rejectedCount: 0, errorMessage: String(msg).slice(0, 500) })
   } finally {
     row._aiLoading = false
+    loading.close()
+  }
+}
+
+/** 单表 AI 注释：创建任务 → 生成草稿 → 去任务中心审核 */
+async function aiAnnotateRow(row: any) {
+  if (!row || row._aiRowLoading) return
+  const tableId = Number(row.sourceMetadataId || row.source_metadata_id)
+  if (!tableId) {
+    ElMessage.warning('缺少技术元数据表ID，无法执行单表 AI 注释')
+    return
+  }
+  row._aiRowLoading = true
+  const loading = ElLoading.service({ lock: true, text: `AI 注释：${row.assetName || row.tableName || tableId}`, background: 'rgba(0,0,0,0.25)' })
+  let taskId: number | undefined
+  try {
+    taskId = await createAiTask('COMMENT', `AI 注释 · ${row.assetName || row.tableName || tableId}`, row, 'TABLE', tableId)
+    if (!taskId) throw new Error('任务创建失败')
+    const res: any = await metadataApi.aiAnnotateTable(tableId, taskId)
+    const drafted = res.data?.drafted || 0
+    await finishAiTask(taskId, {
+      status: drafted > 0 ? 'REVIEW' : 'DONE',
+      totalCount: drafted,
+      acceptedCount: 0,
+      rejectedCount: 0
+    })
+    if (drafted > 0) {
+      ElMessage.success('已生成注释草稿，请到「AI 工作台 → 任务中心」审核')
+    } else {
+      ElMessage.warning('AI 未生成有效注释')
+    }
+  } catch (e: any) {
+    if (taskId) {
+      await finishAiTask(taskId, { status: 'FAILED', totalCount: 0, errorMessage: String(e?.message || 'AI 注释失败').slice(0, 500) })
+    }
+    ElMessage.error(e?.message || 'AI 注释失败')
+  } finally {
+    row._aiRowLoading = false
     loading.close()
   }
 }

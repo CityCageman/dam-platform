@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,13 +66,63 @@ public class AiTaskService {
         if (task == null) {
             throw new IllegalArgumentException("任务不存在: " + id);
         }
-        List<AiTaskItem> items = itemMapper.selectList(new LambdaQueryWrapper<AiTaskItem>()
-                .eq(AiTaskItem::getTaskId, id)
-                .orderByAsc(AiTaskItem::getId));
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("task", task);
-        result.put("items", items);
         return result;
+    }
+
+    /**
+     * 任务明细分页
+     */
+    public PageResult<AiTaskItem> itemPage(Long taskId, Integer page, Integer pageSize, String status) {
+        LambdaQueryWrapper<AiTaskItem> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(AiTaskItem::getTaskId, taskId);
+        if (StrUtil.isNotBlank(status)) {
+            wrapper.eq(AiTaskItem::getStatus, status);
+        }
+        wrapper.orderByAsc(AiTaskItem::getId);
+        return PageResult.of(itemMapper.selectPage(new Page<>(page, pageSize), wrapper));
+    }
+
+    /**
+     * 批量采纳/驳回
+     *
+     * @param taskId  任务ID
+     * @param itemIds 指定明细（all=true 时忽略）
+     * @param accept  true=采纳，false=驳回
+     * @param all     true=处理该任务全部 DRAFT 明细
+     * @param reviewer 审核人
+     * @return 处理条数
+     */
+    @Transactional
+    public int reviewBatch(Long taskId, List<Long> itemIds, boolean accept, boolean all, String reviewer) {
+        LambdaQueryWrapper<AiTaskItem> wrapper = new LambdaQueryWrapper<AiTaskItem>()
+                .eq(AiTaskItem::getTaskId, taskId);
+        if (all) {
+            wrapper.eq(AiTaskItem::getStatus, "DRAFT");
+        } else if (itemIds != null && !itemIds.isEmpty()) {
+            wrapper.in(AiTaskItem::getId, itemIds);
+        } else {
+            return 0;
+        }
+        List<AiTaskItem> items = itemMapper.selectList(wrapper);
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        int count = 0;
+        for (AiTaskItem item : items) {
+            if (!"DRAFT".equals(item.getStatus())) {
+                continue;
+            }
+            if (accept) {
+                applyDraft(item);
+            }
+            item.setStatus(accept ? "ACCEPTED" : "REJECTED");
+            item.setReviewedBy(StrUtil.isNotBlank(reviewer) ? reviewer : "system");
+            item.setReviewedAt(now);
+            itemMapper.updateById(item);
+            count++;
+        }
+        refreshTask(taskId);
+        return count;
     }
 
     /**
@@ -155,6 +206,13 @@ public class AiTaskService {
         item.setReviewedAt(now);
         itemMapper.updateById(item);
 
+        refreshTask(taskId);
+    }
+
+    /**
+     * 重新汇总任务进度并更新状态
+     */
+    private void refreshTask(Long taskId) {
         long accepted = itemMapper.selectCount(new LambdaQueryWrapper<AiTaskItem>()
                 .eq(AiTaskItem::getTaskId, taskId).eq(AiTaskItem::getStatus, "ACCEPTED"));
         long rejected = itemMapper.selectCount(new LambdaQueryWrapper<AiTaskItem>()
@@ -168,7 +226,7 @@ public class AiTaskService {
         task.setRejectedCount((int) rejected);
         task.setTotalCount((int) total);
         task.setStatus(accepted + rejected >= total ? "DONE" : "REVIEW");
-        task.setUpdatedAt(now);
+        task.setUpdatedAt(LocalDateTime.now());
         taskMapper.updateById(task);
     }
 

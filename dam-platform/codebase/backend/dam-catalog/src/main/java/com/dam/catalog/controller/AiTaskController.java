@@ -1,12 +1,15 @@
 package com.dam.catalog.controller;
 
 import com.dam.catalog.entity.AiTask;
+import com.dam.catalog.entity.AiTaskItem;
 import com.dam.catalog.service.AiTaskService;
 import com.dam.common.vo.PageResult;
 import com.dam.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -38,6 +41,29 @@ public class AiTaskController {
     @GetMapping("/{id}")
     public Result<Map<String, Object>> detail(@PathVariable Long id) {
         return Result.success(taskService.detail(id));
+    }
+
+    @GetMapping("/{id}/items")
+    public Result<PageResult<AiTaskItem>> items(@PathVariable Long id,
+                                                @RequestParam(defaultValue = "1") Integer page,
+                                                @RequestParam(defaultValue = "20") Integer pageSize,
+                                                @RequestParam(required = false) String status) {
+        return Result.success(taskService.itemPage(id, page, pageSize, status));
+    }
+
+    @PostMapping("/{id}/items/batch-review")
+    public Result<Integer> batchReview(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        boolean accept = !Boolean.FALSE.equals(body.get("accept"))
+                && !"false".equalsIgnoreCase(String.valueOf(body.get("accept")));
+        boolean all = Boolean.TRUE.equals(body.get("all"))
+                || "true".equalsIgnoreCase(String.valueOf(body.get("all")));
+        List<Long> ids = new ArrayList<>();
+        if (body.get("itemIds") instanceof List<?> list) {
+            for (Object o : list) {
+                if (o instanceof Number n) ids.add(n.longValue());
+            }
+        }
+        return Result.success(taskService.reviewBatch(id, ids, accept, all, null));
     }
 
     @PostMapping

@@ -71,6 +71,8 @@ export const catalogApi = {
   getAiTask(id: number) { return request.get(`/catalog/ai/tasks/${id}`) },
   createAiTask(data: any) { return request.post('/catalog/ai/tasks', data) },
   updateAiTaskStatus(id: number, data: any) { return request.post(`/catalog/ai/tasks/${id}/status`, data) },
+  getAiTaskItems(id: number, params: any) { return request.get(`/catalog/ai/tasks/${id}/items`, { params }) },
+  reviewAiTaskItems(id: number, data: any) { return request.post(`/catalog/ai/tasks/${id}/items/batch-review`, data) },
   reviewAiTaskItem(taskId: number, itemId: number, accept: boolean, reviewer?: string) {
     return request.post(`/catalog/ai/tasks/${taskId}/items/${itemId}/review`, null, { params: { accept, reviewer } })
   },
@@ -454,5 +456,9 @@ export const metadataApi = {
     taskId?: number
   }) {
     return request.post('/catalog/metadata/ai-annotate', payload, { timeout: 180000 })
+  },
+  /** 单表 AI 注释草稿（任务中心单行入口） */
+  aiAnnotateTable(tableId: number, taskId: number) {
+    return request.post(`/catalog/metadata/tables/${tableId}/ai-annotate`, { taskId }, { timeout: 180000 })
   }
 }

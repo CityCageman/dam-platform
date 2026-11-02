@@ -70,6 +70,16 @@
 
     <el-drawer v-model="drawer" :title="current?.title || '任务详情'" size="62%" append-to-body>
       <template v-if="current">
+        <div class="drawer-actions">
+          <el-select v-model="itemStatus" placeholder="全部明细" clearable size="small" style="width: 130px;" @change="loadItems">
+            <el-option label="草稿" value="DRAFT" />
+            <el-option label="已采纳" value="ACCEPTED" />
+            <el-option label="已驳回" value="REJECTED" />
+          </el-select>
+          <div style="flex: 1;" />
+          <el-button size="small" type="primary" plain :disabled="!items.length" @click="reviewAll(true)">全部采纳</el-button>
+          <el-button size="small" type="danger" plain :disabled="!items.length" @click="reviewAll(false)">全部驳回</el-button>
+        </div>
         <el-descriptions :column="3" border size="small" style="margin-bottom: 14px;">
           <el-descriptions-item label="类型">{{ typeLabel(current.taskType) }}</el-descriptions-item>
           <el-descriptions-item label="状态">{{ statusLabel(current.status) }}</el-descriptions-item>
@@ -102,6 +112,10 @@
           </el-table-column>
         </el-table>
         <el-empty v-if="!items.length" description="该任务暂无草稿明细" :image-size="60" />
+        <div class="pagination-bar">
+          <el-pagination v-model:current-page="itemPage" v-model:page-size="itemPageSize" :total="itemTotal"
+                         layout="total, prev, pager, next" @change="loadItems" />
+        </div>
       </template>
     </el-drawer>
   </div>
@@ -110,7 +124,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { catalogApi } from '@/api'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const STATUS = [
   { value: 'PENDING', label: '待生成' },
@@ -134,6 +148,10 @@ const query = ref({ status: '', taskType: '', keyword: '', page: 1, pageSize: 20
 const drawer = ref(false)
 const current = ref<any>(null)
 const items = ref<any[]>([])
+const itemTotal = ref(0)
+const itemPage = ref(1)
+const itemPageSize = ref(10)
+const itemStatus = ref('')
 
 const statusLabel = (v: string) => STATUS.find(s => s.value === v)?.label || v || '-'
 const statusTag = (v: string) => v === 'DONE' ? 'success' : v === 'REVIEW' ? 'warning' : v === 'FAILED' ? 'danger' : 'info'
@@ -187,9 +205,30 @@ async function openDetail(row: any) {
   try {
     const res: any = await catalogApi.getAiTask(row.id)
     current.value = res.data?.task
-    items.value = res.data?.items || []
+    itemPage.value = 1
+    itemStatus.value = ''
+    await loadItems()
     drawer.value = true
   } catch (e: any) { ElMessage.error(e.message || '加载任务失败') }
+}
+
+async function loadItems() {
+  if (!current.value) return
+  try {
+    const res: any = await catalogApi.getAiTaskItems(current.value.id, {
+      page: itemPage.value,
+      pageSize: itemPageSize.value,
+      status: itemStatus.value || undefined
+    })
+    items.value = res.data?.records || []
+    itemTotal.value = res.data?.total || 0
+  } catch (_e) { items.value = []; itemTotal.value = 0 }
+}
+
+async function loadTask() {
+  if (!current.value) return
+  const res: any = await catalogApi.getAiTask(current.value.id)
+  current.value = res.data?.task
 }
 
 async function review(item: any, accept: boolean) {
@@ -197,9 +236,28 @@ async function review(item: any, accept: boolean) {
   try {
     await catalogApi.reviewAiTaskItem(current.value.id, item.id, accept)
     ElMessage.success(accept ? '已采纳' : '已驳回')
-    await openDetail(current.value)
+    await loadTask()
+    await loadItems()
     await loadAll()
   } catch (e: any) { ElMessage.error(e.message || '操作失败') }
+}
+
+/** 批量采纳/驳回当前任务全部草稿 */
+async function reviewAll(accept: boolean) {
+  if (!current.value) return
+  try {
+    await ElMessageBox.confirm(
+      `确认${accept ? '采纳' : '驳回'}该任务下全部草稿？采纳后会立即写回业务表。`,
+      '批量审核', { type: 'warning' }
+    )
+    const res: any = await catalogApi.reviewAiTaskItems(current.value.id, { all: true, accept })
+    ElMessage.success(`已处理 ${res.data || 0} 条草稿`)
+    await loadTask()
+    await loadItems()
+    await loadAll()
+  } catch (e: any) {
+    if (e !== 'cancel' && e !== 'close') ElMessage.error(e.message || '批量操作失败')
+  }
 }
 
 onMounted(loadAll)
@@ -207,5 +265,6 @@ onMounted(loadAll)
 
 <style scoped>
 .ai-filter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.drawer-actions { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .progress-text { font-size: 12px; color: var(--med-text-secondary); }
 </style>

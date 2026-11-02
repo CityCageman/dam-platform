@@ -125,6 +125,17 @@ public class MetadataController {
     }
 
     /**
+     * 单表 AI 注释草稿（写入任务中心，人工采纳后生效）
+     */
+    @PostMapping("/tables/{tableId}/ai-annotate")
+    public Result<Map<String, Object>> aiAnnotateTable(@PathVariable Long tableId,
+                                                       @RequestBody(required = false) Map<String, Object> body) {
+        Long taskId = body != null && body.get("taskId") instanceof Number n ? n.longValue() : null;
+        String token = cn.dev33.satoken.context.SaHolder.getRequest().getHeader("token");
+        return Result.success(metadataAiService.annotateTable(tableId, taskId, token));
+    }
+
+    /**
      * 技术元数据表详情（含字段与管理元数据）
      */
     @GetMapping("/tables/{tableId}")

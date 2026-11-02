@@ -237,6 +237,54 @@ public class MetadataAiService {
         }
     }
 
+    /**
+     * 单表 AI 注释草稿（任务中心单行 AI 入口）
+     *
+     * @param tableId 表ID
+     * @param taskId  任务ID
+     * @param token   登录 token
+     * @return {drafted, tableName}
+     */
+    @Transactional
+    public Map<String, Object> annotateTable(Long tableId, Long taskId, String token) {
+        if (taskId == null) {
+            throw new BusinessException("单表 AI 注释需要 taskId");
+        }
+        MetadataTable table = tableMapper.selectById(tableId);
+        if (table == null) {
+            throw new BusinessException("表不存在: " + tableId);
+        }
+        String context = buildContext(List.of(table));
+        String raw = callAgent(buildPrompt(context), token);
+        List<Map<String, Object>> items = parse(raw);
+        int drafted = 0;
+        for (Map<String, Object> it : items) {
+            if (!normName(str(it.get("tableName"))).equals(normName(table.getTableName()))) {
+                continue;
+            }
+            Map<String, Object> data = new LinkedHashMap<>();
+            if (StrUtil.isNotBlank(str(it.get("tableComment")))) data.put("tableComment", str(it.get("tableComment")));
+            if (StrUtil.isNotBlank(str(it.get("subjectDomain")))) data.put("subjectDomain", str(it.get("subjectDomain")));
+            if (StrUtil.isNotBlank(str(it.get("securityLevel")))) data.put("securityLevel", str(it.get("securityLevel")));
+            if (data.isEmpty()) break;
+            AiTaskItem item = new AiTaskItem();
+            item.setTaskId(taskId);
+            item.setItemType("COMMENT");
+            item.setTargetId(table.getId());
+            item.setTargetName(table.getTableName());
+            item.setDraftContent(JSONUtil.toJsonStr(data));
+            item.setStatus("DRAFT");
+            item.setCreatedAt(LocalDateTime.now());
+            aiTaskItemMapper.insert(item);
+            drafted++;
+            break;
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("drafted", drafted);
+        result.put("tableName", table.getTableName());
+        return result;
+    }
+
     /** 统一返回结构 */
     private Map<String, Object> batchResult(long total, int processed, int annotated, int domainAnnotated,
                                             int levelAnnotated, int drafted, Long nextCursor, boolean hasMore,
