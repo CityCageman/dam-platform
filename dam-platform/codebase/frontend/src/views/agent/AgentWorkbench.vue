@@ -354,7 +354,7 @@ function renderCharts() {
   const series = acceptanceSeries()
   const categories = series.length ? series.map(x => x.name) : ['暂无']
   const values = series.length ? series.map(x => x.value) : [0]
-  if (evalChart.value) {
+  if (evalChart.value && evalChart.value.clientWidth > 0) {
     if (!evalInstance) evalInstance = echarts.init(evalChart.value)
     evalInstance.setOption({
       grid: { left: 42, right: 20, top: 20, bottom: 30 },
@@ -364,7 +364,7 @@ function renderCharts() {
       series: [{ type: 'line', data: values, smooth: true, symbolSize: 6, lineStyle: { color: '#16A34A', width: 2 }, itemStyle: { color: '#16A34A' }, areaStyle: { color: 'rgba(22,163,74,.08)' } }]
     }, true)
   }
-  if (miniChart.value) {
+  if (miniChart.value && miniChart.value.clientWidth > 0) {
     if (!miniInstance) miniInstance = echarts.init(miniChart.value)
     miniInstance.setOption({
       grid: { left: 4, right: 4, top: 8, bottom: 4 },
@@ -372,11 +372,12 @@ function renderCharts() {
       yAxis: { type: 'value', show: false, max: 100 },
       series: [{ type: 'line', data: values, smooth: true, symbol: 'none', lineStyle: { color: '#16A34A', width: 2 }, areaStyle: { color: 'rgba(22,163,74,.08)' } }]
     }, true)
+    miniInstance.resize()
   }
 }
 
 function onTabChange(name: any) {
-  if (name === 'eval') nextTick(renderCharts)
+  if (name === 'eval') nextTick(() => { renderCharts(); evalInstance?.resize() })
 }
 
 function openKnowledge(k: any) {
