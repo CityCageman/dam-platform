@@ -29,7 +29,6 @@ PID_DIR="$RUN_DIR/pids"
 
 SERVICES=(auth gateway catalog lineage standard quality security lifecycle operations agent)
 FRONTEND_PORT=3000
-GATEWAY_PORT=8080
 
 NO_BUILD=0
 MIGRATE=0
@@ -233,7 +232,6 @@ status_all() {
   printf '%-14s %-6s %-8s %-10s %s\n' "服务" "端口" "进程" "监听" "HTTP"
   for s in "${SERVICES[@]}"; do
     p="$(port_for "$s")"
-    [ "$s" = "gateway" ] && p="$(gateway_port)"
     pid="未运行"
     pid_alive "$PID_DIR/dam-$s.pid" && pid="运行中"
     port_state="未监听"
@@ -296,22 +294,6 @@ run_migrations() {
   msg "v4/v5/v7 迁移完成（v6 请按 db/v6_lineage_identity_README.md 单独执行）"
 }
 
-gateway_port() { cat "$RUN_DIR/gateway.port" 2>/dev/null || echo 8080; }
-
-resolve_gateway_port() {
-  GATEWAY_PORT="${DAM_GATEWAY_PORT:-8080}"
-  if port_in_use "$GATEWAY_PORT"; then
-    if [ "$GATEWAY_PORT" = "8080" ]; then
-      warn "端口 8080 已被占用（可能是本机 nginx），改用 18080 启动网关"
-      GATEWAY_PORT=18080
-    fi
-    if port_in_use "$GATEWAY_PORT"; then
-      die "端口 $GATEWAY_PORT 也被占用，请释放端口或设置 DAM_GATEWAY_PORT"
-    fi
-  fi
-  echo "$GATEWAY_PORT" > "$RUN_DIR/gateway.port"
-}
-
 start_backend() {
   if ls "$PID_DIR"/dam-*.pid "$PID_DIR"/frontend.pid >/dev/null 2>&1; then
     warn "检测到上次启动的进程，先停止..."
@@ -320,7 +302,6 @@ start_backend() {
   local s p
   for s in "${SERVICES[@]}"; do
     p="$(port_for "$s")"
-    [ "$s" = "gateway" ] && p="$GATEWAY_PORT"
     if port_in_use "$p"; then
       die "端口 $p 已被占用（dam-$s），请先停止占用进程：lsof -iTCP:$p -sTCP:LISTEN"
     fi
@@ -328,13 +309,8 @@ start_backend() {
 
   for s in "${SERVICES[@]}"; do
     msg "启动 dam-$s ..."
-    if [ "$s" = "gateway" ]; then
-      ( export SERVER_PORT="$GATEWAY_PORT"; exec java -Xmx512m -jar "$BACKEND/dam-$s/target/dam-$s-1.0.0-exec.jar" ) \
-        > "$LOG_DIR/dam-$s.log" 2>&1 &
-    else
-      nohup java -Xmx512m -jar "$BACKEND/dam-$s/target/dam-$s-1.0.0-exec.jar" \
-        > "$LOG_DIR/dam-$s.log" 2>&1 &
-    fi
+    nohup java -Xmx512m -jar "$BACKEND/dam-$s/target/dam-$s-1.0.0-exec.jar" \
+      > "$LOG_DIR/dam-$s.log" 2>&1 &
     echo $! > "$PID_DIR/dam-$s.pid"
     sleep 2
     if ! pid_alive "$PID_DIR/dam-$s.pid"; then
@@ -346,7 +322,7 @@ start_backend() {
   done
 
   msg "等待网关就绪 ..."
-  if ! wait_http "http://127.0.0.1:$GATEWAY_PORT/api/auth/public-key" 120; then
+  if ! wait_http "http://127.0.0.1:8080/api/auth/public-key" 120; then
     err "网关未在 120 秒内就绪，最近日志："
     tail -n 40 "$LOG_DIR/dam-gateway.log" || true
     tail -n 20 "$LOG_DIR/dam-auth.log" || true
@@ -365,7 +341,7 @@ start_frontend() {
       ( cd "$FRONTEND" && npm install --cache "$RUN_DIR/npm-cache" )
   fi
   msg "启动前端 Vite ..."
-  VITE_PROXY_TARGET="http://127.0.0.1:$GATEWAY_PORT" nohup node "$FRONTEND/node_modules/vite/bin/vite.js" --host 0.0.0.0 --port "$FRONTEND_PORT" --strictPort \
+  nohup node "$FRONTEND/node_modules/vite/bin/vite.js" --host 0.0.0.0 --port "$FRONTEND_PORT" --strictPort \
     > "$LOG_DIR/frontend.log" 2>&1 &
   echo $! > "$PID_DIR/frontend.pid"
   sleep 2
@@ -398,14 +374,13 @@ start_all() {
   run_migrations
   check_schema
   build_backend
-  resolve_gateway_port
   start_backend
   start_frontend
 
   echo
   msg "本地环境已启动"
   echo "  前端：http://localhost:$FRONTEND_PORT"
-  echo "  网关：http://127.0.0.1:$GATEWAY_PORT"
+  echo "  网关：http://127.0.0.1:8080"
   echo "  演示账号：admin / admin123（以实际库为准）"
   echo "  日志：$LOG_DIR/"
   echo "  停止：$0 stop"
