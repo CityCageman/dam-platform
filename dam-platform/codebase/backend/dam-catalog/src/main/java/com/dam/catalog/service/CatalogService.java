@@ -683,6 +683,35 @@ public class CatalogService {
     }
 
     /**
+     * 确保 Schema 记录存在（metadata_schema），返回 schema_id。
+     * <p>
+     * metadata_table 没有 schema_name 列，schema 只能通过 schema_id 关联；
+     * 资产注册时如果只把 schemaName 塞进临时字段而不落 schema_id，后续按 Schema 查询必然为空。
+     */
+    private Long ensureSchema(Long dataSourceId, String schemaName) {
+        String name = truncate(schemaName, 50);
+        if (dataSourceId == null || StrUtil.isBlank(name)) return null;
+        MetadataSchema ms = schemaMapper.selectOne(
+                new LambdaQueryWrapper<MetadataSchema>()
+                        .eq(MetadataSchema::getDatasourceId, dataSourceId)
+                        .eq(MetadataSchema::getSchemaName, name)
+                        .last("LIMIT 1"));
+        if (ms != null) return ms.getId();
+        ms = new MetadataSchema();
+        ms.setDatasourceId(dataSourceId);
+        ms.setSchemaName(name);
+        ms.setSchemaType("DATABASE");
+        ms.setStatus(1);
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        ms.setCreatedAt(now);
+        ms.setUpdatedAt(now);
+        ms.setCreatedBy(currentUser());
+        ms.setUpdatedBy(currentUser());
+        schemaMapper.insert(ms);
+        return ms.getId();
+    }
+
+    /**
      * 确保技术元数据表记录存在（metadata_table），返回其ID
      * <p>
      * 职责分离：资产通过 source_metadata_type/source_metadata_id 多态外键
@@ -697,16 +726,28 @@ public class CatalogService {
      */
     private Long ensureMetadataTable(String tableName, String tableType, String schemaName,
                                      Long dataSourceId, String tableComment) {
-        // 1. 尝试按 数据源ID + 表名 查找已存在的技术元数据表
+        // 0. 解析/创建 Schema，metadata_table.schema_id 才是 schema 归属的真实落库位置
+        Long schemaId = ensureSchema(dataSourceId, schemaName);
+        // 1. 优先按 数据源ID + SchemaID + 表名 查找；兼容旧数据 schema_id 为空/0 的记录
         MetadataTable mt = metadataTableMapper.selectOne(
                 new LambdaQueryWrapper<MetadataTable>()
                         .eq(MetadataTable::getTableName, tableName)
                         .eq(dataSourceId != null, MetadataTable::getDatasourceId, dataSourceId)
+                        .eq(schemaId != null, MetadataTable::getSchemaId, schemaId)
                         .last("LIMIT 1"));
-        // 2. 不存在则新建
+        if (mt == null && schemaId != null) {
+            mt = metadataTableMapper.selectOne(
+                    new LambdaQueryWrapper<MetadataTable>()
+                            .eq(MetadataTable::getTableName, tableName)
+                            .eq(dataSourceId != null, MetadataTable::getDatasourceId, dataSourceId)
+                            .and(w -> w.isNull(MetadataTable::getSchemaId).or().eq(MetadataTable::getSchemaId, 0L))
+                            .last("LIMIT 1"));
+        }
+        // 2. 不存在则新建；存在但 schema 为空时补写
         if (mt == null) {
             mt = new MetadataTable();
             mt.setDatasourceId(dataSourceId);
+            mt.setSchemaId(schemaId);
             mt.setTableName(tableName);
             mt.setTableType(tableType != null ? tableType.toUpperCase() : "TABLE");
             mt.setTableComment(tableComment);
@@ -721,6 +762,11 @@ public class CatalogService {
             mt.setCreatedBy("system");
             mt.setUpdatedBy("system");
             metadataTableMapper.insert(mt);
+        } else if (schemaId != null && !schemaId.equals(mt.getSchemaId())) {
+            mt.setSchemaId(schemaId);
+            mt.setUpdatedAt(java.time.LocalDateTime.now());
+            mt.setUpdatedBy("system");
+            metadataTableMapper.updateById(mt);
         }
         return mt.getId();
     }
@@ -842,9 +888,28 @@ public class CatalogService {
         if (StrUtil.isNotBlank(assetType)) {
             wrapper.eq(DamAsset::getSourceMetadataType, assetType.toUpperCase());
         }
-        // 按 Schema 过滤（元数据页左侧选择 Schema 后收窄表列表）
+        // 按 Schema 过滤：asset_info 没有 schema_name 列（schemaName 是 @TableField(exist=false) 的兼容字段），
+        // 必须先经 metadata_schema → metadata_table 找到技术元数据表 ID，再按 source_metadata_id 收敛资产。
         if (StrUtil.isNotBlank(schemaName)) {
-            wrapper.eq(DamAsset::getSchemaName, schemaName);
+            List<MetadataSchema> schemas = schemaMapper.selectList(
+                    new LambdaQueryWrapper<MetadataSchema>()
+                            .eq(MetadataSchema::getSchemaName, schemaName)
+                            .eq(dataSourceId != null, MetadataSchema::getDatasourceId, dataSourceId));
+            if (schemas.isEmpty()) {
+                wrapper.eq(DamAsset::getId, -1L);
+            } else {
+                List<Long> schemaIds = schemas.stream().map(MetadataSchema::getId).collect(Collectors.toList());
+                List<MetadataTable> schemaTables = metadataTableMapper.selectList(
+                        new LambdaQueryWrapper<MetadataTable>()
+                                .in(MetadataTable::getSchemaId, schemaIds)
+                                .eq(dataSourceId != null, MetadataTable::getDatasourceId, dataSourceId));
+                if (schemaTables.isEmpty()) {
+                    wrapper.eq(DamAsset::getId, -1L);
+                } else {
+                    Set<Long> tableIds = schemaTables.stream().map(MetadataTable::getId).collect(Collectors.toSet());
+                    wrapper.in(DamAsset::getSourceMetadataId, tableIds);
+                }
+            }
         }
         // 按数据源过滤：优先 dataSourceId，其次按 databaseName 解析数据源后按 data_source_id 过滤
         if (dataSourceId != null) {
