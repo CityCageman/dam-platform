@@ -4,7 +4,7 @@
     class="agent-ball"
     :class="{ 'is-dragging': dragging }"
     :style="{ left: pos.x + 'px', top: pos.y + 'px' }"
-    title="智能助手"
+    title="AI 助手"
     @pointerdown="onPointerDown"
     @click="onClick"
   >
@@ -17,7 +17,7 @@
       <div class="agent-panel__head">
         <div class="agent-panel__title">
           <el-icon><ChatDotRound /></el-icon>
-          <span>智能助手</span>
+          <span>AI 助手</span>
         </div>
         <el-icon class="agent-panel__close" @click="open = false"><Close /></el-icon>
       </div>

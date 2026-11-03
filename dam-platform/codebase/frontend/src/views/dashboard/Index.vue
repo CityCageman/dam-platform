@@ -125,7 +125,7 @@ const entries = [
   { title: '安全管控', desc: '分级分类与脱敏策略', path: '/security', icon: 'Lock', color: '#ef4444' },
   { title: '生命周期', desc: '冷热分层与归档清理', path: '/lifecycle', icon: 'Timer', color: '#f59e0b' },
   { title: '工单中心', desc: '治理工单协同处理', path: '/operations', icon: 'Tickets', color: '#8b5cf6' },
-  { title: '智能助手', desc: 'AI 辅助治理问答', path: '/agent', icon: 'ChatDotRound', color: '#0ea5e9' }
+  { title: 'AI 工作台', desc: '任务 · 知识 · 评估', path: '/agent', icon: 'ChatDotRound', color: '#0ea5e9' }
 ]
 
 const trendChart = shallowRef<HTMLElement>()

@@ -28,7 +28,7 @@
     </div>
 
     <!-- 画布 -->
-    <div ref="containerRef" class="lg-canvas">
+    <div ref="containerRef" class="lg-canvas" :style="{ height: canvasHeight + 'px' }">
       <svg ref="svgRef" width="100%" height="100%"></svg>
       <div v-if="loading" class="lg-mask"><el-icon class="is-loading"><Loading /></el-icon> 加载中...</div>
       <div v-if="!loading && !nodes.length" class="lg-mask">该节点暂无血缘关系</div>
@@ -76,6 +76,7 @@ const emit = defineEmits<{
 // ==================== 状态 ====================
 const containerRef = ref<HTMLElement>()
 const svgRef = ref<SVGSVGElement>()
+const canvasHeight = ref(props.height)
 const nodes = ref<any[]>([])
 const edges = ref<any[]>([])
 const loading = ref(false)
@@ -123,6 +124,22 @@ const layerFilter = ref<string[]>([])
 const crossOnly = ref(false)
 const direction = ref('')
 const isExternal = computed(() => Array.isArray(props.externalNodes))
+
+const LAYER_LABEL_MAP: Record<string, string> = {
+  SOURCE: '源库', ODS: 'ODS', DWD: 'DWD', DIM: 'DIM', DWS: 'DWS', ADS: 'ADS', REPORT: '报表'
+}
+const TYPE_LABEL_MAP: Record<string, string> = {
+  TABLE: '数据表', REPORT: '报表', VIEW: '视图', PROCEDURE: '存储过程', DICT: '字典表',
+  ETL_JOB: 'ETL 作业', CTE: 'CTE', FIELD: '字段'
+}
+function truncate(v: string, n: number) {
+  return v.length > n ? v.slice(0, n - 1) + '…' : v
+}
+function nodeMeta(d: any) {
+  const layer = d.layer ? (LAYER_LABEL_MAP[d.layer] || d.layer) : (TYPE_LABEL_MAP[d.type] || d.type || '节点')
+  const count = d.fieldCount ?? d.columnCount
+  return count ? `${layer} · ${count} 字段` : layer
+}
 
 function nodeColor(d: any): string {
   if (d.type === 'FIELD') return '#059669'
@@ -173,12 +190,12 @@ function loadExternal() {
 // ==================== 布局计算（dagre 分层布局，自动最小化连线交叉） ====================
 // 六列泳道（DIM 合并进 DWD 列，保持 6 列）
 const LANES = [
-  { key: 'SOURCE', label: '源库' },
-  { key: 'ODS', label: 'ODS' },
-  { key: 'DWD', label: 'DWD / DIM' },
-  { key: 'DWS', label: 'DWS' },
-  { key: 'ADS', label: 'ADS' },
-  { key: 'REPORT', label: '报表' }
+  { key: 'REPORT', label: '报表', en: 'REPORT', color: '#EC4899', bg: '#FDF2F8' },
+  { key: 'ADS', label: 'ADS 应用层', en: 'ADS', color: '#7C3AED', bg: '#F5F3FF' },
+  { key: 'DWS', label: 'DWS 汇总层', en: 'DWS', color: '#2563EB', bg: '#EFF6FF' },
+  { key: 'DWD', label: 'DWD / DIM 明细层', en: 'DWD', color: '#0D9488', bg: '#F0FDFA' },
+  { key: 'ODS', label: 'ODS 贴源层', en: 'ODS', color: '#D97706', bg: '#FFFBEB' },
+  { key: 'SOURCE', label: '源库', en: 'SOURCE', color: '#64748B', bg: '#F1F5F9' }
 ]
 const LANE_KEYS = LANES.map(l => l.key)
 let laneMode = false
@@ -192,7 +209,7 @@ function computeLayout(nodeList: any[], edgeList: any[]) {
   const g = new dagre.graphlib.Graph()
   g.setGraph({ rankdir: 'LR', nodesep: 50, ranksep: 110, marginx: 30, marginy: 30 })
   g.setDefaultEdgeLabel(() => ({}))
-  nodeList.forEach(n => g.setNode(String(n.id), { width: 140, height: 40 }))
+  nodeList.forEach(n => g.setNode(String(n.id), { width: 200, height: 64 }))
   edgeList.forEach(e => {
     const s = String(e.source), t = String(e.target)
     if (s !== t && g.hasNode(s) && g.hasNode(t)) g.setEdge(s, t)
@@ -219,17 +236,17 @@ function computeLaneLayout(nodeList: any[]) {
     groups.get(key)!.push(n)
   }
   const maxCount = Math.max(1, ...Array.from(groups.values()).map(a => a.length))
-  const laneGap = 280
-  const nodeGap = 64
-  const height = Math.max(420, maxCount * nodeGap + 150)
+  const laneGap = 250
+  const nodeGap = 78
+  const height = Math.max(460, maxCount * nodeGap + 180)
   const out = new Map<string, { x: number; y: number }>()
   LANES.forEach((lane, i) => {
     const list = groups.get(lane.key) || []
-    const x = 130 + i * laneGap
-    const startY = 80 + (maxCount - list.length) * nodeGap / 2
+    const x = 140 + i * laneGap
+    const startY = 100 + (maxCount - list.length) * nodeGap / 2
     list.forEach((n: any, j: number) => out.set(String(n.id), { x, y: startY + j * nodeGap }))
   })
-  return { out, paths: new Map<string, { x: number; y: number }[]>(), laneMode: true, height, laneGap, laneX0: 130 }
+  return { out, paths: new Map<string, { x: number; y: number }[]>(), laneMode: true, height, laneGap, laneX0: 140 }
 }
 
 /** 计算每个节点距离中心节点的层级（BFS，用于背景带与透明度分级） */
@@ -301,8 +318,9 @@ function render() {
   if (!nodes.value.length) return
 
   const width = containerRef.value?.clientWidth || 700
-  const height = containerRef.value?.clientHeight || 400
   const layout: any = computeLayout(nodes.value, edges.value)
+  canvasHeight.value = Math.max(props.height, layout.height ? layout.height + 90 : props.height)
+  const height = canvasHeight.value
   positions = layout.out
   edgePaths = layout.paths
   laneMode = !!layout.laneMode
@@ -314,25 +332,42 @@ function render() {
   const g = svg.append('g')
 
   if (laneMode) {
-    // 六列泳道背景与列标题
+    // 六列泳道：顶部卡片式列头 + 浅色列背景
+    const laneW = 230
     LANES.forEach((lane, i) => {
-      const x = 130 + i * 280
+      const x = 140 + i * 250
       g.append('rect')
-        .attr('x', x - 110)
-        .attr('y', 24)
-        .attr('width', 220)
-        .attr('height', laneHeight)
-        .attr('fill', i % 2 === 0 ? '#eef3f8' : '#f8fafc')
-        .attr('rx', 10)
+        .attr('x', x - laneW / 2)
+        .attr('y', 10)
+        .attr('width', laneW)
+        .attr('height', 44)
+        .attr('fill', lane.bg)
+        .attr('stroke', lane.color + '33')
+        .attr('rx', 9)
       g.append('text')
-        .attr('x', x)
-        .attr('y', 14)
-        .attr('text-anchor', 'middle')
-        .attr('font-size', 11)
+        .attr('x', x - laneW / 2 + 14)
+        .attr('y', 31)
+        .attr('font-size', 12)
         .attr('font-weight', 700)
-        .attr('fill', '#64748b')
+        .attr('fill', lane.color)
         .attr('pointer-events', 'none')
         .text(lane.label)
+      g.append('text')
+        .attr('x', x - laneW / 2 + 14)
+        .attr('y', 45)
+        .attr('font-size', 9)
+        .attr('fill', lane.color)
+        .attr('fill-opacity', 0.65)
+        .attr('pointer-events', 'none')
+        .text(lane.en)
+      g.append('rect')
+        .attr('x', x - laneW / 2)
+        .attr('y', 64)
+        .attr('width', laneW)
+        .attr('height', laneHeight)
+        .attr('fill', lane.bg)
+        .attr('fill-opacity', 0.45)
+        .attr('rx', 10)
     })
   } else {
   // 层级背景带（有中心按 BFS 层级；无中心按 dagre 分层 x 坐标，从左到右交替着色）
@@ -387,7 +422,15 @@ function render() {
       g.attr('transform', event.transform)
     })
   svg.call(zoom as any)
-  if (zoomTransform) svg.call(zoom.transform as any, zoomTransform)
+  if (zoomTransform) {
+    svg.call(zoom.transform as any, zoomTransform)
+  } else if (laneMode) {
+    const contentWidth = 6 * 250 + 40
+    if (width < contentWidth) {
+      const scale = Math.max(0.55, (width - 16) / contentWidth)
+      svg.call(zoom.transform as any, d3.zoomIdentity.translate(8, 0).scale(scale))
+    }
+  }
 
   // 点击空白取消高亮（仅当点击目标是 svg 背景或背景带时，节点点击由 onNodeClick 处理）
   svg.on('click', (event: any) => {
@@ -457,8 +500,8 @@ function render() {
         onNodeClick(d)
       }
     }) as any
-  const NODE_W = 140
-  const NODE_H = 40
+  const NODE_W = 200
+  const NODE_H = 64
   const node = g.append('g')
     .selectAll('g')
     .data(nodes.value)
@@ -473,30 +516,52 @@ function render() {
     .on('dblclick', (_ev: any, d: any) => onNodeDblClick(d))
     .call(dragBehavior)
 
+  // 卡片：白底 + 左侧层级色条 + 名称/元信息 + 右侧圆点
   node.append('rect')
-    .attr('class', 'lg-node-rect')
+    .attr('class', 'lg-node-card')
     .attr('x', -NODE_W / 2)
     .attr('y', -NODE_H / 2)
     .attr('width', NODE_W)
     .attr('height', NODE_H)
-    .attr('rx', 8)
+    .attr('rx', 10)
+    .attr('fill', '#ffffff')
+    .attr('stroke', (d: any) => d.isCenter ? nodeColor(d) : '#E2E8F0')
+    .attr('stroke-width', (d: any) => d.isCenter ? 2.5 : 1)
+
+  node.append('rect')
+    .attr('x', -NODE_W / 2)
+    .attr('y', -NODE_H / 2)
+    .attr('width', 5)
+    .attr('height', NODE_H)
+    .attr('rx', 2)
     .attr('fill', (d: any) => nodeColor(d))
-    .attr('fill-opacity', (d: any) => {
-      if (d.isCenter) return 1
-      const r = rankMap.get(String(d.id)) ?? 1
-      return Math.max(0.5, 1 - r * 0.15)
-    })
-    .attr('stroke', (d: any) => d.isCenter ? '#d4a017' : '#ffffff')
-    .attr('stroke-width', (d: any) => d.isCenter ? 3 : 1.5)
 
   node.append('text')
     .attr('class', 'lg-label')
-    .text((d: any) => d.label)
-    .attr('text-anchor', 'middle')
-    .attr('dy', 5)
-    .attr('font-size', (d: any) => d.isCenter ? 14 : 12)
-    .attr('font-weight', (d: any) => d.isCenter ? 700 : 500)
-    .attr('fill', '#fff')
+    .attr('x', -NODE_W / 2 + 16)
+    .attr('y', -4)
+    .attr('text-anchor', 'start')
+    .attr('font-size', 12)
+    .attr('font-weight', 600)
+    .attr('fill', '#0F172A')
+    .style('pointer-events', 'none')
+    .text((d: any) => truncate(d.label || d.name || '', 22))
+
+  node.append('text')
+    .attr('class', 'lg-meta')
+    .attr('x', -NODE_W / 2 + 16)
+    .attr('y', 16)
+    .attr('text-anchor', 'start')
+    .attr('font-size', 10)
+    .attr('fill', '#64748B')
+    .style('pointer-events', 'none')
+    .text((d: any) => nodeMeta(d))
+
+  node.append('circle')
+    .attr('cx', NODE_W / 2 - 14)
+    .attr('cy', 0)
+    .attr('r', 4)
+    .attr('fill', (d: any) => nodeColor(d))
     .style('pointer-events', 'none')
 
   // tooltip（原生 title，展示全名与关联条件）
@@ -642,11 +707,11 @@ defineExpose({ reload: loadGraph, resetView })
 }
 .lg-canvas {
   position: relative;
-  height: v-bind('props.height + "px"');
   border: 1px solid #e4e7ed;
-  border-radius: 0 0 4px 4px;
+  border-radius: 0 0 10px 10px;
   overflow: hidden;
-  background: #fcfcfd;
+  background: #fbfcfe;
+  transition: height .2s ease;
 }
 .lg-mask {
   position: absolute;
@@ -660,7 +725,7 @@ defineExpose({ reload: loadGraph, resetView })
 }
 .lg-legend {
   position: absolute;
-  top: 10px;
+  bottom: 10px;
   right: 10px;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid #e4e7ed;

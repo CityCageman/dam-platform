@@ -2,7 +2,7 @@
   <div class="agent-chat">
     <div v-if="!hideHeader" class="chat-header">
       <div>
-        <div class="chat-title">智能助手</div>
+        <div class="chat-title">AI 助手</div>
         <div class="chat-subtitle">基于大模型的智能问答</div>
       </div>
       <el-button v-if="sending" size="small" @click="stop">停止生成</el-button>

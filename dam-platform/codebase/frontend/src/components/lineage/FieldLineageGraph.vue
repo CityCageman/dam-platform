@@ -1,125 +1,122 @@
 <template>
   <div class="flg-wrap">
-    <div v-if="!fields.length" class="flg-empty">该表暂无字段级血缘，或请先在「AI 识别」中识别字段级关系</div>
-    <div v-else ref="chartRef" class="flg-canvas" />
+    <div class="flg-toolbar">
+      <el-input v-model="keyword" placeholder="搜索字段/表/表达式" clearable size="small" style="width: 220px;" />
+      <el-select v-model="sourceTable" placeholder="来源表" clearable filterable size="small" style="width: 180px;">
+        <el-option v-for="t in sourceTables" :key="t" :label="t" :value="t" />
+      </el-select>
+      <el-select v-model="targetTable" placeholder="目标表" clearable filterable size="small" style="width: 180px;">
+        <el-option v-for="t in targetTables" :key="t" :label="t" :value="t" />
+      </el-select>
+      <span class="flg-count">{{ filtered.length }} 条映射</span>
+      <el-button size="small" text type="primary" @click="resetFilters">重置</el-button>
+    </div>
+
+    <div v-if="filtered.length" class="flg-list">
+      <div v-for="group in grouped" :key="group.table" class="flg-group">
+        <div class="flg-group-head">
+          <span class="flg-group-title">{{ group.table }}</span>
+          <span class="flg-group-count">{{ group.items.length }} 条</span>
+        </div>
+        <div class="flg-grid">
+          <div v-for="(f, i) in group.items" :key="i" class="flg-card">
+            <div class="flg-side">
+              <b :title="sourceTableName(f)">{{ f.sourceColumnName || '-' }}</b>
+              <span :title="sourceTableName(f)">{{ sourceTableName(f) }}</span>
+            </div>
+            <div class="flg-flow">
+              <span class="flg-map">{{ mappingLabel(f.mappingTypeId) }}</span>
+              <span class="flg-arrow">→</span>
+              <span v-if="f.transformExpression" class="flg-expr" :title="f.transformExpression">{{ f.transformExpression }}</span>
+              <span v-else class="flg-expr muted">直接映射</span>
+            </div>
+            <div class="flg-side target">
+              <b :title="targetTableName(f)">{{ f.targetColumnName || '-' }}</b>
+              <span :title="targetTableName(f)">{{ targetTableName(f) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <el-empty v-else description="没有匹配的字段级血缘，请调整筛选条件" :image-size="56" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick } from 'vue'
-import * as echarts from 'echarts'
-import * as dagre from 'dagre'
+import { ref, computed } from 'vue'
 
 const props = defineProps<{ fields: any[] }>()
 
-const chartRef = ref<HTMLElement>()
-let chart: any = null
+const keyword = ref('')
+const sourceTable = ref('')
+const targetTable = ref('')
 
-function render() {
-  const el = chartRef.value
-  if (!el) return
-  if (el.clientWidth === 0 || el.clientHeight === 0) {
-    // 容器尚未完成布局（Tab 切换/抽屉展开瞬间），延迟重试直到尺寸就绪
-    setTimeout(render, 80)
-    return
-  }
-  if (!chart) chart = echarts.init(el)
+const mappingLabels: Record<string, string> = {
+  DIRECT: '直接映射', CALC: '计算映射', JOIN: '关联映射', FILTER: '过滤映射',
+  AGGREGATE: '聚合映射', FUNCTION: '函数转换', CASE: '条件判断'
+}
 
-  const fields = props.fields || []
-  if (!fields.length) { chart.clear(); return }
+function mappingLabel(v: string) {
+  return mappingLabels[v] || v || '映射'
+}
 
-  // 表 → 分类索引（颜色区分不同表）
-  const tableIndex = new Map<string, number>()
-  const tableName = (v: any) => (v || '').toString()
-  const nodeMap = new Map<string, any>()
-  const links: any[] = []
+function sourceTableName(f: any) {
+  return f.sourceTableName || (f.sourceTableId ? `表#${f.sourceTableId}` : '未知来源')
+}
 
-  for (const f of fields) {
-    const st = tableName(f.sourceTableName || f.sourceTableId)
-    const tt = tableName(f.targetTableName || f.targetTableId)
-    if (!st) continue
-    if (!tt) continue
-    if (!tableIndex.has(st)) tableIndex.set(st, tableIndex.size)
-    if (!tableIndex.has(tt)) tableIndex.set(tt, tableIndex.size)
-    const sid = `${st}::${f.sourceColumnName}`
-    const tid = `${tt}::${f.targetColumnName}`
-    if (!nodeMap.has(sid)) nodeMap.set(sid, { id: sid, name: `${st}.${f.sourceColumnName}`, category: tableIndex.get(st) })
-    if (!nodeMap.has(tid)) nodeMap.set(tid, { id: tid, name: `${tt}.${f.targetColumnName}`, category: tableIndex.get(tt) })
-    links.push({ source: sid, target: tid })
-  }
+function targetTableName(f: any) {
+  return f.targetTableName || (f.targetTableId ? `表#${f.targetTableId}` : '未知目标')
+}
 
-  const nodes = Array.from(nodeMap.values())
-  const categories = Array.from(tableIndex.keys()).map(name => ({ name }))
+const sourceTables = computed(() => Array.from(new Set((props.fields || []).map(sourceTableName))).sort())
+const targetTables = computed(() => Array.from(new Set((props.fields || []).map(targetTableName))).sort())
 
-  // dagre 分层布局（字段节点按依赖方向排列）
-  const g = new dagre.graphlib.Graph()
-  g.setGraph({ rankdir: 'LR', nodesep: 30, ranksep: 120, marginx: 20, marginy: 20 })
-  g.setDefaultEdgeLabel(() => ({}))
-  nodes.forEach(n => g.setNode(n.id, { width: 160, height: 28 }))
-  links.forEach(l => {
-    if (l.source !== l.target && g.hasNode(l.source) && g.hasNode(l.target)) g.setEdge(l.source, l.target)
+const filtered = computed(() => {
+  const kw = keyword.value.trim().toLowerCase()
+  return (props.fields || []).filter(f => {
+    if (sourceTable.value && sourceTableName(f) !== sourceTable.value) return false
+    if (targetTable.value && targetTableName(f) !== targetTable.value) return false
+    if (!kw) return true
+    return [f.sourceColumnName, f.targetColumnName, sourceTableName(f), targetTableName(f), f.transformExpression]
+      .some(v => String(v || '').toLowerCase().includes(kw))
   })
-  dagre.layout(g)
-
-  chart.setOption({
-    tooltip: { formatter: (p: any) => p.dataType === 'edge' ? `${p.data.source} → ${p.data.target}` : p.name },
-    legend: categories.length > 1 ? [{ type: 'scroll', data: categories.map(c => c.name), bottom: 0 }] : undefined,
-    series: [{
-      type: 'graph',
-      categories, // 节点分类（表），供 legend 与颜色区分
-      layout: 'none', // 使用 dagre 布局的坐标
-      data: nodes.map(n => {
-        const dn = g.node(n.id)
-        return { id: n.id, name: n.name, category: n.category, symbolSize: 12, x: dn.x, y: dn.y }
-      }),
-      links,
-      roam: true,
-      draggable: true,
-      label: { show: true, position: 'right', fontSize: 11 },
-      edgeSymbol: ['none', 'arrow'],
-      edgeSymbolSize: 6,
-      lineStyle: { color: '#94a3b8', width: 1.5, curveness: 0.12 }
-    }]
-  }, true)
-}
-
-function resize() {
-  chart?.resize()
-}
-
-let resizeObserver: ResizeObserver | null = null
-
-onMounted(() => {
-  nextTick(render)
-  window.addEventListener('resize', resize)
-  // 监听容器尺寸变化（Tab 切换、抽屉展开时容器从 0 变为实际尺寸），尺寸就绪后自动适配
-  if (chartRef.value) {
-    resizeObserver = new ResizeObserver(() => {
-      chart?.resize()
-    })
-    resizeObserver.observe(chartRef.value)
-  }
 })
 
-watch(() => props.fields, () => nextTick(render), { deep: true })
+const grouped = computed(() => {
+  const map = new Map<string, any[]>()
+  for (const f of filtered.value) {
+    const key = sourceTableName(f)
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(f)
+  }
+  return Array.from(map.entries()).map(([table, items]) => ({ table, items }))
+})
+
+function resetFilters() {
+  keyword.value = ''
+  sourceTable.value = ''
+  targetTable.value = ''
+}
 </script>
 
 <style scoped>
-.flg-wrap {
-  width: 100%;
-  height: 100%;
-  position: relative;
-}
-.flg-canvas {
-  width: 100%;
-  height: 460px;
-}
-.flg-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 200px;
-  color: #909399;
-  font-size: 13px;
-}
+.flg-wrap { width: 100%; }
+.flg-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.flg-count { margin-left: auto; font-size: 11px; color: var(--med-text-light); }
+.flg-list { max-height: 480px; overflow-y: auto; padding-right: 4px; }
+.flg-group { margin-bottom: 14px; }
+.flg-group-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.flg-group-title { font-size: 12px; font-weight: 600; color: var(--med-text-secondary); font-family: ui-monospace, Menlo, monospace; }
+.flg-group-count { font-size: 10px; color: var(--med-text-light); background: #F1F5F9; border-radius: 9px; padding: 1px 7px; }
+.flg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 8px; }
+.flg-card { display: grid; grid-template-columns: minmax(90px, 1fr) auto minmax(90px, 1fr); gap: 8px; align-items: center; border: 1px solid var(--med-border); border-radius: 9px; background: #fff; padding: 9px 10px; }
+.flg-side { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.flg-side b { font-size: 11.5px; color: var(--med-text); font-family: ui-monospace, Menlo, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flg-side span { font-size: 9.5px; color: var(--med-text-light); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flg-side.target { text-align: right; align-items: flex-end; }
+.flg-flow { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 70px; }
+.flg-map { font-size: 9px; color: #7C3AED; background: #F5F3FF; border-radius: 4px; padding: 1px 5px; white-space: nowrap; }
+.flg-arrow { color: #94A3B8; font-size: 14px; line-height: 1; }
+.flg-expr { font-size: 9px; color: var(--med-text-light); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flg-expr.muted { color: #CBD5E1; }
 </style>
