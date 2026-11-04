@@ -1,10 +1,10 @@
 # 中台 MVP 接口契约
 
-> 资产注册、Schema 变更、血缘、质量结果、策略下发
+> 字段级元数据同步、资产注册、Schema 变更、血缘、质量结果、策略下发
 
 | 项目 | 内容 |
 |---|---|
-| 文档版本 | v0.1（评审稿） |
+| 文档版本 | v0.2（已吸收 2026-11-04 决策） |
 | 日期 | 2026-11-04 |
 | 适用系统 | 数据中台（MVP）、DAM 数据资产管理平台 |
 | 接口版本 | `/api/integration/v1` |
@@ -28,13 +28,14 @@
 
 ### 2.1 MVP 包含
 
+- 字段级元数据同步（全量 + 增量）；
 - 资产注册/更新；
 - Schema 变更通知；
 - 表级/字段级血缘上报；
 - 质量执行结果上报；
-- 生命周期执行结果上报；
+- 生命周期执行结果上报（二期）；
 - 数据服务目录登记（可选）；
-- 标准、质量规则、安全策略、生命周期策略下发；
+- 质量规则、安全策略下发（MVP）；标准只读参考；生命周期策略二期；
 - 幂等、重试、对账。
 
 ### 2.2 MVP 不包含
@@ -178,7 +179,8 @@ dp:12:ods:ods_his_order
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/assets/register` | 资产注册/更新 |
+| POST | `/metadata/sync` | 字段级元数据批量同步（MVP 主入口） |
+| POST | `/assets/register` | 单表资产注册/更新 |
 | POST | `/assets/{assetId}/schema-changes` | Schema 变更 |
 | POST | `/lineage/edges` | 血缘上报 |
 | POST | `/quality/results` | 质量结果 |
@@ -199,7 +201,110 @@ dp:12:ods:ods_his_order
 
 ## 7. 中台 → DAM 接口
 
-### 7.1 资产注册/更新
+### 7.1 字段级元数据同步（批量，MVP 必做）
+
+中台是技术元数据权威，DAM 不再维护扫描器。中台采集器按全量/增量把表、字段同步到 DAM。
+
+```http
+POST /metadata/sync
+```
+
+请求：
+
+```json
+{
+  "syncId": "SYNC-20261104-0001",
+  "mode": "INCREMENTAL",
+  "snapshotId": null,
+  "checkpoint": "2026-11-04T08:00:00Z",
+  "page": 1,
+  "pageSize": 50,
+  "tables": [
+    {
+      "externalKey": "dp:12:dws:dws_outpatient_visit",
+      "dataSourceId": 12,
+      "sourceSystem": "HIS",
+      "schemaName": "dws",
+      "tableName": "dws_outpatient_visit",
+      "layer": "DWS",
+      "businessDomain": "门诊",
+      "tableType": "TABLE",
+      "description": "门诊就诊汇总",
+      "owner": "chen.zhiyuan",
+      "schemaHash": "sha256:...",
+      "columns": [
+        {
+          "name": "dept_id",
+          "dataType": "varchar",
+          "dataLength": 64,
+          "nullable": false,
+          "primaryKey": true,
+          "ordinal": 1,
+          "comment": "科室ID"
+        },
+        {
+          "name": "visit_cnt",
+          "dataType": "int4",
+          "nullable": true,
+          "primaryKey": false,
+          "ordinal": 2,
+          "comment": "就诊人次"
+        }
+      ]
+    }
+  ]
+}
+```
+
+字段说明：
+
+| 字段 | 必填 | 说明 |
+|---|---|---|
+| syncId | 是 | 同步批次幂等键 |
+| mode | 是 | FULL/INCREMENTAL |
+| snapshotId | FULL 时必填 | 快照标识 |
+| checkpoint | 否 | 增量水位 |
+| tables | 是 | 表列表，单批最多 50 张 |
+| columns | 是 | 字段级元数据，单批最多 5000 个 |
+| layer | 是 | ODS/DWD/DIM/DWS/ADS；不含 BIZ |
+| businessDomain | DWS/ADS 必填 | 业务域，如门诊/住院/财务 |
+| schemaHash | 否 | 表结构指纹，用于漂移检测 |
+
+响应：
+
+```json
+{
+  "code": "0",
+  "data": {
+    "syncId": "SYNC-20261104-0001",
+    "tables": [
+      {
+        "externalKey": "dp:12:dws:dws_outpatient_visit",
+        "assetId": 10002,
+        "action": "UPDATED",
+        "fieldCount": 18,
+        "addedFields": 2,
+        "modifiedFields": 1,
+        "removedFields": 0,
+        "status": "ACTIVE"
+      }
+    ],
+    "nextCheckpoint": "2026-11-04T08:05:00Z",
+    "hasMore": false
+  }
+}
+```
+
+规则：
+
+- `FULL`：按 `snapshotId` 记录快照；本次未出现的表不能立即删除，标记 `PENDING_VERIFY`，人工确认后 `DEPRECATED`；
+- `INCREMENTAL`：只同步变更表，字段差异由 DAM 计算；
+- 字段新增/删除/改类型必须生成变更记录；
+- 字段级同步必须包含：字段名、类型、长度/精度、可空、主键、默认值、注释、序号；
+- `businessDomain` 是 DWS/ADS 的业务域属性，不是 `layer`；
+- 单表调试可继续使用 `/assets/register`。
+
+### 7.2 单表资产注册/更新
 
 ```http
 POST /assets/register
@@ -215,6 +320,7 @@ POST /assets/register
   "schemaName": "ods",
   "tableName": "ods_his_order",
   "layer": "ODS",
+  "businessDomain": null,
   "tableType": "TABLE",
   "description": "HIS 医嘱主表贴源",
   "owner": "wang.guanjia",
@@ -249,7 +355,8 @@ POST /assets/register
 | dataSourceId | 是 | 中台数据源 |
 | schemaName | 是 | 物理 Schema |
 | tableName | 是 | 物理表 |
-| layer | 是 | ODS/DWD/DIM/BIZ/DWS/ADS |
+| layer | 是 | ODS/DWD/DIM/DWS/ADS；不含 BIZ |
+| businessDomain | DWS/ADS 必填 | 业务域，如门诊/住院/财务 |
 | tableType | 否 | TABLE/VIEW |
 | columns | 是 | 字段列表 |
 | schemaHash | 否 | 结构指纹 |
@@ -281,7 +388,7 @@ POST /assets/register
 5. 字段新增/删除/改类型：DAM 记录变更并返回影响分析提示；
 6. 如果 `assetId` 与 `externalKey` 不匹配：返回 `409`。
 
-#### 7.2 Schema 变更
+#### 7.3 Schema 变更
 
 ```http
 POST /assets/{assetId}/schema-changes
@@ -337,7 +444,7 @@ POST /assets/{assetId}/schema-changes
 - 中台在 DAM 审批前不得破坏性变更生产表；
 - 加列可自动通过，但必须记录。
 
-#### 7.3 血缘上报
+#### 7.4 血缘上报
 
 ```http
 POST /lineage/edges
@@ -399,7 +506,7 @@ POST /lineage/edges
 }
 ```
 
-#### 7.4 质量结果
+#### 7.5 质量结果
 
 ```http
 POST /quality/results
@@ -443,7 +550,7 @@ POST /quality/results
 - 规则版本不一致时记录 `warning`，不丢弃结果；
 - 样例中避免完整敏感信息。
 
-#### 7.5 生命周期执行结果
+#### 7.6 生命周期执行结果
 
 ```http
 POST /lifecycle/results
@@ -462,7 +569,7 @@ POST /lifecycle/results
 }
 ```
 
-#### 7.6 数据服务目录（P1）
+#### 7.7 数据服务目录（P1）
 
 ```http
 POST /services/publish
@@ -489,7 +596,7 @@ POST /services/publish
 ### 8.1 拉取策略变更
 
 ```http
-GET /policies/changes?since=2026-11-01T00:00:00Z&types=STANDARD,QUALITY_RULE,SECURITY,LIFECYCLE&page=1&pageSize=200
+GET /policies/changes?since=2026-11-01T00:00:00Z&types=STANDARD,QUALITY_RULE,SECURITY_POLICY,LIFECYCLE_POLICY&page=1&pageSize=200
 ```
 
 响应：
@@ -534,12 +641,14 @@ GET /policies/changes?since=2026-11-01T00:00:00Z&types=STANDARD,QUALITY_RULE,SEC
 
 策略类型：
 
-| type | 说明 |
-|---|---|
-| STANDARD | 数据标准/码值 |
-| QUALITY_RULE | 质量规则 |
-| SECURITY | 分级/脱敏/行级权限 |
-| LIFECYCLE | 保留/归档/销毁 |
+| type | 说明 | MVP |
+|---|---|---|
+| `STANDARD` | 数据标准/码值 | 只读参考，暂不强制下发 |
+| `QUALITY_RULE` | 质量规则、阈值、SQL | **MVP 必做** |
+| `SECURITY_POLICY` | 分级、敏感类型、脱敏、行级权限 | **MVP 必做** |
+| `LIFECYCLE_POLICY` | 保留、归档、销毁 | 二期 |
+
+> MVP 只启用质量规则和安全策略；标准和生命周期策略可以先在 DAM 维护，后续再接入执行。
 
 #### 8.2 策略应用回执
 
@@ -767,12 +876,14 @@ DAM 规则 → 中台拉取
 ## 16. MVP 验收清单
 
 - [ ] 一张 ODS 表自动注册成功；
-- [ ] 一张 DIM/BIZ 表自动注册成功；
+- [ ] 一张 DIM 表、一张 DWS/ADS 业务域表自动注册成功；
 - [ ] `externalKey` 重复调用返回同一 `assetId`；
+- [ ] 字段级元数据全量/增量同步成功，新增/删除/改类型可识别；
 - [ ] Schema 加列/删列能通知 DAM；
 - [ ] 表级/字段级血缘能展示；
+- [ ] DWS/ADS 资产带业务域属性；
 - [ ] 质量结果能回写；
-- [ ] 标准/质量/安全/生命周期策略能拉取并回执；
+- [ ] 质量规则、安全策略能拉取并回执（标准和生命周期二期）；
 - [ ] 无跨库直接写入；
 - [ ] 失败重试/对账可运行；
 - [ ] 审计日志完整；
@@ -782,11 +893,14 @@ DAM 规则 → 中台拉取
 
 ## 17. 待确认问题
 
-1. 中台是否统一管理所有数据源连接，DAM 是否完全不再扫描？
-2. 质量规则执行是否全部在中台，DAM 是否保留轻量校验？
-3. 策略下发采用“中台拉取”还是“DAM 推送”？本文默认拉取。
-4. 是否引入 Kafka/事件总线，还是 MVP 先用 REST + Outbox？
-5. 资产注册的 `owner` 由中台传还是 DAM 补？
-6. BIZ 层命名和层级顺序；
-7. 接口认证用服务令牌还是 mTLS，或两者都上；
-8. 资产对账由 DAM 拉中台，还是中台定时全量推送。
+已确认：数据源/扫描、模型/DDL、质量执行归中台；BIZ 为业务域；MVP 必须字段级元数据同步。
+
+剩余待确认：
+
+1. 策略下发采用“中台拉取”还是“DAM 推送”？本文默认拉取。
+2. 是否引入 Kafka/事件总线，还是 MVP 先用 REST + Outbox？
+3. 资产注册的 `owner` 由中台传还是 DAM 补？
+4. DWD 是否建设，以及 DWD 是否承载业务域属性；
+5. 接口认证用服务令牌还是 mTLS，或两者都上；
+6. 资产对账由 DAM 拉中台，还是中台定时全量推送；
+7. FULL 快照中缺失的表，`PENDING_VERIFY` 的人工确认流程由谁负责。
