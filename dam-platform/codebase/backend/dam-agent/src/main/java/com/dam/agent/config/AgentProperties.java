@@ -15,16 +15,13 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "dam.agent")
 public class AgentProperties {
 
-    /** 对话智能体配置（通用问答） */
-    private AgentConfigProperties chat = new AgentConfigProperties();
-
-    /** 编码智能体配置（代码 / SQL 生成） */
+    /** 统一智能体配置：平台只使用 code 模型（对话、SQL、注释、分类、报表全部共用） */
     private AgentConfigProperties code = new AgentConfigProperties();
 
     /**
-     * 按类型选择配置：{@code code} 取编码智能体，其余（含空）一律取对话智能体。
+     * 兼容旧的 agentType 参数：无论传 chat 还是 code，统一返回 code 配置。
      */
     public AgentConfigProperties of(String type) {
-        return "code".equalsIgnoreCase(type) ? code : chat;
+        return code;
     }
 }

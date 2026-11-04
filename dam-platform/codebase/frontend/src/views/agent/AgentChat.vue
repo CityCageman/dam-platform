@@ -27,13 +27,26 @@
     <div ref="listRef" class="chat-list">
       <div v-for="(m, i) in messages" :key="i" class="msg-row" :class="m.role">
         <div class="bubble">
-          <template v-if="m.role === 'assistant' && m.reasoning">
-            <div class="reasoning-toggle" @click="toggleReasoning(i)">
-              {{ reasoningOpen[i] ? '收起思考过程' : '查看思考过程' }}
-            </div>
-            <div v-show="reasoningOpen[i]" class="reasoning-box">{{ m.reasoning }}</div>
+          <template v-if="m.role === 'user'">
+            <div class="content-text">{{ m.content }}</div>
           </template>
-          <div v-if="m.content" class="content-text">{{ m.content }}</div>
+
+          <template v-else>
+            <!-- 思考过程：独立区块、默认展开、可收起 -->
+            <div v-if="m.reasoning" class="part-block reasoning-part">
+              <div class="part-head" @click="toggleReasoning(i)">
+                <span class="part-name"><span class="part-dot reasoning-dot"></span>思考过程</span>
+                <span class="part-toggle">{{ reasoningOpen[i] ? '收起' : '展开' }}</span>
+              </div>
+              <div v-show="reasoningOpen[i]" class="reasoning-box">{{ m.reasoning }}</div>
+            </div>
+
+            <!-- 最终结论：独立区块，始终带“结论”标识 -->
+            <div v-if="m.content" class="part-block answer-part">
+              <div class="part-name"><span class="part-dot answer-dot"></span>结论</div>
+              <div class="content-text">{{ m.content }}</div>
+            </div>
+          </template>
 
           <!-- 报表结果卡片 -->
           <div v-if="m.role === 'assistant' && m.report" class="report-card">
@@ -98,7 +111,7 @@
           </div>
         </div>
       </div>
-      <div v-if="sending && !lastAssistantContent && !lastIsReport" class="thinking">正在思考...</div>
+      <div v-if="sending && !lastAssistantContent && !lastAssistantReasoning && !lastIsReport" class="thinking">正在思考...</div>
     </div>
 
     <div class="chat-input">
@@ -176,6 +189,10 @@ const lastAssistantContent = computed(() => {
   return last && last.role === 'assistant' ? last.content : ''
 })
 const lastIsReport = computed(() => !!lastMsg.value?.report)
+const lastAssistantReasoning = computed(() => {
+  const last = lastMsg.value
+  return last && last.role === 'assistant' ? !!last.reasoning : false
+})
 
 async function send() {
   const text = input.value.trim()
@@ -195,12 +212,14 @@ async function send() {
   // 历史消息：不包含刚追加的空助手占位
   const history = messages.value.slice(0, -1).map(m => ({ role: m.role, content: m.content }))
   const last = messages.value[messages.value.length - 1]
+  const lastIndex = messages.value.length - 1
   await scrollBottom()
 
   try {
     await agentApi.streamChat(history, {
       onReasoning: (delta: string) => {
         last.reasoning = (last.reasoning || '') + delta
+        if (reasoningOpen.value[lastIndex] === undefined) reasoningOpen.value[lastIndex] = true
         scrollBottom()
       },
       onDelta: (delta: string) => {
@@ -430,27 +449,26 @@ async function scrollBottom() {
   font-size: 13px;
   padding-left: 4px;
 }
-.reasoning-toggle {
-  font-size: 12px;
-  color: var(--med-text-light);
-  cursor: pointer;
-  margin-bottom: 6px;
-  user-select: none;
-}
-.reasoning-toggle:hover {
-  color: var(--med-primary);
-}
+.part-block { margin-bottom: 10px; }
+.part-block:last-child { margin-bottom: 0; }
+.part-head { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; margin-bottom: 6px; }
+.part-name { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--med-text-secondary); }
+.part-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.reasoning-dot { background: #94A3B8; }
+.answer-dot { background: var(--med-primary); }
+.part-toggle { font-size: 10.5px; color: var(--med-text-light); }
+.reasoning-part { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 9px 11px; }
+.answer-part { border-left: 3px solid var(--med-primary); padding-left: 10px; }
 .reasoning-box {
-  background: #f5f7fa;
-  border-left: 3px solid #dcdfe6;
+  background: #fff;
+  border-left: 2px solid #CBD5E1;
   padding: 8px 10px;
   border-radius: 4px;
   font-size: 12px;
-  color: var(--med-text-light);
+  color: #64748B;
   white-space: pre-wrap;
   word-break: break-word;
-  margin-bottom: 8px;
-  max-height: 200px;
+  max-height: 220px;
   overflow-y: auto;
 }
 .content-text {
