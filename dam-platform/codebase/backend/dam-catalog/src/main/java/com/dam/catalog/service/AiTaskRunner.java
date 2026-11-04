@@ -1,5 +1,6 @@
 package com.dam.catalog.service;
 
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dam.catalog.entity.AiTask;
 import com.dam.catalog.entity.AiTaskItem;
@@ -31,6 +32,8 @@ public class AiTaskRunner {
 
     private final MetadataAiService metadataAiService;
     private final AssetClassifyAiService assetClassifyAiService;
+    private final ReportService reportService;
+    private final ReportCatalogService reportCatalogService;
     private final AiTaskMapper taskMapper;
     private final AiTaskItemMapper itemMapper;
 
@@ -53,6 +56,86 @@ public class AiTaskRunner {
     public void runClassify(Long taskId, Long dataSourceId, boolean pendingOnly, String token) {
         run(taskId, "CLASSIFY", cursor -> assetClassifyAiService.classify(
                 dataSourceId, pendingOnly, cursor, BATCH_SIZE, token, true, taskId));
+    }
+
+    /**
+     * 异步生成报表：AI 生成 SQL 后自动登记到报表体系，并写入任务明细。
+     * 任务进度用 totalCount=1 / acceptedCount=0→1 表示。
+     */
+    @Async("aiTaskExecutor")
+    public void runReport(Long taskId, String requirement, Long dataSourceId, String token) {
+        AiTask task = taskMapper.selectById(taskId);
+        if (task == null) return;
+        try {
+            task.setStatus("RUNNING");
+            task.setTotalCount(1);
+            task.setAcceptedCount(0);
+            task.setRejectedCount(0);
+            task.setUpdatedAt(LocalDateTime.now());
+            taskMapper.updateById(task);
+
+            Map<String, Object> generated = reportService.generate(requirement, dataSourceId, token);
+            String sql = String.valueOf(generated.getOrDefault("sql", ""));
+            if (sql.isBlank()) throw new IllegalStateException("AI 未生成有效 SQL");
+
+            String reportName = ("AI报表｜" + requirement).trim();
+            if (reportName.length() > 200) reportName = reportName.substring(0, 200);
+            Map<String, Object> body = new java.util.LinkedHashMap<>();
+            body.put("reportCode", "AI_RPT_" + taskId);
+            body.put("reportName", reportName);
+            body.put("reportTypeId", "REPORT");
+            body.put("execType", "SQL");
+            body.put("dataSourceId", dataSourceId);
+            body.put("sqlContent", sql);
+            String description = "AI 生成｜任务 #" + taskId + "｜" + requirement;
+            if (description.length() > 500) description = description.substring(0, 500);
+            body.put("description", description);
+            body.put("owner", task.getCreatedBy());
+            body.put("status", 1);
+            Map<String, Object> saved = reportCatalogService.saveGenerated(body, task.getCreatedBy());
+            Number reportId = saved.get("id") instanceof Number n ? n : null;
+            Number assetId = saved.get("assetId") instanceof Number n ? n : null;
+
+            Map<String, Object> draft = new java.util.LinkedHashMap<>();
+            draft.put("reportId", reportId);
+            draft.put("assetId", assetId);
+            draft.put("reportName", reportName);
+            draft.put("requirement", requirement);
+            draft.put("dataSourceId", dataSourceId);
+            draft.put("dataSourceName", generated.get("dataSourceName"));
+            draft.put("sql", sql);
+            draft.put("tablesUsed", generated.get("tablesUsed"));
+            String draftJson = JSONUtil.toJsonStr(draft);
+            if (draftJson.length() > 20000) draftJson = draftJson.substring(0, 20000);
+
+            AiTaskItem item = new AiTaskItem();
+            item.setTaskId(taskId);
+            item.setItemType("REPORT");
+            item.setTargetId(reportId == null ? null : reportId.longValue());
+            item.setTargetName(reportName.length() > 200 ? reportName.substring(0, 200) : reportName);
+            item.setDraftContent(draftJson);
+            item.setStatus("ACCEPTED");
+            item.setReviewedBy(task.getCreatedBy());
+            item.setReviewedAt(LocalDateTime.now());
+            item.setCreatedAt(LocalDateTime.now());
+            itemMapper.insert(item);
+
+            task.setStatus("DONE");
+            task.setTotalCount(1);
+            task.setAcceptedCount(1);
+            task.setRejectedCount(0);
+            task.setErrorMessage(null);
+            task.setUpdatedAt(LocalDateTime.now());
+            taskMapper.updateById(task);
+        } catch (Exception e) {
+            log.warn("AI 报表任务执行失败 [taskId={}]: {}", taskId, e.getMessage());
+            task.setStatus("FAILED");
+            task.setTotalCount(1);
+            String msg = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+            task.setErrorMessage(msg.length() > 500 ? msg.substring(0, 500) : msg);
+            task.setUpdatedAt(LocalDateTime.now());
+            taskMapper.updateById(task);
+        }
     }
 
     /**

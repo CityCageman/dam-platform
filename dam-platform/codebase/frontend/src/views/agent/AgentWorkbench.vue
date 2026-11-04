@@ -256,6 +256,7 @@ function draftText(item: any) {
   try {
     const d = JSON.parse(item.draftContent || '{}')
     if (item.itemType === 'CLASSIFY') return d.categoryName || d.categoryCode || item.draftContent || '-'
+    if (item.itemType === 'REPORT') return d.reportName ? `已生成报表：${d.reportName}` : '已生成报表'
     const parts: string[] = []
     if (d.tableComment) parts.push('注释：' + d.tableComment)
     if (d.subjectDomain) parts.push('主题域：' + d.subjectDomain)

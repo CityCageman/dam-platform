@@ -51,7 +51,18 @@
           <!-- 报表结果卡片 -->
           <div v-if="m.role === 'assistant' && m.report" class="report-card">
             <div v-if="m.report.status === 'generating'" class="report-loading">
-              <el-icon class="is-loading"><Loading /></el-icon> 正在检索表结构并生成报表 SQL...
+              <div class="report-loading-line">
+                <el-icon class="is-loading"><Loading /></el-icon>
+                <span>{{ m.report.taskId ? `报表任务 #${m.report.taskId} 生成中` : '正在创建报表任务...' }}</span>
+                <b>{{ m.report.progress || 0 }}%</b>
+              </div>
+              <el-progress :percentage="m.report.progress || 0" :show-text="false" :stroke-width="4" />
+            </div>
+
+            <div v-if="m.report.reportId" class="report-registered">
+              <el-icon><CircleCheck /></el-icon>
+              <span>已登记到报表体系：<b>{{ m.report.reportName }}</b></span>
+              <el-button text type="primary" size="small" @click="goReportCenter">查看</el-button>
             </div>
 
             <template v-if="m.report.sql">
@@ -135,6 +146,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { agentApi, reportApi, catalogApi } from '@/api'
 
@@ -153,6 +165,10 @@ interface ReportState {
   rowCount?: number
   truncated?: boolean
   error?: string
+  taskId?: number
+  progress?: number
+  reportId?: number
+  reportName?: string
 }
 
 interface Msg {
@@ -162,6 +178,7 @@ interface Msg {
   report?: ReportState
 }
 
+const router = useRouter()
 const messages = ref<Msg[]>([])
 const input = ref('')
 const sending = ref(false)
@@ -244,7 +261,7 @@ async function send() {
   }
 }
 
-/** 报表模式：生成 SQL（不自动执行，等待用户确认） */
+/** 报表模式：创建异步报表任务 → 轮询进度 → 展示已登记的报表 */
 async function sendReport(text: string) {
   if (!dataSourceId.value) {
     ElMessage.warning('请先选择数据源')
@@ -252,29 +269,76 @@ async function sendReport(text: string) {
   }
   messages.value.push({ role: 'user', content: text })
   input.value = ''
-  const report: ReportState = { status: 'generating', dataSourceId: dataSourceId.value, requirement: text }
+  const report: ReportState = {
+    status: 'generating',
+    dataSourceId: dataSourceId.value,
+    requirement: text,
+    progress: 0
+  }
   messages.value.push({ role: 'assistant', content: '', report })
   sending.value = true
   await scrollBottom()
 
   try {
-    const res: any = await reportApi.generate({ requirement: text, dataSourceId: dataSourceId.value })
-    const d = res.data || {}
-    report.sql = d.sql
-    report.dataSourceName = d.dataSourceName
-    report.tablesUsed = d.tablesUsed || []
-    report.status = 'ready'
+    await runReportTask(report, text)
   } catch (e: any) {
     report.status = 'error'
     report.error = e.message || '生成失败'
-    ElMessage.error(e.message || '生成失败')
+    ElMessage.error(report.error)
   } finally {
     sending.value = false
     await scrollBottom()
   }
 }
 
-/** 执行生成的报表 SQL */
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function runReportTask(report: ReportState, requirement: string) {
+  const created: any = await reportApi.generateAsync({
+    requirement,
+    dataSourceId: report.dataSourceId!
+  })
+  const taskId = Number(created.data?.taskId)
+  if (!taskId) throw new Error('报表任务创建失败')
+  report.taskId = taskId
+  report.progress = 5
+
+  for (let i = 0; i < 120; i++) {
+    await sleep(2500)
+    const taskRes: any = await catalogApi.getAiTask(taskId)
+    const task = taskRes.data?.task
+    if (!task) continue
+    if (task.status === 'FAILED') {
+      throw new Error(task.errorMessage || '报表生成失败')
+    }
+    if (task.status === 'DONE') {
+      const itemsRes: any = await catalogApi.getAiTaskItems(taskId, { page: 1, pageSize: 10 })
+      const item = (itemsRes.data?.records || []).find((x: any) => x.itemType === 'REPORT')
+      if (!item) throw new Error('报表任务已完成，但未找到生成结果')
+      const d = JSON.parse(item.draftContent || '{}')
+      report.sql = d.sql || ''
+      report.dataSourceName = d.dataSourceName
+      report.tablesUsed = d.tablesUsed || []
+      report.reportId = d.reportId
+      report.reportName = d.reportName
+      report.progress = 100
+      report.status = 'ready'
+      return
+    }
+    report.progress = task.status === 'RUNNING'
+      ? Math.min(90, 10 + i * 3)
+      : Math.min(10, report.progress || 0)
+  }
+  throw new Error('报表生成超时，请稍后在 AI 工作台任务队列查看进度')
+}
+
+async function goReportCenter() {
+  router.push('/reports')
+}
+
+/** 执行生成的报表 SQL *//** 执行生成的报表 SQL */
 async function executeReport(m: Msg) {
   const r = m.report
   if (!r || !r.sql || r.status === 'executing') return
@@ -296,7 +360,7 @@ async function executeReport(m: Msg) {
   await scrollBottom()
 }
 
-/** 修改需求后重新生成报表 SQL */
+/** 修改需求后重新生成报表 SQL（异步任务） */
 async function regenerateReport(m: Msg) {
   const r = m.report
   if (!r || r.status === 'executing') return
@@ -310,11 +374,15 @@ async function regenerateReport(m: Msg) {
     })
     value = res.value || ''
   } catch {
-    return // 用户取消
+    return
   }
   if (!value.trim()) return
   r.requirement = value.trim()
   r.status = 'generating'
+  r.progress = 0
+  r.taskId = undefined
+  r.reportId = undefined
+  r.reportName = undefined
   r.sql = undefined
   r.tablesUsed = []
   r.columns = undefined
@@ -324,21 +392,16 @@ async function regenerateReport(m: Msg) {
   r.error = undefined
   await scrollBottom()
   try {
-    const res: any = await reportApi.generate({ requirement: value.trim(), dataSourceId: r.dataSourceId! })
-    const d = res.data || {}
-    r.sql = d.sql
-    r.dataSourceName = d.dataSourceName
-    r.tablesUsed = d.tablesUsed || []
-    r.status = 'ready'
+    await runReportTask(r, value.trim())
   } catch (e: any) {
     r.status = 'error'
     r.error = e.message || '生成失败'
-    ElMessage.error(e.message || '生成失败')
+    ElMessage.error(r.error)
   }
   await scrollBottom()
 }
 
-/** 导出结果到表格（CSV，UTF-8 BOM，Excel 可直接打开；剔除高危依赖 xlsx） */
+/** 导出结果到表格/** 导出结果到表格（CSV，UTF-8 BOM，Excel 可直接打开；剔除高危依赖 xlsx） */
 function exportExcel(m: Msg) {
   const r = m.report
   if (!r || !r.columns || !r.columns.length || !r.rows) return
@@ -494,13 +557,11 @@ async function scrollBottom() {
 .report-card {
   margin-top: 8px;
 }
-.report-loading {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--med-text-light);
-  font-size: 13px;
-}
+.report-loading { padding: 8px 0; }
+.report-loading-line { display: flex; align-items: center; gap: 6px; color: var(--med-text-light); font-size: 12px; margin-bottom: 6px; }
+.report-loading-line b { margin-left: auto; color: var(--med-primary); }
+.report-registered { display: flex; align-items: center; gap: 6px; margin: 8px 0; padding: 7px 10px; border-radius: 7px; background: #F0FDF4; color: #15803D; font-size: 11.5px; }
+.report-registered b { font-weight: 600; }
 .report-tables {
   font-size: 12px;
   color: var(--med-text-light);

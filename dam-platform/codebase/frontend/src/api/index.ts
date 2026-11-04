@@ -18,6 +18,10 @@ export const reportApi = {
   generate(data: { requirement: string; dataSourceId: number }) {
     return request.post('/catalog/report/generate', data, { timeout: 300000 })
   },
+  /** 异步生成报表：创建 REPORT 任务，后台生成并登记到报表体系 */
+  generateAsync(data: { requirement: string; dataSourceId: number }) {
+    return request.post('/catalog/report/generate/async', data, { timeout: 30000 })
+  },
   /** 执行报表 SQL（仅 SELECT，后端安全校验后只读执行） */
   execute(data: { dataSourceId: number; sql: string; limit?: number }) {
     return request.post('/catalog/report/execute', data, { timeout: 120000 })

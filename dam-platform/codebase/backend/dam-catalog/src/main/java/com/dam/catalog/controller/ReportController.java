@@ -1,6 +1,10 @@
 package com.dam.catalog.controller;
 
+import com.dam.catalog.entity.AiTask;
+import com.dam.catalog.service.AiTaskRunner;
+import com.dam.catalog.service.AiTaskService;
 import com.dam.catalog.service.ReportService;
+import com.dam.common.exception.BusinessException;
 import com.dam.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +25,8 @@ import java.util.Map;
 public class ReportController {
 
     private final ReportService reportService;
+    private final AiTaskService aiTaskService;
+    private final AiTaskRunner aiTaskRunner;
 
     /**
      * 根据自然语言需求生成报表 SQL（调用编码智能体，结合数据源已同步表结构）
@@ -35,6 +41,32 @@ public class ReportController {
         Long dataSourceId = params.get("dataSourceId") != null
                 ? ((Number) params.get("dataSourceId")).longValue() : null;
         return Result.success(reportService.generate(requirement, dataSourceId, token));
+    }
+
+    /**
+     * 异步生成报表：创建 REPORT 任务，后台生成 SQL 并登记到报表体系。
+     * 前端轮询任务进度，完成后可在「报表体系」查看。
+     */
+    @PostMapping("/generate/async")
+    public Result<Map<String, Object>> generateAsync(@RequestBody Map<String, Object> params,
+                                                     @RequestHeader(value = "token", required = false) String token) {
+        String requirement = (String) params.get("requirement");
+        if (requirement == null || requirement.isBlank()) throw new BusinessException("报表需求不能为空");
+        Long dataSourceId = params.get("dataSourceId") != null
+                ? ((Number) params.get("dataSourceId")).longValue() : null;
+        if (dataSourceId == null) throw new BusinessException("请选择数据源");
+
+        String title = requirement.trim();
+        if (title.length() > 180) title = title.substring(0, 180) + "…";
+        Map<String, Object> taskBody = new java.util.LinkedHashMap<>();
+        taskBody.put("taskType", "REPORT");
+        taskBody.put("title", "AI 报表 · " + title);
+        taskBody.put("targetType", "DATASOURCE");
+        taskBody.put("targetId", dataSourceId);
+        taskBody.put("prompt", requirement);
+        AiTask task = aiTaskService.create(taskBody);
+        aiTaskRunner.runReport(task.getId(), requirement, dataSourceId, token);
+        return Result.success(Map.of("taskId", task.getId()));
     }
 
     /**

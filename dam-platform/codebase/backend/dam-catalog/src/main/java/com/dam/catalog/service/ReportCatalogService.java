@@ -232,6 +232,18 @@ public class ReportCatalogService {
      */
     @Transactional
     public Map<String, Object> save(Map<String, Object> body) {
+        return doSave(body, currentUser());
+    }
+
+    /**
+     * 异步 AI 任务生成报表时使用：显式传入操作人，避免异步线程没有 Sa-Token 上下文。
+     */
+    @Transactional
+    public Map<String, Object> saveGenerated(Map<String, Object> body, String operator) {
+        return doSave(body, operator == null || operator.isBlank() ? "system" : operator);
+    }
+
+    private Map<String, Object> doSave(Map<String, Object> body, String operator) {
         Long id = parseLong(body.get("id"));
         String reportCode = str(body.get("reportCode"));
         String reportName = str(body.get("reportName"));
@@ -255,7 +267,7 @@ public class ReportCatalogService {
             if (dup != null && dup > 0) throw new BusinessException("报表编码已存在: " + reportCode);
             rc.setReportCode(reportCode);
             rc.setCreatedAt(LocalDateTime.now());
-            rc.setCreatedBy(currentUser());
+            rc.setCreatedBy(operator);
         }
         rc.setReportName(reportName);
         rc.setReportTypeId(str(body.get("reportTypeId")));
@@ -272,7 +284,7 @@ public class ReportCatalogService {
         rc.setDimensionCodes(toJson(body.get("dimensionCodes")));
         rc.setParamDefs(toJson(body.get("paramDefs")));
         rc.setUpdatedAt(LocalDateTime.now());
-        rc.setUpdatedBy(currentUser());
+        rc.setUpdatedBy(operator);
 
         // 1. 资产（报表即资产）
         Long assetId = rc.getAssetId();
@@ -281,7 +293,7 @@ public class ReportCatalogService {
         if (newAsset) {
             asset = new DamAsset();
             asset.setCreatedAt(LocalDateTime.now());
-            asset.setCreatedBy(currentUser());
+            asset.setCreatedBy(operator);
         }
         asset.setAssetName(reportName);
         asset.setAssetCode(newAsset ? StrUtil.blankToDefault(reportCode, "RPT") : asset.getAssetCode());
@@ -291,7 +303,7 @@ public class ReportCatalogService {
         asset.setDataSourceId(dataSourceId);
         asset.setStatus(1);
         asset.setUpdatedAt(LocalDateTime.now());
-        asset.setUpdatedBy(currentUser());
+        asset.setUpdatedBy(operator);
         if (categoryId != null) {
             asset.setCategoryId(categoryId);
         } else if (newAsset) {
