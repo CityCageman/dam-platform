@@ -154,23 +154,24 @@
                     </el-button>
                   </template>
                 </el-table-column>
-                <el-table-column label="AI 标注" width="150" fixed="right">
+                <el-table-column label="AI 标注" width="105" fixed="right">
                   <template #default="{ row }">
-                    <template v-if="row.status === 1">
-                      <el-button text type="primary" :loading="row._aiLoading" @click.stop="aiAnnotate(row, true)">
-                        补标注
+                    <el-dropdown v-if="row.status === 1" trigger="click"
+                                 :disabled="row._aiLoading || row._aiClassifyLoading"
+                                 @click.stop
+                                 @command="(cmd: string) => handleDsAiCommand(row, cmd)">
+                      <el-button text type="primary" size="small"
+                                 :loading="row._aiLoading || row._aiClassifyLoading">
+                        AI 标注<el-icon class="el-icon--right"><ArrowDown /></el-icon>
                       </el-button>
-                      <el-button text type="primary" :disabled="row._aiLoading" @click.stop="aiAnnotate(row, false)">
-                        全量
-                      </el-button>
-                    </template>
-                  </template>
-                </el-table-column>
-                <el-table-column label="AI 分类" width="95" fixed="right">
-                  <template #default="{ row }">
-                    <el-button v-if="row.status === 1" text type="primary" :loading="row._aiClassifyLoading" @click.stop="aiClassifyDs(row, true)">
-                      AI 分类
-                    </el-button>
+                      <template #dropdown>
+                        <el-dropdown-menu>
+                          <el-dropdown-item command="annotate">AI 补标注</el-dropdown-item>
+                          <el-dropdown-item command="annotate-all">AI 全量标注</el-dropdown-item>
+                          <el-dropdown-item command="classify">AI 分类</el-dropdown-item>
+                        </el-dropdown-menu>
+                      </template>
+                    </el-dropdown>
                   </template>
                 </el-table-column>
               </el-table>
@@ -187,9 +188,18 @@
                 <h4 class="panel-title" style="margin:0 0 0 4px;">{{ selectedDs?.dsName }}</h4>
                 <span class="ds-sub">{{ selectedDs?.databaseName }}</span>
                 <div class="toolbar-spacer"></div>
-                <el-button :disabled="!!selectedDs?._aiClassifyLoading" :loading="!!selectedDs?._aiClassifyLoading" @click="aiClassifyDs(selectedDs, true)">AI 分类</el-button>
-                <el-button :disabled="!!selectedDs?._aiLoading" :loading="!!selectedDs?._aiLoading" @click="aiAnnotate(selectedDs, true)">AI 补标注</el-button>
-                <el-button type="primary" plain :disabled="!!selectedDs?._aiLoading" @click="aiAnnotate(selectedDs, false)">AI 全量标注</el-button>
+                <el-dropdown trigger="click" :disabled="selectedDsAiBusy" @command="handleSelectedDsAiCommand">
+                  <el-button type="primary" plain :loading="selectedDsAiBusy">
+                    <el-icon><MagicStick /></el-icon>AI 标注<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="annotate">AI 补标注</el-dropdown-item>
+                      <el-dropdown-item command="annotate-all">AI 全量标注</el-dropdown-item>
+                      <el-dropdown-item command="classify">AI 分类</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
                 <el-button type="primary" plain :icon="Search" @click="openScanDialog(selectedDs)">扫描表</el-button>
               </div>
               <div class="filter-row">
@@ -371,12 +381,17 @@
             <div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
               <span style="color: #909399; font-size: 13px;">共 {{ technicalData?.fields?.length || 0 }} 个字段</span>
               <div style="display: flex; gap: 8px;">
-                <el-button size="small" type="primary" plain :loading="generatingComments" @click="generateFieldComments">
-                  <el-icon><MagicStick /></el-icon> AI 生成注释
-                </el-button>
-                <el-button size="small" type="primary" plain :loading="generatingClassify" @click="generateFieldClassify">
-                  <el-icon><MagicStick /></el-icon> AI 生成分级
-                </el-button>
+                <el-dropdown trigger="click" :disabled="generatingComments || generatingClassify" @command="handleFieldAiCommand">
+                  <el-button size="small" type="primary" plain :loading="generatingComments || generatingClassify">
+                    <el-icon><MagicStick /></el-icon>AI 生成<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="comment">AI 生成注释</el-dropdown-item>
+                      <el-dropdown-item command="classify">AI 生成分级</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
                 <el-button size="small" type="primary" :loading="syncingFields" @click="syncFields">
                   <el-icon><Refresh /></el-icon> 同步字段
                 </el-button>
@@ -1136,7 +1151,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { catalogApi, metadataApi, qualityApi, securityApi, lifecycleApi, lineageApi, agentApi } from '@/api'
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import type { TabPaneName, TagProps } from 'element-plus'
-import {Search, Refresh, ArrowLeft, Plus, Edit, Delete} from '@element-plus/icons-vue'
+import { Search, Refresh, ArrowLeft, Plus, Edit, Delete, ArrowDown, MagicStick } from '@element-plus/icons-vue'
 import { encryptPassword } from '@/utils/crypto'
 import LineageGraph from '@/components/lineage/LineageGraph.vue'
 import FieldLineageGraph from '@/components/lineage/FieldLineageGraph.vue'
@@ -2802,6 +2817,24 @@ async function aiClassifyDs(row: any, pendingOnly = true) {
     row._aiClassifyLoading = false
     loading.close()
   }
+}
+
+const selectedDsAiBusy = computed(() => !!selectedDs.value?._aiLoading || !!selectedDs.value?._aiClassifyLoading)
+
+function handleDsAiCommand(row: any, cmd: string) {
+  if (cmd === 'annotate') aiAnnotate(row, true)
+  else if (cmd === 'annotate-all') aiAnnotate(row, false)
+  else if (cmd === 'classify') aiClassifyDs(row, true)
+}
+
+function handleSelectedDsAiCommand(cmd: string) {
+  if (!selectedDs.value) return
+  handleDsAiCommand(selectedDs.value, cmd)
+}
+
+function handleFieldAiCommand(cmd: string) {
+  if (cmd === 'comment') generateFieldComments()
+  else if (cmd === 'classify') generateFieldClassify()
 }
 
 /** 数据源行点击：点展开箭头只展开 Schema，其余进入表列表 */
