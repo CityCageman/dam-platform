@@ -48,7 +48,12 @@
                   <h3>{{ selectedTask.title }}</h3>
                   <p>{{ typeLabel(selectedTask.taskType) }} · #{{ selectedTask.id }} · {{ formatTime(selectedTask.createdAt) }}</p>
                 </div>
-                <el-tag :type="statusTag(selectedTask.status)">{{ statusLabel(selectedTask.status) }}</el-tag>
+                <div class="detail-head-actions">
+                  <el-tag :type="statusTag(selectedTask.status)">{{ statusLabel(selectedTask.status) }}</el-tag>
+                  <el-button text type="danger" size="small"
+                             :disabled="selectedTask.status === 'RUNNING'"
+                             @click="deleteSelectedTask">删除任务</el-button>
+                </div>
               </div>
 
               <div v-if="selectedItem" class="suggest">
@@ -178,7 +183,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { catalogApi, standardApi } from '@/api'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, ChatDotRound, MagicStick, Check, CircleCheck, Collection, TrendCharts, Document, Files } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import AgentChat from './AgentChat.vue'
@@ -301,6 +306,26 @@ async function selectTask(task: any) {
   }
 }
 
+async function deleteSelectedTask() {
+  if (!selectedTask.value) return
+  try {
+    await ElMessageBox.confirm(
+      `确认删除任务「${selectedTask.value.title}」及其全部草稿？`,
+      '删除任务',
+      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+    )
+    await catalogApi.deleteAiTask(selectedTask.value.id)
+    ElMessage.success('任务已删除')
+    selectedTask.value = null
+    items.value = []
+    selectedItemId.value = null
+    await loadTasks()
+    await loadStats()
+  } catch (e: any) {
+    if (e !== 'cancel' && e !== 'close') ElMessage.error(e.message || '删除失败')
+  }
+}
+
 async function reviewSelected(accept: boolean) {
   if (!selectedTask.value || !selectedItem.value) return
   try {
@@ -419,6 +444,7 @@ onBeforeUnmount(() => {
 .detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 18px 10px; }
 .detail-head h3 { margin: 0; font-size: 15px; color: var(--med-text); }
 .detail-head p { margin: 4px 0 0; font-size: 10.5px; color: var(--med-text-light); }
+.detail-head-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .suggest { margin: 4px 18px 0; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 9px; padding: 12px 14px; }
 .suggest-head { display: flex; align-items: center; gap: 6px; color: #15803D; font-size: 11px; }
 .suggest-head b { font-weight: 600; }

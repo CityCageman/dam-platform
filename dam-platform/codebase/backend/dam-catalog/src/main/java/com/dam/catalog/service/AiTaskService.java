@@ -323,6 +323,20 @@ public class AiTaskService {
     }
 
     /**
+     * 删除任务及其草稿明细（仅允许删除自己创建、且不在执行中的任务）
+     */
+    @Transactional
+    public void deleteTask(Long id) {
+        AiTask task = ownedTask(id);
+        if ("RUNNING".equals(task.getStatus())) {
+            throw new BusinessException("任务正在执行中，不能删除，请等待执行结束");
+        }
+        itemMapper.delete(new LambdaQueryWrapper<AiTaskItem>()
+                .eq(AiTaskItem::getTaskId, id));
+        taskMapper.deleteById(id);
+    }
+
+    /**
      * 任务状态统计
      */
     public Map<String, Object> stats() {

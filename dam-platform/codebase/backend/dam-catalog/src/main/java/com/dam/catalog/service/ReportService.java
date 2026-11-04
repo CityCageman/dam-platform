@@ -57,8 +57,10 @@ public class ReportService {
             "\\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE|EXEC|EXECUTE|CALL|MERGE|REPLACE)\\b",
             Pattern.CASE_INSENSITIVE);
 
-    /** 单次生成 Prompt 注入的最大表数量（超出截断，避免上下文过长） */
-    private static final int MAX_TABLES = 80;
+    /** 单次生成 Prompt 注入的最大表数量（超出截断，避免上下文过长导致模型超时） */
+    private static final int MAX_TABLES = 24;
+    /** 单表注入的最大字段数量（宽表截断，避免 Prompt 过大） */
+    private static final int MAX_COLUMNS_PER_TABLE = 60;
 
     /** 存储过程调用白名单：CALL schema.proc(...) / {call ...} */
     private static final Pattern SAFE_CALL_PATTERN = Pattern.compile(
@@ -395,10 +397,15 @@ public class ReportService {
         for (MetadataTable t : selected) {
             Map<String, Object> m = new LinkedHashMap<>();
             String schemaName = t.getSchemaId() != null ? schemaNameMap.getOrDefault(t.getSchemaId(), "") : "";
+            List<MetadataColumn> columns = colsMap.getOrDefault(t.getId(), Collections.emptyList());
+            if (columns.size() > MAX_COLUMNS_PER_TABLE) {
+                columns = columns.subList(0, MAX_COLUMNS_PER_TABLE);
+                ctx.truncated = true;
+            }
             m.put("schemaName", schemaName);
             m.put("tableName", t.getTableName());
             m.put("tableComment", t.getTableComment());
-            m.put("columns", colsMap.getOrDefault(t.getId(), Collections.emptyList()));
+            m.put("columns", columns);
             ctx.tables.add(m);
         }
         return ctx;
@@ -449,7 +456,7 @@ public class ReportService {
             sb.append("\n");
         }
         if (ctx.truncated) {
-            sb.append("（注：该数据源表数量较多，以上仅列出前 ").append(MAX_TABLES).append(" 张表）\n\n");
+            sb.append("（注：表/字段较多，以上仅列出部分表和字段，请优先使用已列出的结构）\n\n");
         }
         sb.append("用户需求：").append(requirement).append("\n\n");
         sb.append("要求：\n");
@@ -472,7 +479,7 @@ public class ReportService {
 
             HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(agentUrl + "/api/agent/complete"))
-                    .timeout(Duration.ofSeconds(150))
+                    .timeout(Duration.ofSeconds(240))
                     .header("Content-Type", "application/json");
             if (StrUtil.isNotBlank(token)) builder.header("token", token);
             HttpRequest request = builder.POST(HttpRequest.BodyPublishers.ofString(json)).build();
@@ -488,6 +495,9 @@ public class ReportService {
             return node.path("data").path("content").asText("");
         } catch (BusinessException e) {
             throw e;
+        } catch (java.net.http.HttpTimeoutException e) {
+            log.warn("报表 SQL 生成超时: {}", e.getMessage());
+            throw new BusinessException("报表生成超时，请缩小数据源范围、减少表数量或稍后重试");
         } catch (Exception e) {
             log.error("调用编码智能体生成 SQL 失败", e);
             throw new BusinessException("智能体调用失败: " + e.getMessage());

@@ -78,7 +78,7 @@ FROM (VALUES
   ('安全管控','治理能力','/security','Lock',3),
   ('生命周期','治理能力','/lifecycle','Timer',4),
   ('工单中心','平台运营','/operations','Tickets',1),
-  ('智能助手','平台运营','/agent','ChatDotRound',2)
+  ('AI 工作台','平台运营','/agent','ChatDotRound',2)
 ) AS v(menu_name, parent_name, path, icon, sort_order)
 WHERE NOT EXISTS (SELECT 1 FROM dam_sys.sys_menu m WHERE m.path=v.path AND m.deleted_at IS NULL);
 
@@ -107,7 +107,7 @@ FROM (VALUES
   ('navigation','nav_security','安全管控','/security','安全管控导航',8),
   ('navigation','nav_lifecycle','生命周期','/lifecycle','生命周期导航',9),
   ('navigation','nav_operations','工单中心','/operations','工单中心导航',10),
-  ('navigation','nav_agent','智能助手','/agent','智能助手导航',11),
+  ('navigation','nav_agent','AI 工作台','/agent','AI 工作台导航',11),
   ('security_level','LEVEL_1','1级：公开数据','public','对外公开数据',1),
   ('security_level','LEVEL_2','2级：内部一般数据','internal','内部一般数据',2),
   ('security_level','LEVEL_3','3级：内部敏感数据','confidential','内部敏感数据',3),

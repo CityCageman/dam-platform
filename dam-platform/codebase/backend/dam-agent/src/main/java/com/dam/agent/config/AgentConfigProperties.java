@@ -20,7 +20,7 @@ public class AgentConfigProperties {
     private String model;
 
     /** 总体超时（秒），流式请求需要更长 */
-    private long timeoutSeconds = 120;
+    private long timeoutSeconds = 240;
 
     /** 连接超时（秒） */
     private long connectTimeoutSeconds = 10;

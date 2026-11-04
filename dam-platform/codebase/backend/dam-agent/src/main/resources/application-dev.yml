@@ -11,7 +11,7 @@ dam:
       # 默认模型（对话模型，请按实际替换）
       model: qwen3.8-27b-tp8
       # 总体超时（秒）
-      timeout-seconds: 120
+      timeout-seconds: 180
       # 连接超时（秒）
       connect-timeout-seconds: 10
     # 编码智能体（代码 / SQL 生成）
@@ -23,6 +23,6 @@ dam:
       # 默认模型（编码模型）
       model: qwen3-coder-30b-a3b
       # 总体超时（秒）
-      timeout-seconds: 120
+      timeout-seconds: 240
       # 连接超时（秒）
       connect-timeout-seconds: 10

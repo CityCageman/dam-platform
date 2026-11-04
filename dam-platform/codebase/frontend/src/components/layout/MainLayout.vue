@@ -26,18 +26,18 @@
               <template #title>
                 <img v-if="isImageIcon(item.icon)" :src="iconSrc(item.icon)" class="menu-icon-img" />
                 <el-icon v-else><component :is="item.icon" /></el-icon>
-                <span>{{ item.configName }}</span>
+                <span>{{ displayMenuName(item) }}</span>
               </template>
               <el-menu-item v-for="child in item.children" :key="child.configCode" :index="navIndex(child)">
                 <img v-if="isImageIcon(child.icon)" :src="iconSrc(child.icon)" class="menu-icon-img" />
                 <el-icon v-else><component :is="child.icon" /></el-icon>
-                <span>{{ child.configName }}</span>
+                <span>{{ displayMenuName(child) }}</span>
               </el-menu-item>
             </el-sub-menu>
             <el-menu-item v-else :index="routePath(item)">
               <img v-if="isImageIcon(item.icon)" :src="iconSrc(item.icon)" class="menu-icon-img" />
               <el-icon v-else><component :is="item.icon" /></el-icon>
-              <span>{{ item.configName }}</span>
+              <span>{{ displayMenuName(item) }}</span>
             </el-menu-item>
           </template>
         </template>
@@ -175,11 +175,19 @@ function normalizeMenu(n: any): any {
   return {
     ...n,
     configCode: n.path || String(n.id),
-    configName: n.menuName || n.configName,
+    configName: n.path === '/agent' ? 'AI 工作台' : (n.menuName || n.configName),
     configValue: n.path,
     icon: n.icon,
     children: (n.children || []).map(normalizeMenu)
   }
+}
+
+/** 兼容历史导航配置：数据库里仍叫“智能助手”时前端也显示“AI 工作台” */
+function displayMenuName(item: any): string {
+  const path = String(item?.configValue || item?.path || '')
+  const code = String(item?.configCode || '')
+  if (path === '/agent' || code === 'agent' || code === 'nav_agent') return 'AI 工作台'
+  return item?.configName || ''
 }
 
 /** 按大模块分组后的菜单（数据库菜单优先，空时回退静态路由分组） */

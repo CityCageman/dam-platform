@@ -75,6 +75,12 @@ public class AiTaskController {
         return Result.success(taskService.create(body));
     }
 
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        taskService.deleteTask(id);
+        return Result.success(null);
+    }
+
     @PostMapping("/{id}/status")
     public Result<Void> updateStatus(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         taskService.updateStatus(id, body);

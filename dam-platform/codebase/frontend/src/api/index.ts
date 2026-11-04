@@ -16,7 +16,7 @@ export const agentApi = {
 export const reportApi = {
   /** 根据自然语言需求生成报表 SQL（后端检索表结构 + 调用编码智能体，耗时较长） */
   generate(data: { requirement: string; dataSourceId: number }) {
-    return request.post('/catalog/report/generate', data, { timeout: 150000 })
+    return request.post('/catalog/report/generate', data, { timeout: 300000 })
   },
   /** 执行报表 SQL（仅 SELECT，后端安全校验后只读执行） */
   execute(data: { dataSourceId: number; sql: string; limit?: number }) {
@@ -70,6 +70,7 @@ export const catalogApi = {
   getAiTaskStats() { return request.get('/catalog/ai/tasks/stats') },
   getAiTask(id: number) { return request.get(`/catalog/ai/tasks/${id}`) },
   createAiTask(data: any) { return request.post('/catalog/ai/tasks', data) },
+  deleteAiTask(id: number) { return request.delete(`/catalog/ai/tasks/${id}`) },
   updateAiTaskStatus(id: number, data: any) { return request.post(`/catalog/ai/tasks/${id}/status`, data) },
   getAiTaskItems(id: number, params: any) { return request.get(`/catalog/ai/tasks/${id}/items`, { params }) },
   reviewAiTaskItems(id: number, data: any) { return request.post(`/catalog/ai/tasks/${id}/items/batch-review`, data) },
