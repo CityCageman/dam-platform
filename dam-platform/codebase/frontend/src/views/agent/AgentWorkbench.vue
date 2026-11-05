@@ -128,16 +128,7 @@
 
       <!-- ==================== 知识库 ==================== -->
       <el-tab-pane label="知识库" name="kb">
-        <div class="knowledge-grid">
-          <div v-for="k in knowledgeItems" :key="k.name" class="panel knowledge-card">
-            <div class="kb-icon large" :style="{ color: k.color, background: k.color + '14' }">
-              <el-icon><component :is="k.icon" /></el-icon>
-            </div>
-            <h3>{{ k.name }}</h3>
-            <p>{{ k.desc }}</p>
-            <div class="knowledge-foot"><span>{{ k.count }}</span><el-button text type="primary" size="small" @click="openKnowledge(k)">查看 →</el-button></div>
-          </div>
-        </div>
+        <KnowledgeBase />
       </el-tab-pane>
 
       <!-- ==================== 评估看板 ==================== -->
@@ -194,14 +185,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
-import { catalogApi, standardApi, metricApi } from '@/api'
+import { catalogApi, knowledgeApi } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, ChatDotRound, MagicStick, Check, CircleCheck, Collection, TrendCharts, Document, Files } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import AgentChat from './AgentChat.vue'
 
-const router = useRouter()
 const tab = ref('tasks')
 const chatOpen = ref(false)
 const draftVisible = ref(false)
@@ -214,6 +203,7 @@ const selectedTask = ref<any>(null)
 const items = ref<any[]>([])
 const selectedItemId = ref<number | null>(null)
 const manualNote = ref('')
+const knowledgeCategories = ref<any[]>([])
 const knowledgeCounts = ref({ domain: 0, metric: 0, standard: 0, history: 0 })
 const evalChart = ref<HTMLElement>()
 const miniChart = ref<HTMLElement>()
@@ -243,12 +233,14 @@ const totalAccepted = computed(() => tasks.value.reduce((s, t) => s + Number(t.a
 const adoptRate = computed(() => totalReviewed.value ? Math.round(totalAccepted.value / totalReviewed.value * 100) : 0)
 const completionRate = computed(() => Number(stats.value.total || 0) ? Math.round(Number(stats.value.DONE || 0) / Number(stats.value.total) * 100) : 0)
 
-const knowledgeItems = computed(() => [
-  { name: '领域词典', desc: '表名/字段名到中文、分类、等级的映射', count: knowledgeCounts.value.domain || '—', color: '#2563EB', icon: Collection },
-  { name: '指标口径', desc: '费用、收入、工作量等指标的计算口径', count: knowledgeCounts.value.metric || '—', color: '#7C3AED', icon: TrendCharts },
-  { name: '标准术语', desc: '数据标准与标准代码值，用于校验', count: knowledgeCounts.value.standard || '—', color: '#0D9488', icon: Document },
-  { name: '历史案例', desc: '已完成并采纳的 AI 任务样本', count: knowledgeCounts.value.history || '—', color: '#D97706', icon: Files }
-])
+const knowledgeItems = computed(() => knowledgeCategories.value.map((c: any, i: number) => ({
+  name: c.categoryName,
+  desc: c.description || c.categoryCode,
+  count: '—',
+  color: ['#2563EB', '#7C3AED', '#0D9488', '#D97706'][i % 4],
+  icon: [Collection, TrendCharts, Document, Files][i % 4],
+  id: c.id
+})))
 
 const feedbackRows = computed(() => tasks.value
   .filter(t => Number(t.acceptedCount || 0) + Number(t.rejectedCount || 0) > 0)
@@ -388,18 +380,9 @@ function nextDraft() {
 
 async function loadKnowledge() {
   try {
-    const tags: any = await catalogApi.getTags()
-    knowledgeCounts.value.domain = (tags.data || []).length
-  } catch { /* ignore */ }
-  try {
-    const res: any = await standardApi.searchStandards({ page: 1, pageSize: 1 })
-    knowledgeCounts.value.standard = res.data?.total || 0
-  } catch { /* ignore */ }
-  try {
-    const res: any = await metricApi.list({ page: 1, pageSize: 1 })
-    knowledgeCounts.value.metric = res.data?.total || 0
-  } catch { /* ignore */ }
-  knowledgeCounts.value.history = Number(stats.value.DONE || 0)
+    const res: any = await knowledgeApi.categories()
+    knowledgeCategories.value = res.data || []
+  } catch { knowledgeCategories.value = [] }
 }
 
 async function loadAll() {
@@ -449,10 +432,7 @@ function onTabChange(name: any) {
 }
 
 function openKnowledge(k: any) {
-  if (k.name === '指标口径') router.push('/metrics')
-  else if (k.name === '标准术语') router.push('/standard')
-  else if (k.name === '领域词典') router.push('/metadata')
-  else if (k.name === '历史案例') tab.value = 'feedback'
+  tab.value = 'kb'
 }
 
 onMounted(async () => {

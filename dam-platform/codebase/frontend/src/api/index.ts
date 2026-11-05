@@ -408,6 +408,20 @@ export const operationsApi = {
   getUserBehavior() { return request.get('/operations/user-behavior') }
 }
 
+export const knowledgeApi = {
+  categories() { return request.get('/catalog/knowledge/categories') },
+  createCategory(data: any) { return request.post('/catalog/knowledge/categories', data) },
+  updateCategory(id: number, data: any) { return request.put(`/catalog/knowledge/categories/${id}`, data) },
+  deleteCategory(id: number) { return request.delete(`/catalog/knowledge/categories/${id}`) },
+  entries(params: any) { return request.get('/catalog/knowledge/entries', { params }) },
+  createEntry(data: any) { return request.post('/catalog/knowledge/entries', data) },
+  updateEntry(id: number, data: any) { return request.put(`/catalog/knowledge/entries/${id}`, data) },
+  deleteEntry(id: number) { return request.delete(`/catalog/knowledge/entries/${id}`) },
+  sources(params: any) { return request.get('/catalog/knowledge/sources', { params }) },
+  sync(data: any) { return request.post('/catalog/knowledge/sync', data) },
+  reindex(id: number) { return request.post(`/catalog/knowledge/entries/${id}/vector-reindex`) }
+}
+
 export const metricApi = {
   list(params: any) { return request.get('/catalog/metrics', { params }) },
   get(id: number) { return request.get(`/catalog/metrics/${id}`) },

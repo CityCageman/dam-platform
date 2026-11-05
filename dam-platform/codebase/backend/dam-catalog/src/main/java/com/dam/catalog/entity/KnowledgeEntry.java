@@ -1,0 +1,33 @@
+package com.dam.catalog.entity;
+
+import com.baomidou.mybatisplus.annotation.*;
+import com.dam.catalog.config.JsonbTypeHandler;
+import lombok.Data;
+import java.time.LocalDateTime;
+
+@Data
+@TableName(value = "knowledge_entry", schema = "dam_asset")
+public class KnowledgeEntry {
+    @TableId(type = IdType.AUTO)
+    private Long id;
+    private Long categoryId;
+    private String title;
+    private String content;
+    /** MANUAL / METADATA / METRIC / STANDARD */
+    private String sourceType;
+    private String sourceId;
+    private String sourceKey;
+
+    @TableField(typeHandler = JsonbTypeHandler.class)
+    private String tags;
+
+    private String vectorId;
+    /** PENDING / SYNCED / FAILED */
+    private String embeddingStatus;
+    private Integer enabled;
+    private LocalDateTime createdAt;
+    private String createdBy;
+    private LocalDateTime updatedAt;
+    private String updatedBy;
+    private LocalDateTime deletedAt;
+}
