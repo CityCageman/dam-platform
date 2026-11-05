@@ -433,6 +433,24 @@ public class ReportService {
             }
         }
 
+        // 用户明确写出的表名必须先做元数据校验；缺失就明确报错，不允许模型猜
+        Set<String> explicitNames = extractExplicitTableNames(requirement);
+        Map<String, MetadataTable> tableByName = new HashMap<>();
+        for (MetadataTable t : tables) {
+            if (t.getTableName() != null) tableByName.put(t.getTableName().toLowerCase(Locale.ROOT), t);
+        }
+        List<String> missing = new ArrayList<>();
+        Set<Long> forcedIds = new HashSet<>();
+        for (String name : explicitNames) {
+            MetadataTable t = tableByName.get(name.toLowerCase(Locale.ROOT));
+            if (t == null) missing.add(name);
+            else forcedIds.add(t.getId());
+        }
+        if (!missing.isEmpty()) {
+            throw new BusinessException("需求中明确提到、但元数据里没有同步的表：" + String.join(", ", missing)
+                    + "。请先在「元数据管理」同步这些表，再重新生成");
+        }
+
         // 全库字段：字段注释也参与检索，避免只靠表名找不到业务表
         Set<Long> allTableIds = tables.stream().map(MetadataTable::getId).collect(Collectors.toSet());
         Map<Long, List<MetadataColumn>> allColsMap = columnMapper.selectList(
@@ -448,6 +466,7 @@ public class ReportService {
             String schemaName = t.getSchemaId() != null ? schemaNameMap.getOrDefault(t.getSchemaId(), "") : "";
             List<MetadataColumn> cols = allColsMap.getOrDefault(t.getId(), Collections.emptyList());
             int score = scoreTable(t, schemaName, cols, requirement, tokens);
+            if (forcedIds.contains(t.getId())) score += 1000;
             if (score <= 0) continue;
             scores.put(t.getId(), score);
             if (score >= 200) keyTableIds.add(t.getId());
@@ -557,6 +576,16 @@ public class ReportService {
         }
     }
 
+    /** 需求中显式写出的表名（DHC_/ODS_/DWD_ 等），用于强制校验和纳入上下文 */
+    private Set<String> extractExplicitTableNames(String requirement) {
+        Set<String> names = new LinkedHashSet<>();
+        if (StrUtil.isBlank(requirement)) return names;
+        java.util.regex.Matcher m = Pattern.compile(
+                "(?i)\\b(?:DHC|ODS|DWD|DWS|ADS|DIM|BIZ|FACT|DICT)_[A-Za-z0-9_]+\\b").matcher(requirement);
+        while (m.find()) names.add(m.group());
+        return names;
+    }
+
     /** 中文按 2 字滑窗、英文按单词切分，作为轻量全库检索 token */
     private List<String> queryTokens(String requirement) {
         if (StrUtil.isBlank(requirement)) return List.of();
@@ -654,7 +683,9 @@ public class ReportService {
             unknownTables.add(raw);
         }
         if (!unknownTables.isEmpty()) {
+            List<String> available = ctx.tables.stream().map(t -> String.valueOf(t.get("tableName"))).toList();
             throw new BusinessException("AI 生成的 SQL 使用了未提供的表：" + String.join(", ", unknownTables)
+                    + "。本次可用表：" + String.join(", ", available)
                     + "。请确认表名已同步，或在需求中明确表名后重试");
         }
 
@@ -748,7 +779,16 @@ public class ReportService {
         } catch (Exception e) {
             log.warn("加载指标定义失败: {}", e.getMessage());
         }
-        sb.append("用户需求：").append(requirement).append("\n\n");
+        sb.append("用户明确给出的关联条件（必须原样使用，不要自行发明关联）：\n");
+        java.util.regex.Matcher jm = Pattern.compile(
+                "(?i)([A-Za-z_][\\w$]*\\.[A-Za-z_][\\w$]*\\s*=\\s*[A-Za-z_][\\w$]*\\.[A-Za-z_][\\w$]*)").matcher(requirement);
+        boolean hasJoin = false;
+        while (jm.find()) {
+            sb.append("- ").append(jm.group(1)).append("\n");
+            hasJoin = true;
+        }
+        if (!hasJoin) sb.append("- 无显式关联条件，请只使用上下文中 PK/FK 注释\n");
+        sb.append("\n用户需求：").append(requirement).append("\n\n");
         sb.append("要求：\n");
         sb.append("1. 只生成一条 SELECT 语句（可含 JOIN、GROUP BY、聚合、排序、LIMIT）\n");
         sb.append("2. 表名、字段名必须严格使用上面给出的真实名称，不得编造；只能用上下文中出现的表\n");
