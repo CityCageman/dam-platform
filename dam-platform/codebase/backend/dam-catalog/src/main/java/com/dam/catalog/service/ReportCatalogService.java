@@ -111,6 +111,8 @@ public class ReportCatalogService {
 
         LambdaQueryWrapper<ReportCatalog> w = new LambdaQueryWrapper<>();
         w.eq(ReportCatalog::getStatus, 1);
+        // 删除是软删除：只改 deleted_at，卡片列表必须显式排除已删除报表
+        w.isNull(ReportCatalog::getDeletedAt);
         if (StrUtil.isNotBlank(keyword)) {
             w.and(q -> q.like(ReportCatalog::getReportName, keyword)
                     .or().like(ReportCatalog::getReportCode, keyword)
