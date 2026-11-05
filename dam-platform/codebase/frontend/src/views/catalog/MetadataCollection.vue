@@ -1897,7 +1897,8 @@ async function syncFields() {
       // 无变更时直接保存并刷新
       if (syncAssetId.value && syncColumns.value.length > 0) {
         console.log('[syncFields] 无变更，直接保存字段')
-        // 字段同步不再自动调用 AI 注释，避免大表同步被 AI 请求阻塞
+        // AI 注释需要同步完成后再落库；血缘仍异步推送，不阻塞
+        await autoFillSyncComments()
         await catalogApi.confirmSyncFields({
           assetId: syncAssetId.value,
           columns: syncColumns.value
@@ -1922,7 +1923,8 @@ async function syncFields() {
 async function confirmFieldSync() {
   try {
     console.log('[confirmFieldSync] 确认保存字段: assetId=', syncAssetId.value, 'columns=', syncColumns.value)
-    // AI 注释改为独立操作，不阻塞字段保存
+    // 字段注释必须同步完成；血缘由后端异步处理
+    await autoFillSyncComments()
     await catalogApi.confirmSyncFields({
       assetId: syncAssetId.value,
       columns: syncColumns.value
