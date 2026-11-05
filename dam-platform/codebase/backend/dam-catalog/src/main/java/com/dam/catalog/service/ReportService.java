@@ -412,7 +412,6 @@ public class ReportService {
         boolean truncated = false;
         boolean noMatch = false;
         String joinSkeleton = "";
-        Set<String> requiredTables = new LinkedHashSet<>();
     }
 
     /** 检索数据源下已同步的表结构与字段（含中文注释），按需求做全库检索，而不是按表名取前 N 张 */
@@ -452,8 +451,8 @@ public class ReportService {
             throw new BusinessException("需求中明确提到、但元数据里没有同步的表：" + String.join(", ", missing)
                     + "。请先在「元数据管理」同步这些表，再重新生成");
         }
+        // 关联条件只作为线索，不强制；元数据 FK 优先，用户条件可能与实际模型冲突
         ctx.joinSkeleton = buildJoinSkeleton(requirement, tableByName, schemaNameMap);
-        ctx.requiredTables.addAll(extractJoinTableNames(requirement));
 
         // 全库字段：字段注释也参与检索，避免只靠表名找不到业务表
         Set<Long> allTableIds = tables.stream().map(MetadataTable::getId).collect(Collectors.toSet());
@@ -760,24 +759,6 @@ public class ReportService {
                     + "。本次可用表：" + String.join(", ", available)
                     + "。请确认表名已同步，或在需求中明确表名后重试");
         }
-        if (!ctx.requiredTables.isEmpty()) {
-            Set<String> usedTables = new HashSet<>();
-            java.util.regex.Matcher um = Pattern.compile(
-                    "(?i)\\b(?:from|join)\\s+([`\"\\[]?[a-zA-Z_][\\w$]*(?:\\.[a-zA-Z_][\\w$]*)?[`\"\\]]?)").matcher(sql);
-            while (um.find()) {
-                String raw = um.group(1).replace("`", "").replace("\"", "").replace("[", "").replace("]", "").toLowerCase(Locale.ROOT);
-                usedTables.add(raw);
-                if (raw.contains(".")) usedTables.add(raw.substring(raw.lastIndexOf('.') + 1));
-            }
-            List<String> missingUsed = ctx.requiredTables.stream()
-                    .filter(t -> !usedTables.contains(t.toLowerCase(Locale.ROOT)))
-                    .toList();
-            if (!missingUsed.isEmpty()) {
-                throw new BusinessException("AI 生成的 SQL 没有使用用户指定的表：" + String.join(", ", missingUsed)
-                        + "。请检查关联条件或重新生成");
-            }
-        }
-
         // 别名映射：FROM/JOIN table [AS] alias
         Map<String, String> aliasToTable = new HashMap<>();
         java.util.regex.Matcher am = Pattern.compile(
@@ -843,7 +824,10 @@ public class ReportService {
                 sb.append("- ").append(c.getColumnName())
                         .append(" (").append(StrUtil.isBlank(c.getColumnType()) ? "未知类型" : c.getColumnType()).append(")");
                 if (Boolean.TRUE.equals(c.getIsPrimaryKey())) sb.append(" PK");
-                if (Boolean.TRUE.equals(c.getIsForeignKey())) sb.append(" FK");
+                if (Boolean.TRUE.equals(c.getIsForeignKey())) {
+                    sb.append(" FK");
+                    if (StrUtil.isNotBlank(c.getReferenceTableName())) sb.append("→").append(c.getReferenceTableName());
+                }
                 if (StrUtil.isNotBlank(c.getColumnComment())) sb.append(" # ").append(c.getColumnComment());
                 sb.append("\n");
             }
@@ -879,10 +863,13 @@ public class ReportService {
             log.warn("加载指标定义失败: {}", e.getMessage());
         }
         if (StrUtil.isNotBlank(ctx.joinSkeleton)) {
-            sb.append("必须使用的 FROM/JOIN 骨架（不得替换表、不得把 schema 当表名）：\n");
+            sb.append("用户提供的关联线索（仅作理解参考；若与元数据 FK 冲突，以元数据 FK 为准）：\n");
             sb.append(ctx.joinSkeleton).append("\n\n");
         }
-        sb.append("用户明确给出的关联条件（必须原样使用，不要自行发明关联）：\n");
+        sb.append("元数据中的外键/引用关系（优先使用；没有 FK 时才参考下面的用户线索）：\n");
+        sb.append("- 字段行中的 FK 表示外键/指针字段，优先按真实 FK 关联\n");
+        sb.append("- 用户给出的关联条件仅作线索，若与 FK 冲突，以 FK 为准；不确定时不要强行使用\n\n");
+        sb.append("用户给出的关联条件（仅作线索）：\n");
         java.util.regex.Matcher jm = Pattern.compile(
                 "(?i)([A-Za-z_][\\w$]*\\.[A-Za-z_][\\w$]*\\s*=\\s*[A-Za-z_][\\w$]*\\.[A-Za-z_][\\w$]*)").matcher(requirement);
         boolean hasJoin = false;

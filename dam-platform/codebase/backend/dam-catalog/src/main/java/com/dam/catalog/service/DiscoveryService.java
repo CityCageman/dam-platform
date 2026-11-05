@@ -194,6 +194,8 @@ public class DiscoveryService {
                 }
             }
             log.info("扫描表完成: {} 张表, 外键 {} 条, 耗时 {}ms", tables.size(), foreignKeys.size(), System.currentTimeMillis() - tScan);
+            // 把外键引用合并到字段上，后续 metadata_column 落库时 AI 才能看到 FK 关系
+            attachForeignKeys(tables, foreignKeys);
             // 采集记录需要 schema_id：仅在单一 schema 且已落库时可解析，否则用 0 兑底
             schemaId = resolveSchemaId(dataSourceId, targetSchemas);
         } catch (SQLException e) {
@@ -307,6 +309,34 @@ public class DiscoveryService {
             }
             table.put("columns", cols);
             tables.add(table);
+        }
+    }
+
+    /** 给扫描结果字段补充外键引用表，供 metadata_column 持久化 */
+    private void attachForeignKeys(List<Map<String, Object>> tables, List<Map<String, Object>> foreignKeys) {
+        if (tables == null || foreignKeys == null || foreignKeys.isEmpty()) return;
+        Map<String, String> refMap = new HashMap<>();
+        for (Map<String, Object> fk : foreignKeys) {
+            String fromTable = String.valueOf(fk.getOrDefault("fromTable", "")).toLowerCase();
+            String fromColumn = String.valueOf(fk.getOrDefault("fromColumn", "")).toLowerCase();
+            String toTable = String.valueOf(fk.getOrDefault("toTable", ""));
+            if (StrUtil.isBlank(fromTable) || StrUtil.isBlank(fromColumn) || StrUtil.isBlank(toTable)) continue;
+            refMap.put(fromTable + "." + fromColumn, toTable);
+        }
+        if (refMap.isEmpty()) return;
+        for (Map<String, Object> table : tables) {
+            String tableName = String.valueOf(table.getOrDefault("tableName", "")).toLowerCase();
+            Object rawCols = table.get("columns");
+            if (!(rawCols instanceof List<?> cols)) continue;
+            for (Object o : cols) {
+                if (!(o instanceof Map<?, ?> col)) continue;
+                String colName = String.valueOf(col.get("name")).toLowerCase();
+                String ref = refMap.get(tableName + "." + colName);
+                if (StrUtil.isNotBlank(ref)) {
+                    ((Map<String, Object>) col).put("referenceTable", ref);
+                    ((Map<String, Object>) col).put("isForeignKey", true);
+                }
+            }
         }
     }
 

@@ -210,6 +210,8 @@ public class TechnicalMetadataService {
                 }
                 mc.setIsNullable(Boolean.TRUE.equals(col.get("nullable")));
                 mc.setIsPrimaryKey(Boolean.TRUE.equals(col.get("isPrimaryKey")));
+                mc.setIsForeignKey(Boolean.TRUE.equals(col.get("isForeignKey")) || col.get("referenceTable") != null);
+                mc.setReferenceTableName((String) col.get("referenceTable"));
                 mc.setDefaultValue((String) col.get("defaultValue"));
                 mc.setColumnComment((String) col.get("comment"));
                 mc.setOrdinalPosition(ordinal++);
