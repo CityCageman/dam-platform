@@ -411,6 +411,8 @@ public class ReportService {
         int totalTables = 0;
         boolean truncated = false;
         boolean noMatch = false;
+        String joinSkeleton = "";
+        Set<String> requiredTables = new LinkedHashSet<>();
     }
 
     /** 检索数据源下已同步的表结构与字段（含中文注释），按需求做全库检索，而不是按表名取前 N 张 */
@@ -450,6 +452,8 @@ public class ReportService {
             throw new BusinessException("需求中明确提到、但元数据里没有同步的表：" + String.join(", ", missing)
                     + "。请先在「元数据管理」同步这些表，再重新生成");
         }
+        ctx.joinSkeleton = buildJoinSkeleton(requirement, tableByName, schemaNameMap);
+        ctx.requiredTables.addAll(extractJoinTableNames(requirement));
 
         // 全库字段：字段注释也参与检索，避免只靠表名找不到业务表
         Set<Long> allTableIds = tables.stream().map(MetadataTable::getId).collect(Collectors.toSet());
@@ -576,6 +580,74 @@ public class ReportService {
         }
     }
 
+    /** 从需求里的 A.x = B.y 提取被关联的表名 */
+    private Set<String> extractJoinTableNames(String requirement) {
+        Set<String> names = new LinkedHashSet<>();
+        java.util.regex.Matcher m = Pattern.compile(
+                "(?i)([A-Za-z_][\\w$]*)\\.[A-Za-z_][\\w$]*\\s*=\\s*([A-Za-z_][\\w$]*)\\.[A-Za-z_][\\w$]*").matcher(requirement == null ? "" : requirement);
+        while (m.find()) {
+            names.add(m.group(1));
+            names.add(m.group(2));
+        }
+        return names;
+    }
+
+    /** 根据用户给出的关联条件生成确定性的 FROM/JOIN 骨架，避免模型替换表或把 schema 当表 */
+    private String buildJoinSkeleton(String requirement, Map<String, MetadataTable> tableByName,
+                                     Map<Long, String> schemaNameMap) {
+        if (StrUtil.isBlank(requirement)) return "";
+        java.util.regex.Matcher m = Pattern.compile(
+                "(?i)([A-Za-z_][\\w$]*)\\.([A-Za-z_][\\w$]*)\\s*=\\s*([A-Za-z_][\\w$]*)\\.([A-Za-z_][\\w$]*)").matcher(requirement);
+        List<String[]> joins = new ArrayList<>();
+        List<String> order = new ArrayList<>();
+        while (m.find()) {
+            String a = m.group(1).toLowerCase(Locale.ROOT), ca = m.group(2);
+            String b = m.group(3).toLowerCase(Locale.ROOT), cb = m.group(4);
+            if (!tableByName.containsKey(a) || !tableByName.containsKey(b)) continue;
+            joins.add(new String[]{a, ca, b, cb});
+            if (!order.contains(a)) order.add(a);
+            if (!order.contains(b)) order.add(b);
+        }
+        if (joins.isEmpty()) return "";
+        // 只保留与第一个表连通的边，避免把无关表拼进来
+        Map<String, String> aliases = new LinkedHashMap<>();
+        int idx = 1;
+        for (String n : order) aliases.put(n, "t" + idx++);
+        Set<String> visited = new LinkedHashSet<>();
+        String root = order.get(0);
+        visited.add(root);
+        StringBuilder sb = new StringBuilder();
+        sb.append("FROM ").append(fullName(tableByName.get(root), schemaNameMap)).append(" ").append(aliases.get(root));
+        boolean added = true;
+        while (added) {
+            added = false;
+            for (String[] j : joins) {
+                String a = j[0], b = j[2];
+                if (visited.contains(a) && !visited.contains(b)) {
+                    sb.append("\nJOIN ").append(fullName(tableByName.get(b), schemaNameMap)).append(" ").append(aliases.get(b))
+                            .append(" ON ").append(aliases.get(a)).append(".").append(j[1])
+                            .append(" = ").append(aliases.get(b)).append(".").append(j[3]);
+                    visited.add(b);
+                    added = true;
+                } else if (visited.contains(b) && !visited.contains(a)) {
+                    sb.append("\nJOIN ").append(fullName(tableByName.get(a), schemaNameMap)).append(" ").append(aliases.get(a))
+                            .append(" ON ").append(aliases.get(b)).append(".").append(j[3])
+                            .append(" = ").append(aliases.get(a)).append(".").append(j[1]);
+                    visited.add(a);
+                    added = true;
+                }
+            }
+        }
+        return sb.toString();
+    }
+
+    private String fullName(MetadataTable t, Map<Long, String> schemaNameMap) {
+        if (t == null) return "";
+        String schema = t.getSchemaId() != null ? schemaNameMap.getOrDefault(t.getSchemaId(), "") : "";
+        return StrUtil.isNotBlank(schema) && !"public".equalsIgnoreCase(schema)
+                ? schema + "." + t.getTableName() : t.getTableName();
+    }
+
     /** 需求中显式写出的表名（DHC_/ODS_/DWD_ 等），用于强制校验和纳入上下文 */
     private Set<String> extractExplicitTableNames(String requirement) {
         Set<String> names = new LinkedHashSet<>();
@@ -688,6 +760,23 @@ public class ReportService {
                     + "。本次可用表：" + String.join(", ", available)
                     + "。请确认表名已同步，或在需求中明确表名后重试");
         }
+        if (!ctx.requiredTables.isEmpty()) {
+            Set<String> usedTables = new HashSet<>();
+            java.util.regex.Matcher um = Pattern.compile(
+                    "(?i)\\b(?:from|join)\\s+([`\"\\[]?[a-zA-Z_][\\w$]*(?:\\.[a-zA-Z_][\\w$]*)?[`\"\\]]?)").matcher(sql);
+            while (um.find()) {
+                String raw = um.group(1).replace("`", "").replace("\"", "").replace("[", "").replace("]", "").toLowerCase(Locale.ROOT);
+                usedTables.add(raw);
+                if (raw.contains(".")) usedTables.add(raw.substring(raw.lastIndexOf('.') + 1));
+            }
+            List<String> missingUsed = ctx.requiredTables.stream()
+                    .filter(t -> !usedTables.contains(t.toLowerCase(Locale.ROOT)))
+                    .toList();
+            if (!missingUsed.isEmpty()) {
+                throw new BusinessException("AI 生成的 SQL 没有使用用户指定的表：" + String.join(", ", missingUsed)
+                        + "。请检查关联条件或重新生成");
+            }
+        }
 
         // 别名映射：FROM/JOIN table [AS] alias
         Map<String, String> aliasToTable = new HashMap<>();
@@ -728,6 +817,16 @@ public class ReportService {
         sb.append("3. 如果上下文中缺少用户点名的表或字段，不要生成 SQL，只输出：-- 无法生成：缺少 <表/字段>。\n");
         sb.append("4. 生成前自检：FROM/JOIN 的每一张表、SELECT/WHERE/GROUP BY 的每一个字段，都必须能在下面找到。\n\n");
         sb.append("数据源类型：").append(StrUtil.isBlank(dsType) ? "UNKNOWN" : dsType.toUpperCase()).append("\n\n");
+        // 明确 schema 与表的关系，避免模型输出 sqluser.sqluser 这类“schema 当表名”的 SQL
+        Set<String> schemas = ctx.tables.stream()
+                .map(t -> String.valueOf(t.getOrDefault("schemaName", "")))
+                .filter(StrUtil::isNotBlank)
+                .filter(s -> !"null".equalsIgnoreCase(s))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (!schemas.isEmpty()) {
+            sb.append("注意：schema 名是 ").append(String.join(", ", schemas))
+                    .append("，schema 不是表名；表引用必须写成 schema.表名，禁止 FROM schema.schema。\n\n");
+        }
         sb.append("可用表结构（表名/注释 + 字段名/类型/注释，PK=主键，FK=外键）：\n");
         for (Map<String, Object> t : ctx.tables) {
             String schemaName = (String) t.get("schemaName");
@@ -778,6 +877,10 @@ public class ReportService {
             }
         } catch (Exception e) {
             log.warn("加载指标定义失败: {}", e.getMessage());
+        }
+        if (StrUtil.isNotBlank(ctx.joinSkeleton)) {
+            sb.append("必须使用的 FROM/JOIN 骨架（不得替换表、不得把 schema 当表名）：\n");
+            sb.append(ctx.joinSkeleton).append("\n\n");
         }
         sb.append("用户明确给出的关联条件（必须原样使用，不要自行发明关联）：\n");
         java.util.regex.Matcher jm = Pattern.compile(
