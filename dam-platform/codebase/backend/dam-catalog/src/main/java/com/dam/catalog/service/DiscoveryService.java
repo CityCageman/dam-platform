@@ -27,6 +27,7 @@ import java.sql.*;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -931,8 +932,19 @@ public class DiscoveryService {
             List<Map<String, Object>> fks = fetchForeignKeysForTable(
                     conn, adapter.resolveCatalog(databaseName), schemaName, tableName);
             if (!fks.isEmpty()) {
-                pushForeignKeyLineage(fks, typeKey, dataSourceId);
-                log.info("同步字段 [{}] 检测到外键 {} 条，已推送血缘", tableName, fks.size());
+                // 血缘推送是外部 HTTP 调用，不阻塞“同步字段”返回；字段引用本身已落库
+                final String lineageType = typeKey;
+                final Long lineageDs = dataSourceId;
+                final String syncTable = tableName;
+                final List<Map<String, Object>> lineageFks = new ArrayList<>(fks);
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        pushForeignKeyLineage(lineageFks, lineageType, lineageDs);
+                        log.info("同步字段 [{}] 检测到外键 {} 条，已异步推送血缘", syncTable, lineageFks.size());
+                    } catch (Exception ex) {
+                        log.warn("同步字段 [{}] 血缘异步推送失败: {}", syncTable, ex.getMessage());
+                    }
+                });
             }
             // 把外键引用表名合并到字段（fromColumn → toTable），供落库记录 reference_table_name
             Map<String, String> refTableMap = new HashMap<>();

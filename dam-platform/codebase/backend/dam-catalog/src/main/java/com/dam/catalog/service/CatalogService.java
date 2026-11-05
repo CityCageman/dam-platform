@@ -813,6 +813,7 @@ public class CatalogService {
         fieldMapper.delete(new LambdaQueryWrapper<DamField>().eq(DamField::getTableId, tableId));
         int sort = 1;
         java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        List<DamField> toInsert = new ArrayList<>();
         for (Map<String, Object> col : columns) {
             DamField field = new DamField();
             field.setTableId(tableId);
@@ -841,7 +842,11 @@ public class CatalogService {
             field.setUpdatedAt(now);
             field.setCreatedBy("system");
             field.setUpdatedBy("system");
-            fieldMapper.insert(field);
+            toInsert.add(field);
+        }
+        // 分批批量插入，避免几百个字段时逐条 INSERT
+        for (int i = 0; i < toInsert.size(); i += 500) {
+            fieldMapper.insertBatch(toInsert.subList(i, Math.min(i + 500, toInsert.size())));
         }
         calculateAssetSecurityLevel(assetId);
     }
