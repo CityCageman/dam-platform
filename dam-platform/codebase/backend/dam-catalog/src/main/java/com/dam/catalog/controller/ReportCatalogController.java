@@ -87,6 +87,7 @@ public class ReportCatalogController {
     public Result<Map<String, Object>> run(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
         Object raw = body == null ? null : body.get("params");
         Map<String, Object> params = raw instanceof Map ? (Map<String, Object>) raw : Map.of();
-        return Result.success(reportCatalogService.run(id, params));
+        Long dataSourceId = body != null && body.get("dataSourceId") instanceof Number n ? n.longValue() : null;
+        return Result.success(reportCatalogService.run(id, params, dataSourceId));
     }
 }

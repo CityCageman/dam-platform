@@ -103,11 +103,19 @@
           <el-descriptions-item label="描述" :span="2">{{ detail.report.description || '-' }}</el-descriptions-item>
         </el-descriptions>
 
+        <div class="preview-source">
+          <span class="preview-label">预览数据源</span>
+          <el-select v-model="previewDataSourceId" filterable clearable style="width: 260px;" placeholder="使用报表配置的数据源">
+            <el-option v-for="ds in dataSources" :key="ds.id" :label="ds.dsName" :value="ds.id" />
+          </el-select>
+          <span class="preview-hint">不选则使用报表配置的数据源</span>
+        </div>
+
         <!-- 参数 -->
-        <div v-if="paramDefs.length" class="param-block">
+        <div v-if="effectiveParams.length" class="param-block">
           <div class="block-title">查询参数</div>
           <el-form label-width="110px" size="small">
-            <el-form-item v-for="p in paramDefs" :key="p.code" :label="p.label || p.code">
+            <el-form-item v-for="p in effectiveParams" :key="p.code" :label="p.label || p.code">
               <el-input v-model="paramValues[p.code]" :placeholder="p.required ? '必填' : '可选'" style="width: 260px;" />
             </el-form-item>
           </el-form>
@@ -216,6 +224,7 @@ const running = ref(false)
 const runResult = ref<any>(null)
 const runError = ref('')
 const paramValues = ref<Record<string, any>>({})
+const previewDataSourceId = ref<number | undefined>(undefined)
 
 const showForm = ref(false)
 const saving = ref(false)
@@ -227,6 +236,20 @@ const currentDim = computed(() => dims.value.find((d: any) => d.code === activeD
 const currentValues = computed(() => currentDim.value?.values || [])
 const freqValues = computed(() => dims.value.find((d: any) => d.code === 'UPDATE_FREQ')?.values || [])
 const paramDefs = computed(() => (detail.value?.paramDefs || []) as any[])
+const effectiveParams = computed(() => {
+  const defs = [...paramDefs.value]
+  const seen = new Set(defs.map((p: any) => p.code))
+  const sql = String(detail.value?.report?.sqlContent || '')
+  const re = /(?<!:):([A-Za-z_][A-Za-z0-9_]*)/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(sql))) {
+    if (!seen.has(m[1])) {
+      seen.add(m[1])
+      defs.push({ code: m[1], label: m[1], required: true, type: 'string' })
+    }
+  }
+  return defs
+})
 const sqlCount = computed(() => cards.value.filter(c => c.execType === 'SQL' || c.execType === 'PROC').length)
 const externalCount = computed(() => cards.value.filter(c => c.execType === 'IFRAME' || c.execType === 'HTTP').length)
 
@@ -324,7 +347,8 @@ async function openDetail(card: any) {
   try {
     const res: any = await reportCatalogApi.getDetail(card.id)
     detail.value = res.data
-    for (const p of (res.data?.paramDefs || [])) {
+    previewDataSourceId.value = res.data?.report?.dataSourceId
+    for (const p of effectiveParams.value) {
       if (paramValues.value[p.code] == null) paramValues.value[p.code] = ''
     }
   } catch (e: any) {
@@ -337,7 +361,7 @@ async function runReport() {
   running.value = true
   runError.value = ''
   try {
-    const res: any = await reportCatalogApi.run(detail.value.report.id, paramValues.value)
+    const res: any = await reportCatalogApi.run(detail.value.report.id, paramValues.value, previewDataSourceId.value)
     runResult.value = res.data
     if (res.data?.execType === 'IFRAME' || res.data?.execType === 'HTTP') {
       ElMessage.info('该报表为外链页面，请点击下方地址打开')
@@ -447,4 +471,8 @@ async function removeReport(report: any) {
 .run-bar { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
 .run-meta { color: #8a94a6; font-size: 12px; }
 .run-error { margin-top: 10px; color: #f56c6c; font-size: 13px; }
+
+.preview-source { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
+.preview-label { font-size: 12px; color: var(--med-text-secondary); }
+.preview-hint { font-size: 11px; color: var(--med-text-light); }
 </style>

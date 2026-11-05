@@ -84,6 +84,7 @@
                 </el-button>
                 <el-button :disabled="!selectedItem" @click="reviewSelected(false)">驳回</el-button>
                 <el-button text :disabled="!selectedItem" @click="nextDraft">跳过</el-button>
+                <el-button v-if="selectedItem?.itemType === 'REPORT'" text type="primary" @click="openDraftEdit">修正报表</el-button>
                 <span class="draft-count">待审 {{ draftCount }} 条</span>
               </div>
 
@@ -177,19 +178,35 @@
     <el-drawer v-model="chatOpen" title="AI 助手" size="560px" append-to-body>
       <div class="chat-drawer"><AgentChat :hide-header="true" /></div>
     </el-drawer>
+
+    <el-dialog v-model="draftVisible" title="人工修正报表草稿" width="760px" top="6vh">
+      <el-form label-width="80px">
+        <el-form-item label="报表标题"><el-input v-model="draftForm.reportName" /></el-form-item>
+        <el-form-item label="SQL"><el-input v-model="draftForm.sql" type="textarea" :rows="14" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="draftVisible = false">取消</el-button>
+        <el-button type="primary" :loading="draftSaving" @click="saveDraft">保存草稿</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { catalogApi, standardApi } from '@/api'
+import { useRouter } from 'vue-router'
+import { catalogApi, standardApi, metricApi } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, ChatDotRound, MagicStick, Check, CircleCheck, Collection, TrendCharts, Document, Files } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import AgentChat from './AgentChat.vue'
 
+const router = useRouter()
 const tab = ref('tasks')
 const chatOpen = ref(false)
+const draftVisible = ref(false)
+const draftSaving = ref(false)
+const draftForm = ref<any>({})
 const loading = ref(false)
 const tasks = ref<any[]>([])
 const stats = ref<any>({})
@@ -307,6 +324,27 @@ async function selectTask(task: any) {
   }
 }
 
+function openDraftEdit() {
+  if (!selectedItem.value) return
+  try {
+    draftForm.value = JSON.parse(selectedItem.value.draftContent || '{}')
+    draftVisible.value = true
+  } catch { ElMessage.error('草稿内容解析失败') }
+}
+
+async function saveDraft() {
+  if (!selectedTask.value || !selectedItem.value) return
+  if (!draftForm.value.sql?.trim()) { ElMessage.warning('SQL 不能为空'); return }
+  draftSaving.value = true
+  try {
+    await catalogApi.updateAiTaskItem(selectedTask.value.id, selectedItem.value.id, JSON.stringify(draftForm.value))
+    ElMessage.success('草稿已保存，可继续确认入库')
+    draftVisible.value = false
+    await selectTask(selectedTask.value)
+  } catch (e: any) { ElMessage.error(e.message || '保存失败') }
+  finally { draftSaving.value = false }
+}
+
 async function deleteSelectedTask() {
   if (!selectedTask.value) return
   try {
@@ -356,6 +394,10 @@ async function loadKnowledge() {
   try {
     const res: any = await standardApi.searchStandards({ page: 1, pageSize: 1 })
     knowledgeCounts.value.standard = res.data?.total || 0
+  } catch { /* ignore */ }
+  try {
+    const res: any = await metricApi.list({ page: 1, pageSize: 1 })
+    knowledgeCounts.value.metric = res.data?.total || 0
   } catch { /* ignore */ }
   knowledgeCounts.value.history = Number(stats.value.DONE || 0)
 }
@@ -407,7 +449,10 @@ function onTabChange(name: any) {
 }
 
 function openKnowledge(k: any) {
-  ElMessage.info(`${k.name}：${k.desc}`)
+  if (k.name === '指标口径') router.push('/metrics')
+  else if (k.name === '标准术语') router.push('/standard')
+  else if (k.name === '领域词典') router.push('/metadata')
+  else if (k.name === '历史案例') tab.value = 'feedback'
 }
 
 onMounted(async () => {

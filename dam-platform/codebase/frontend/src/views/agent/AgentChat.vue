@@ -59,6 +59,13 @@
               <el-progress :percentage="m.report.progress || 0" :show-text="false" :stroke-width="4" />
             </div>
 
+            <div v-if="m.report.status === 'review' || (m.report.status === 'done' && !m.report.reportId)" class="report-review">
+              <el-icon><CircleCheck /></el-icon>
+              <span>已生成，确认后才会进入报表体系</span>
+              <el-button type="primary" size="small" @click="confirmReport(m)">确认入库</el-button>
+              <el-button size="small" @click="rejectReport(m)">放弃</el-button>
+            </div>
+
             <div v-if="m.report.reportId" class="report-registered">
               <el-icon><CircleCheck /></el-icon>
               <span>已登记到报表体系：<b>{{ m.report.reportName }}</b></span>
@@ -155,7 +162,7 @@ import { agentApi, reportApi, catalogApi } from '@/api'
 defineProps<{ hideHeader?: boolean }>()
 
 interface ReportState {
-  status: 'generating' | 'ready' | 'executing' | 'done' | 'error'
+  status: 'generating' | 'review' | 'ready' | 'executing' | 'done' | 'error'
   requirement?: string
   sql?: string
   dataSourceId?: number
@@ -170,6 +177,8 @@ interface ReportState {
   progress?: number
   reportId?: number
   reportName?: string
+  reviewItemId?: number
+  reviewed?: boolean
 }
 
 interface Msg {
@@ -299,12 +308,17 @@ function sleep(ms: number) {
 async function runReportTask(report: ReportState, requirement: string,
                              mode: 'NEW' | 'MODIFY' = 'NEW',
                              reportId?: number, baseSql?: string) {
+  const history = messages.value.slice(0, -2).slice(-8).map((m: any) => {
+    const body = m.report?.sql ? `SQL: ${m.report.sql}` : (m.content || '')
+    return `${m.role === 'user' ? '用户' : '助手'}：${body}`
+  }).filter(Boolean).join('\n').slice(-6000)
   const created: any = await reportApi.generateAsync({
     requirement,
     dataSourceId: report.dataSourceId!,
     mode,
     reportId,
     baseSql,
+    history,
     displayRequirement: requirement
   })
   const taskId = Number(created.data?.taskId)
@@ -320,7 +334,7 @@ async function runReportTask(report: ReportState, requirement: string,
     if (task.status === 'FAILED') {
       throw new Error(task.errorMessage || '报表生成失败')
     }
-    if (task.status === 'DONE') {
+    if (task.status === 'REVIEW' || task.status === 'DONE') {
       const itemsRes: any = await catalogApi.getAiTaskItems(taskId, { page: 1, pageSize: 10 })
       const item = (itemsRes.data?.records || []).find((x: any) => x.itemType === 'REPORT')
       if (!item) throw new Error('报表任务已完成，但未找到生成结果')
@@ -328,10 +342,15 @@ async function runReportTask(report: ReportState, requirement: string,
       report.sql = d.sql || ''
       report.dataSourceName = d.dataSourceName
       report.tablesUsed = d.tablesUsed || []
-      report.reportId = d.reportId
       report.reportName = d.reportName
       report.progress = 100
-      report.status = 'ready'
+      if (item.status === 'ACCEPTED' || task.status === 'DONE') {
+        report.reportId = Number(item.targetId) || d.reportId
+        report.status = 'ready'
+      } else {
+        report.reviewItemId = item.id
+        report.status = 'review'
+      }
       return
     }
     report.progress = task.status === 'RUNNING'
@@ -339,6 +358,31 @@ async function runReportTask(report: ReportState, requirement: string,
       : Math.min(10, report.progress || 0)
   }
   throw new Error('报表生成超时，请稍后在 AI 工作台任务队列查看进度')
+}
+
+async function confirmReport(m: Msg) {
+  const r = m.report
+  if (!r?.taskId || !r?.reviewItemId) return
+  try {
+    await catalogApi.reviewAiTaskItem(r.taskId, r.reviewItemId, true)
+    const itemsRes: any = await catalogApi.getAiTaskItems(r.taskId, { page: 1, pageSize: 10 })
+    const item = (itemsRes.data?.records || []).find((x: any) => x.itemType === 'REPORT')
+    r.reportId = Number(item?.targetId) || r.reportId
+    r.reportName = item?.targetName || r.reportName
+    r.status = 'ready'
+    r.reviewed = true
+    ElMessage.success('已确认，报表已进入报表体系')
+  } catch (e: any) { ElMessage.error(e.message || '确认失败') }
+}
+
+async function rejectReport(m: Msg) {
+  const r = m.report
+  if (!r?.taskId || !r?.reviewItemId) return
+  try {
+    await catalogApi.reviewAiTaskItem(r.taskId, r.reviewItemId, false)
+    r.status = 'error'
+    r.error = '已放弃生成，未进入报表体系'
+  } catch (e: any) { ElMessage.error(e.message || '操作失败') }
 }
 
 async function goReportCenter() {
@@ -573,6 +617,8 @@ async function scrollBottom() {
 .report-loading-line { display: flex; align-items: center; gap: 6px; color: var(--med-text-light); font-size: 12px; margin-bottom: 6px; }
 .report-loading-line b { margin-left: auto; color: var(--med-primary); }
 .report-registered { display: flex; align-items: center; gap: 6px; margin: 8px 0; padding: 7px 10px; border-radius: 7px; background: #F0FDF4; color: #15803D; font-size: 11.5px; }
+.report-review { display: flex; align-items: center; gap: 8px; margin: 8px 0; padding: 7px 10px; border-radius: 7px; background: #FFFBEB; color: #B45309; font-size: 11.5px; }
+.report-review .el-button { margin-left: 0; }
 .report-registered b { font-weight: 600; }
 .report-tables {
   font-size: 12px;

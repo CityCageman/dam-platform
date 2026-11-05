@@ -75,6 +75,13 @@ public class AiTaskController {
         return Result.success(taskService.create(body));
     }
 
+    @PutMapping("/{taskId}/items/{itemId}")
+    public Result<Void> updateItemDraft(@PathVariable Long taskId, @PathVariable Long itemId,
+                                        @RequestBody Map<String, Object> body) {
+        taskService.updateReportDraft(taskId, itemId, String.valueOf(body.getOrDefault("draftContent", "{}")));
+        return Result.success(null);
+    }
+
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         taskService.deleteTask(id);

@@ -4,7 +4,6 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dam.catalog.entity.AiTask;
 import com.dam.catalog.entity.AiTaskItem;
-import com.dam.catalog.entity.ReportCatalog;
 import com.dam.catalog.repository.AiTaskItemMapper;
 import com.dam.catalog.repository.AiTaskMapper;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +33,6 @@ public class AiTaskRunner {
     private final MetadataAiService metadataAiService;
     private final AssetClassifyAiService assetClassifyAiService;
     private final ReportService reportService;
-    private final ReportCatalogService reportCatalogService;
     private final AiTaskMapper taskMapper;
     private final AiTaskItemMapper itemMapper;
 
@@ -80,54 +78,38 @@ public class AiTaskRunner {
             if (sql.isBlank()) throw new IllegalStateException("AI 未生成有效 SQL");
 
             boolean modify = "MODIFY".equalsIgnoreCase(mode);
-            ReportCatalog existing = modify ? reportCatalogService.getReport(baseReportId) : null;
-            String reportName = existing != null ? existing.getReportName() : ("AI报表｜" + requirement).trim();
-            if (reportName == null || reportName.isBlank()) reportName = "AI报表｜" + taskId;
-            if (reportName.length() > 200) reportName = reportName.substring(0, 200);
-            Map<String, Object> body = new java.util.LinkedHashMap<>();
-            if (existing != null) body.put("id", existing.getId());
-            body.put("reportCode", existing != null ? existing.getReportCode() : "AI_RPT_" + taskId);
-            body.put("reportName", reportName);
-            body.put("reportTypeId", "REPORT");
-            body.put("execType", "SQL");
-            body.put("dataSourceId", dataSourceId);
-            body.put("sqlContent", sql);
-            String description = (modify ? "AI 修改" : "AI 生成") + "｜任务 #" + taskId + "｜" + requirement;
-            if (description.length() > 500) description = description.substring(0, 500);
-            body.put("description", description);
-            body.put("owner", task.getCreatedBy());
-            body.put("status", 1);
-            Map<String, Object> saved = reportCatalogService.saveGenerated(body, task.getCreatedBy());
-            Number reportId = saved.get("id") instanceof Number n ? n : null;
-            Number assetId = saved.get("assetId") instanceof Number n ? n : null;
+            String title = reportService.generateTitle(requirement, token);
+            if (title == null || title.isBlank()) title = "AI报表 " + taskId;
+            if (title.length() > 200) title = title.substring(0, 200);
 
+            // 只生成草稿，确认后才由 AiTaskService.applyDraft 写入 report_catalog
             Map<String, Object> draft = new java.util.LinkedHashMap<>();
-            draft.put("reportId", reportId);
-            draft.put("assetId", assetId);
-            draft.put("reportName", reportName);
+            draft.put("reportName", title);
             draft.put("requirement", requirement);
             draft.put("dataSourceId", dataSourceId);
             draft.put("dataSourceName", generated.get("dataSourceName"));
             draft.put("sql", sql);
             draft.put("tablesUsed", generated.get("tablesUsed"));
+            draft.put("params", generated.get("params"));
+            draft.put("mode", modify ? "MODIFY" : "NEW");
+            draft.put("baseReportId", baseReportId);
             String draftJson = JSONUtil.toJsonStr(draft);
             if (draftJson.length() > 20000) draftJson = draftJson.substring(0, 20000);
 
             AiTaskItem item = new AiTaskItem();
             item.setTaskId(taskId);
             item.setItemType("REPORT");
-            item.setTargetId(reportId == null ? null : reportId.longValue());
-            item.setTargetName(reportName.length() > 200 ? reportName.substring(0, 200) : reportName);
+            item.setTargetId(baseReportId);
+            item.setTargetName(title);
             item.setDraftContent(draftJson);
-            item.setStatus("ACCEPTED");
-            item.setReviewedBy(task.getCreatedBy());
-            item.setReviewedAt(LocalDateTime.now());
+            item.setStatus("DRAFT");
             item.setCreatedAt(LocalDateTime.now());
             itemMapper.insert(item);
 
-            task.setStatus("DONE");
+            task.setTitle(("MODIFY".equals(mode) ? "AI 报表修改 · " : "AI 报表 · ") + title);
+            task.setStatus("REVIEW");
             task.setTotalCount(1);
-            task.setAcceptedCount(1);
+            task.setAcceptedCount(0);
             task.setRejectedCount(0);
             task.setErrorMessage(null);
             task.setUpdatedAt(LocalDateTime.now());

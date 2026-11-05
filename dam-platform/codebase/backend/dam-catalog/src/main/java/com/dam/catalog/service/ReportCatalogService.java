@@ -366,6 +366,13 @@ public class ReportCatalogService {
      * @param params 参数名 → 值（对应 sqlContent 中的 :param）
      */
     public Map<String, Object> run(Long id, Map<String, Object> params) {
+        return run(id, params, null);
+    }
+
+    /**
+     * 执行报表，可临时指定预览数据源；不传则使用报表配置的数据源。
+     */
+    public Map<String, Object> run(Long id, Map<String, Object> params, Long previewDataSourceId) {
         ReportCatalog rc = requireReport(id);
         assertPermitted(rc.getAssetId());
         String execType = StrUtil.blankToDefault(rc.getExecType(), "SQL");
@@ -373,8 +380,9 @@ public class ReportCatalogService {
         Map<String, Object> result = new LinkedHashMap<>();
         switch (execType) {
             case "SQL", "PROC" -> {
+                Long execDataSourceId = previewDataSourceId != null ? previewDataSourceId : rc.getDataSourceId();
                 Map<String, Object> data = reportService.executeWithParams(
-                        rc.getDataSourceId(), rc.getSqlContent(), params, MAX_ROWS, "PROC".equals(execType));
+                        execDataSourceId, rc.getSqlContent(), params, MAX_ROWS, "PROC".equals(execType));
                 result.putAll(data);
                 result.put("execType", execType);
             }

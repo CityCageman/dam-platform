@@ -51,6 +51,7 @@ public class AiTaskService {
     private final AiTaskItemMapper itemMapper;
     private final MetadataAiService metadataAiService;
     private final AssetClassifyAiService assetClassifyAiService;
+    private final ReportCatalogService reportCatalogService;
 
     /**
      * 分页查询任务
@@ -140,7 +141,11 @@ public class AiTaskService {
                 continue;
             }
             if (accept) {
-                applyDraft(item);
+                Long reportId = applyDraft(item, operator);
+                if (reportId != null) {
+                    item.setTargetId(reportId);
+                    item.setTargetName(jsonTitle(item));
+                }
             }
             item.setStatus(accept ? "ACCEPTED" : "REJECTED");
             item.setReviewedBy(operator);
@@ -242,12 +247,17 @@ public class AiTaskService {
         if (item == null || !taskId.equals(item.getTaskId())) {
             throw new IllegalArgumentException("任务明细不存在或不属于该任务");
         }
+        String operator = requireUser();
         if (accept) {
-            applyDraft(item);
+            Long reportId = applyDraft(item, operator);
+            if (reportId != null) {
+                item.setTargetId(reportId);
+                item.setTargetName(jsonTitle(item));
+            }
         }
         LocalDateTime now = LocalDateTime.now();
         item.setStatus(accept ? "ACCEPTED" : "REJECTED");
-        item.setReviewedBy(requireUser());
+        item.setReviewedBy(operator);
         item.setReviewedAt(now);
         itemMapper.updateById(item);
 
@@ -309,7 +319,7 @@ public class AiTaskService {
      *
      * @param item 草稿明细
      */
-    private void applyDraft(AiTaskItem item) {
+    private Long applyDraft(AiTaskItem item, String operator) {
         if (StrUtil.isBlank(item.getDraftContent())) {
             throw new IllegalArgumentException("草稿内容为空，无法采纳");
         }
@@ -317,12 +327,69 @@ public class AiTaskService {
         if ("COMMENT".equalsIgnoreCase(item.getItemType())) {
             metadataAiService.applyAnnotationDraft(item.getTargetId(),
                     json.getStr("tableComment"), json.getStr("subjectDomain"), json.getStr("securityLevel"));
-        } else if ("CLASSIFY".equalsIgnoreCase(item.getItemType())) {
+            return null;
+        }
+        if ("CLASSIFY".equalsIgnoreCase(item.getItemType())) {
             assetClassifyAiService.applyClassificationDraft(item.getTargetId(), json.getLong("categoryId"));
+            return null;
+        }
+        if ("REPORT".equalsIgnoreCase(item.getItemType())) {
+            String sql = json.getStr("sql");
+            if (StrUtil.isBlank(sql)) throw new IllegalArgumentException("报表草稿缺少 SQL");
+            String title = json.getStr("reportName");
+            if (StrUtil.isBlank(title)) title = "AI报表 " + item.getTaskId();
+            Long baseReportId = json.getLong("baseReportId");
+            String reportCode = baseReportId != null ? reportCatalogService.getReport(baseReportId).getReportCode() : "AI_RPT_" + item.getTaskId();
+            Map<String, Object> body = new LinkedHashMap<>();
+            if (baseReportId != null) body.put("id", baseReportId);
+            body.put("reportCode", reportCode);
+            body.put("reportName", title.length() > 200 ? title.substring(0, 200) : title);
+            body.put("reportTypeId", "REPORT");
+            body.put("execType", "SQL");
+            body.put("dataSourceId", json.getLong("dataSourceId"));
+            body.put("sqlContent", sql);
+            body.put("paramDefs", json.get("params"));
+            body.put("description", ("MODIFY".equalsIgnoreCase(json.getStr("mode")) ? "AI 修改" : "AI 生成")
+                    + "｜任务 #" + item.getTaskId() + "｜" + json.getStr("requirement"));
+            body.put("owner", operator);
+            body.put("status", 1);
+            Map<String, Object> saved = reportCatalogService.saveGenerated(body, operator);
+            return saved.get("id") instanceof Number n ? n.longValue() : null;
+        }
+        return null;
+    }
+
+    /** 取草稿中的报表标题，供任务明细展示 */
+    private String jsonTitle(AiTaskItem item) {
+        try {
+            String t = JSONUtil.parseObj(item.getDraftContent() == null ? "{}" : item.getDraftContent()).getStr("reportName");
+            return t == null ? item.getTargetName() : (t.length() > 200 ? t.substring(0, 200) : t);
+        } catch (Exception e) {
+            return item.getTargetName();
         }
     }
 
     /**
+     * 人工修正报表草稿：只允许修改 DRAFT 状态、REPORT 类型的明细。
+     */
+    @Transactional
+    public void updateReportDraft(Long taskId, Long itemId, String draftContent) {
+        AiTask task = ownedTask(taskId);
+        AiTaskItem item = itemMapper.selectById(itemId);
+        if (item == null || !taskId.equals(item.getTaskId())) throw new BusinessException("任务明细不存在");
+        if (!"REPORT".equalsIgnoreCase(item.getItemType())) throw new BusinessException("只有报表任务支持人工修正");
+        if (!"DRAFT".equals(item.getStatus())) throw new BusinessException("只有待确认草稿可以修改");
+        JSONObject json = JSONUtil.parseObj(draftContent == null ? "{}" : draftContent);
+        if (StrUtil.isBlank(json.getStr("sql"))) throw new BusinessException("SQL 不能为空");
+        item.setDraftContent(draftContent.length() > 20000 ? draftContent.substring(0, 20000) : draftContent);
+        item.setTargetName(cut(json.getStr("reportName"), 200));
+        itemMapper.updateById(item);
+        task.setUpdatedAt(LocalDateTime.now());
+        taskMapper.updateById(task);
+    }
+
+    /**
+     * 删除任务及其草稿明细    /**
      * 删除任务及其草稿明细（仅允许删除自己创建、且不在执行中的任务）
      */
     @Transactional

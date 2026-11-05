@@ -188,7 +188,42 @@ public class ReportService {
         result.put("sql", sql);
         result.put("dataSourceName", ds.getDsName());
         result.put("tablesUsed", extractUsedTables(sql, ctx));
+        result.put("params", extractParams(sql));
         return result;
+    }
+
+    /** 从 SQL 中提取 :param 命名参数，供报表体系自动生成输入框 */
+    public List<Map<String, Object>> extractParams(String sql) {
+        List<Map<String, Object>> params = new ArrayList<>();
+        if (StrUtil.isBlank(sql)) return params;
+        java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
+        java.util.regex.Matcher m = Pattern.compile("(?<!:):([A-Za-z_][A-Za-z0-9_]*)").matcher(sql);
+        while (m.find()) names.add(m.group(1));
+        for (String name : names) {
+            Map<String, Object> p = new LinkedHashMap<>();
+            p.put("code", name);
+            p.put("label", name);
+            p.put("required", true);
+            p.put("type", "string");
+            params.add(p);
+        }
+        return params;
+    }
+
+    /** 用 code 模型生成一个简短报表标题；失败时由调用方兜底 */
+    public String generateTitle(String requirement, String token) {
+        try {
+            String prompt = "请为下面的报表需求生成一个简洁中文标题，不超过20个汉字，只输出标题，不要引号、不要解释：\n" + requirement;
+            String raw = callAgent(prompt, token);
+            if (StrUtil.isBlank(raw)) return null;
+            String title = raw.replace("\r", " ").replace("\n", " ").replace("\"", "").replace("'", "").replace("`", "").trim();
+            if (title.startsWith("标题")) title = title.substring(2).replaceFirst("^[:：\\s]+", "");
+            if (title.length() > 40) title = title.substring(0, 40);
+            return StrUtil.isBlank(title) ? null : title;
+        } catch (Exception e) {
+            log.warn("AI 生成报表标题失败: {}", e.getMessage());
+            return null;
+        }
     }
 
     // ============================================================

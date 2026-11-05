@@ -25,6 +25,7 @@ export const reportApi = {
     mode?: 'NEW' | 'MODIFY'
     reportId?: number
     baseSql?: string
+    history?: string
     displayRequirement?: string
   }) {
     return request.post('/catalog/report/generate/async', data, { timeout: 30000 })
@@ -82,6 +83,7 @@ export const catalogApi = {
   getAiTask(id: number) { return request.get(`/catalog/ai/tasks/${id}`) },
   createAiTask(data: any) { return request.post('/catalog/ai/tasks', data) },
   deleteAiTask(id: number) { return request.delete(`/catalog/ai/tasks/${id}`) },
+  updateAiTaskItem(taskId: number, itemId: number, draftContent: string) { return request.put(`/catalog/ai/tasks/${taskId}/items/${itemId}`, { draftContent }) },
   updateAiTaskStatus(id: number, data: any) { return request.post(`/catalog/ai/tasks/${id}/status`, data) },
   getAiTaskItems(id: number, params: any) { return request.get(`/catalog/ai/tasks/${id}/items`, { params }) },
   reviewAiTaskItems(id: number, data: any) { return request.post(`/catalog/ai/tasks/${id}/items/batch-review`, data) },
@@ -450,8 +452,8 @@ export const reportCatalogApi = {
   update(id: number, data: any) { return request.put(`/catalog/reports/${id}`, data) },
   remove(id: number) { return request.delete(`/catalog/reports/${id}`) },
   /** 在线执行（SQL/存储过程），超时放宽 */
-  run(id: number, params: Record<string, any>) {
-    return request.post(`/catalog/reports/${id}/run`, { params }, { timeout: 120000 })
+  run(id: number, params: Record<string, any>, dataSourceId?: number) {
+    return request.post(`/catalog/reports/${id}/run`, { params, dataSourceId }, { timeout: 120000 })
   }
 }
 

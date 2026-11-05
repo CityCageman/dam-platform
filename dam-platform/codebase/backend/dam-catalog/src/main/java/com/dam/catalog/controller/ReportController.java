@@ -59,6 +59,12 @@ public class ReportController {
         String mode = params.get("mode") == null ? "NEW" : String.valueOf(params.get("mode")).toUpperCase();
         Long reportId = params.get("reportId") != null ? ((Number) params.get("reportId")).longValue() : null;
         String baseSql = params.get("baseSql") == null ? null : String.valueOf(params.get("baseSql"));
+        String history = params.get("history") == null ? null : String.valueOf(params.get("history"));
+        if (history != null && !history.isBlank()) {
+            requirement = "之前对话（用于理解业务口径和用户纠正，不要重复解释）：\n"
+                    + (history.length() > 6000 ? history.substring(history.length() - 6000) : history)
+                    + "\n当前需求：" + requirement;
+        }
         if ("MODIFY".equals(mode)) {
             if (reportId == null) throw new BusinessException("修改报表缺少报表ID");
             if (baseSql == null || baseSql.isBlank()) throw new BusinessException("修改报表缺少上一版SQL");
