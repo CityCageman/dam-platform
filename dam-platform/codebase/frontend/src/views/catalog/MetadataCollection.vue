@@ -1556,6 +1556,21 @@ function fieldNameSimilarity(a: string, b: string): number {
 }
 
 /** 调用编码智能体，为字段批量生成中文注释，返回 {字段名: 中文注释}。与平台已添加注释关联：归一化命中直接复用，未命中按相似度挑术语子集 + 同表已有注释做关联联想，避免逐字直译 */
+/** 清理模型输出的“表名/注释”“表注释/字段含义”前缀，只保留字段本身含义 */
+function cleanGeneratedComment(comment: string, tableName?: string, tableComment?: string): string {
+  let c = String(comment || '').trim().replace(/^["'`]|["'`]$/g, '').trim()
+  const prefixes = [tableName, tableComment, '表名', '表注释', 'schema']
+    .filter((x): x is string => !!x && x.trim().length > 0)
+    .sort((a, b) => b.length - a.length)
+  for (const prefix of prefixes) {
+    for (const sep of ['/', '：', ':', '—', '|']) {
+      const p = prefix.trim() + sep
+      if (c.startsWith(p)) c = c.slice(p.length).trim()
+    }
+  }
+  return c
+}
+
 async function askCommentForFields(
   list: { name: string; type: string }[],
   tableName: string,
@@ -1589,7 +1604,7 @@ async function askCommentForFields(
   for (const f of list) {
     const hit = forceRegenerate ? undefined : normDict.get(normalizeFieldName(f.name))
     if (hit) {
-      result[f.name] = hit
+      result[f.name] = cleanGeneratedComment(hit, tableName, tableComment)
     } else {
       needAi.push(f)
     }
@@ -1618,9 +1633,12 @@ async function askCommentForFields(
       const dictLines = Array.from(related.values()).join('\n')
       const lines = batch.map((f) => `- ${f.name} (${f.type || '未知类型'})`).join('\n')
       const tableDesc = tableComment ? `（${tableComment}）` : ''
-      const prompt = `你是医疗行业数据治理专家。请为数据库表「${tableName}」${tableDesc}的以下字段生成简洁、准确的中文注释。\n\n当前表已有注释（同表业务口径，优先参考）：\n${tableLines || '（无）'}\n\n平台其他表相似字段注释（术语一致参考）：\n${dictLines || '（无）'}\n\n待生成注释的字段列表：\n${lines}\n\n要求：\n1. 若字段名与上述注释相同或含义相近，直接复用或参考其注释，不要逐字直译\n2. 结合当前表「${tableName}」${tableDesc}的业务语境推断字段含义，使用医疗行业通用术语\n3. 注释需体现字段所属表的业务归属，格式为「表注释/表名+字段含义」，例如表 PA_Adm（就诊记录表）的主键字段注释为「就诊记录表主键」、指针字段注释为「就诊记录表指针」；若字段本身已能独立表达业务含义则不必强行加表名前缀\n4. 每个注释不超过 30 个字\n5. 只输出 JSON 对象，格式：{"字段名":"中文注释"}，不要输出任何其他内容`
+      const prompt = `你是医疗行业数据治理专家。请为数据库表「${tableName}」${tableDesc}的以下字段生成简洁、准确的中文注释。\n\n当前表已有注释（同表业务口径，优先参考）：\n${tableLines || '（无）'}\n\n平台其他表相似字段注释（术语一致参考）：\n${dictLines || '（无）'}\n\n待生成注释的字段列表：\n${lines}\n\n要求：\n1. 若字段名与上述注释相同或含义相近，直接复用或参考其注释，不要逐字直译\n2. 结合当前表「${tableName}」${tableDesc}的业务语境推断字段含义，使用医疗行业通用术语\n3. 注释只描述字段本身的业务含义；禁止把表名、表注释、schema 作为前缀或拼接，禁止输出「表名/注释」「表注释/字段含义」这类格式\n4. 字段名已能独立表达业务含义时，直接给出简洁注释，不要强行加“表名”或“表注释”\n5. 每个注释不超过 30 个字\n6. 只输出 JSON 对象，格式：{"字段名":"中文注释"}，不要输出任何其他内容`
       const res: any = await agentApi.complete([{ role: 'user', content: prompt }], { agentType: 'code' })
-      Object.assign(result, parseCommentJson(res?.data?.content || ''))
+      const parsed = parseCommentJson(res?.data?.content || '')
+      for (const [name, comment] of Object.entries(parsed)) {
+        result[name] = cleanGeneratedComment(String(comment || ''), tableName, tableComment)
+      }
     }
   }
   return result
