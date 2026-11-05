@@ -825,8 +825,9 @@ public class CatalogService {
             field.setIsPrimaryKey(Boolean.TRUE.equals(col.get("isPrimaryKey")));
             field.setIsNullable(Boolean.TRUE.equals(col.get("nullable")));
             field.setDefaultValue(truncate((String) col.get("defaultValue"), 300));
-            field.setComment(truncate((String) col.get("comment"), 200));
             field.setReferenceTableName(truncate((String) col.get("referenceTable"), 200));
+            field.setComment(truncate(cleanFieldComment((String) col.get("comment"),
+                    mt != null ? mt.getTableName() : null, mt != null ? mt.getTableComment() : null), 200));
             // 远程未提供注释/默认值时，保留该字段已存在的手动维护值（防止重同步覆盖人工补充内容）
             DamField old = field.getFieldName() != null ? existingMap.get(field.getFieldName()) : null;
             if (old != null) {
@@ -1506,6 +1507,26 @@ public class CatalogService {
         return dict;
     }
 
+    /** 去掉 AI 注释里的“表名/表注释/字段含义”前缀，只保留字段本身含义 */
+    private String cleanFieldComment(String comment, String tableName, String tableComment) {
+        if (StrUtil.isBlank(comment)) return comment;
+        String c = comment.trim().replaceAll("^[\"'`]+|[\"'`]+$", "").trim();
+        List<String> prefixes = new ArrayList<>();
+        if (StrUtil.isNotBlank(tableComment)) prefixes.add(tableComment.trim());
+        if (StrUtil.isNotBlank(tableName)) prefixes.add(tableName.trim());
+        prefixes.add("表注释");
+        prefixes.add("表名");
+        prefixes.add("schema");
+        prefixes.sort((a, b) -> Integer.compare(b.length(), a.length()));
+        for (String prefix : prefixes) {
+            if (StrUtil.isBlank(prefix)) continue;
+            String escaped = java.util.regex.Pattern.quote(prefix);
+            c = c.replaceFirst("(?i)^\\s*[（(\\[]?" + escaped + "[）)\\]]?\\s*(?:字段|的字段)?\\s*[/／:：\\-—|｜]\\s*", "");
+            c = c.trim();
+        }
+        return c;
+    }
+
     /**
      * 更新字段信息（手动补充/修正注释、默认值、长度、可空性、主键等）
      *
@@ -1525,8 +1546,13 @@ public class CatalogService {
         if (field.getIsNullable() != null) existing.setIsNullable(field.getIsNullable());
         if (field.getDefaultValue() != null) existing.setDefaultValue(field.getDefaultValue());
         if (field.getSortOrder() != null) existing.setSortOrder(field.getSortOrder());
-        // 注释允许清空（前端清空时传空串，而非 null）
-        if (field.getComment() != null) existing.setComment(field.getComment());
+        // 注释允许清空（前端清空时传空串，而非 null）；保存前再次去掉表名/表注释前缀
+        if (field.getComment() != null) {
+            MetadataTable commentTable = metadataTableMapper.selectById(existing.getTableId());
+            existing.setComment(cleanFieldComment(field.getComment(),
+                    commentTable != null ? commentTable.getTableName() : null,
+                    commentTable != null ? commentTable.getTableComment() : null));
+        }
         // 安全等级/敏感类型允许清空（前端清空时传空串）
         if (field.getSecurityLevel() != null) existing.setSecurityLevel(field.getSecurityLevel());
         if (field.getSensitiveType() != null) existing.setSensitiveType(field.getSensitiveType());

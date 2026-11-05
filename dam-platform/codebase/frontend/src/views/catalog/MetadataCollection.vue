@@ -1568,6 +1568,9 @@ function cleanGeneratedComment(comment: string, tableName?: string, tableComment
       if (c.startsWith(p)) c = c.slice(p.length).trim()
     }
   }
+  // 模型只回了表名/表注释本身，没有字段含义：宁可留空，也不把表注释写进字段
+  if (tableComment && c === tableComment.trim()) return ''
+  if (tableName && c === tableName.trim()) return ''
   return c
 }
 
