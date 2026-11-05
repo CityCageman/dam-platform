@@ -404,6 +404,36 @@ public class AiTaskService {
     }
 
     /**
+     * 当前用户最近生成过的报表记忆：需求 + SQL，供新报表复用口径。
+     */
+    public String recentReportMemory() {
+        String user = requireUser();
+        List<AiTask> tasks = taskMapper.selectList(new LambdaQueryWrapper<AiTask>()
+                .eq(AiTask::getCreatedBy, user)
+                .eq(AiTask::getTaskType, "REPORT")
+                .orderByDesc(AiTask::getId)
+                .last("LIMIT 5"));
+        StringBuilder sb = new StringBuilder();
+        for (AiTask task : tasks) {
+            AiTaskItem item = itemMapper.selectOne(new LambdaQueryWrapper<AiTaskItem>()
+                    .eq(AiTaskItem::getTaskId, task.getId())
+                    .eq(AiTaskItem::getItemType, "REPORT")
+                    .last("LIMIT 1"));
+            if (item == null || StrUtil.isBlank(item.getDraftContent())) continue;
+            try {
+                JSONObject d = JSONUtil.parseObj(item.getDraftContent());
+                String sql = d.getStr("sql");
+                if (StrUtil.isBlank(sql)) continue;
+                if (sb.length() > 0) sb.append("\n---\n");
+                sb.append("需求：").append(StrUtil.blankToDefault(task.getPrompt(), task.getTitle())).append("\n");
+                sb.append("SQL：").append(sql.length() > 1800 ? sql.substring(0, 1800) : sql);
+            } catch (Exception ignored) { }
+        }
+        String result = sb.toString();
+        return result.length() > 8000 ? result.substring(result.length() - 8000) : result;
+    }
+
+    /**
      * 任务状态统计
      */
     public Map<String, Object> stats() {

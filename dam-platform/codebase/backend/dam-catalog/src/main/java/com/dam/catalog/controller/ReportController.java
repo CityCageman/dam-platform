@@ -1,5 +1,6 @@
 package com.dam.catalog.controller;
 
+import cn.hutool.core.util.StrUtil;
 import com.dam.catalog.entity.AiTask;
 import com.dam.catalog.service.AiTaskRunner;
 import com.dam.catalog.service.AiTaskService;
@@ -60,10 +61,16 @@ public class ReportController {
         Long reportId = params.get("reportId") != null ? ((Number) params.get("reportId")).longValue() : null;
         String baseSql = params.get("baseSql") == null ? null : String.valueOf(params.get("baseSql"));
         String history = params.get("history") == null ? null : String.valueOf(params.get("history"));
-        if (history != null && !history.isBlank()) {
-            requirement = "之前对话（用于理解业务口径和用户纠正，不要重复解释）：\n"
-                    + (history.length() > 6000 ? history.substring(history.length() - 6000) : history)
-                    + "\n当前需求：" + requirement;
+        String memory = aiTaskService.recentReportMemory();
+        if (StrUtil.isNotBlank(memory) || StrUtil.isNotBlank(history)) {
+            StringBuilder ctx = new StringBuilder("历史报表上下文（复用已确认的口径、字段和关联；不要重复问用户）：\n");
+            if (StrUtil.isNotBlank(memory)) ctx.append(memory).append("\n");
+            if (StrUtil.isNotBlank(history)) {
+                ctx.append("本次对话：\n")
+                        .append(history.length() > 4000 ? history.substring(history.length() - 4000) : history)
+                        .append("\n");
+            }
+            requirement = ctx + "当前需求：" + requirement;
         }
         if ("MODIFY".equals(mode)) {
             if (reportId == null) throw new BusinessException("修改报表缺少报表ID");
