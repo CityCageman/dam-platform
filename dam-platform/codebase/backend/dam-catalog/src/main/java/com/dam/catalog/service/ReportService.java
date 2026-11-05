@@ -61,6 +61,13 @@ public class ReportService {
     private static final int MAX_TABLES = 24;
     /** 单表注入的最大字段数量（宽表截断，避免 Prompt 过大） */
     private static final int MAX_COLUMNS_PER_TABLE = 60;
+    /** 用户明确点名的关键表保留更多字段 */
+    private static final int MAX_KEY_COLUMNS_PER_TABLE = 120;
+
+    /** 需求中的高频无意义词，避免把“统计/查询”当成字段 */
+    private static final Set<String> STOP_WORDS = Set.of(
+            "统计", "查询", "查看", "数据", "需要", "分析", "一个", "一下", "所有", "各个",
+            "本月", "上月", "今天", "昨天", "最近", "以及", "并且", "怎么", "如何", "帮我", "看看");
 
     /** 存储过程调用白名单：CALL schema.proc(...) / {call ...} */
     private static final Pattern SAFE_CALL_PATTERN = Pattern.compile(
@@ -116,8 +123,11 @@ public class ReportService {
         if (ds == null) throw new BusinessException("数据源不存在");
 
         // 1. 检索已同步的表结构（含中文注释）
-        TableContext ctx = buildTableContext(dataSourceId);
+        TableContext ctx = buildTableContext(dataSourceId, requirement, token);
         if (ctx.tables.isEmpty()) {
+            if (ctx.noMatch) {
+                throw new BusinessException("没有从表名/表注释/字段注释中检索到与需求匹配的内容。请补充业务名称，或先在「元数据管理」完善表和字段注释");
+            }
             throw new BusinessException("该数据源暂无已同步的表结构，请先在「元数据管理」中同步表后再生成报表");
         }
 
@@ -128,6 +138,8 @@ public class ReportService {
         if (StrUtil.isBlank(sql)) {
             throw new BusinessException("智能体未返回有效 SQL，请调整需求描述后重试");
         }
+        // 生成后自检：模型只能引用上下文中真实存在的表和字段，防止编造
+        validateGeneratedSql(sql, ctx);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("sql", sql);
@@ -357,10 +369,11 @@ public class ReportService {
         final List<Map<String, Object>> tables = new ArrayList<>();
         int totalTables = 0;
         boolean truncated = false;
+        boolean noMatch = false;
     }
 
-    /** 检索数据源下已同步的表结构与字段（含中文注释），供 AI 生成 SQL 时参考 */
-    private TableContext buildTableContext(Long dataSourceId) {
+    /** 检索数据源下已同步的表结构与字段（含中文注释），按需求做全库检索，而不是按表名取前 N 张 */
+    private TableContext buildTableContext(Long dataSourceId, String requirement, String token) {
         TableContext ctx = new TableContext();
         List<MetadataTable> tables = tableMapper.selectList(
                 new LambdaQueryWrapper<MetadataTable>()
@@ -369,15 +382,8 @@ public class ReportService {
         if (tables.isEmpty()) return ctx;
         ctx.totalTables = tables.size();
 
-        // 截断表数量，避免 Prompt 过长
-        List<MetadataTable> selected = tables;
-        if (tables.size() > MAX_TABLES) {
-            selected = tables.subList(0, MAX_TABLES);
-            ctx.truncated = true;
-        }
-
         // schema 名称经 schema_id 批量解析（metadata_table 无 schema_name 列）
-        Set<Long> schemaIds = selected.stream().map(MetadataTable::getSchemaId)
+        Set<Long> schemaIds = tables.stream().map(MetadataTable::getSchemaId)
                 .filter(Objects::nonNull).collect(Collectors.toSet());
         Map<Long, String> schemaNameMap = new HashMap<>();
         if (!schemaIds.isEmpty()) {
@@ -386,20 +392,59 @@ public class ReportService {
             }
         }
 
-        // 字段按 tableId 分组
-        Set<Long> tableIds = selected.stream().map(MetadataTable::getId).collect(Collectors.toSet());
-        Map<Long, List<MetadataColumn>> colsMap = columnMapper.selectList(
+        // 全库字段：字段注释也参与检索，避免只靠表名找不到业务表
+        Set<Long> allTableIds = tables.stream().map(MetadataTable::getId).collect(Collectors.toSet());
+        Map<Long, List<MetadataColumn>> allColsMap = columnMapper.selectList(
                         new LambdaQueryWrapper<MetadataColumn>()
-                                .in(MetadataColumn::getTableId, tableIds)
+                                .in(MetadataColumn::getTableId, allTableIds)
                                 .orderByAsc(MetadataColumn::getOrdinalPosition))
                 .stream().collect(Collectors.groupingBy(MetadataColumn::getTableId));
+
+        List<String> tokens = queryTokens(requirement);
+        Map<Long, Integer> scores = new HashMap<>();
+        Set<Long> keyTableIds = new HashSet<>();
+        for (MetadataTable t : tables) {
+            String schemaName = t.getSchemaId() != null ? schemaNameMap.getOrDefault(t.getSchemaId(), "") : "";
+            List<MetadataColumn> cols = allColsMap.getOrDefault(t.getId(), Collections.emptyList());
+            int score = scoreTable(t, schemaName, cols, requirement, tokens);
+            if (score <= 0) continue;
+            scores.put(t.getId(), score);
+            if (score >= 200) keyTableIds.add(t.getId());
+        }
+
+        List<MetadataTable> selected = tables.stream()
+                .filter(t -> scores.containsKey(t.getId()))
+                .sorted((a, b) -> {
+                    int sa = scores.getOrDefault(a.getId(), 0);
+                    int sb = scores.getOrDefault(b.getId(), 0);
+                    if (sb != sa) return Integer.compare(sb, sa);
+                    return String.valueOf(a.getTableName()).compareToIgnoreCase(String.valueOf(b.getTableName()));
+                })
+                .limit(MAX_TABLES)
+                .collect(Collectors.toList());
+        // 关键词检索没有命中时，再做一次“目录 + 需求”的模型检索，支持只描述业务、不懂表名的用户
+        if (selected.isEmpty()) {
+            Set<Long> llmIds = selectTablesByLlm(tables, schemaNameMap, allColsMap, requirement, token);
+            if (!llmIds.isEmpty()) {
+                selected = tables.stream()
+                        .filter(t -> llmIds.contains(t.getId()))
+                        .limit(MAX_TABLES)
+                        .collect(Collectors.toList());
+            }
+        }
+        if (selected.isEmpty()) {
+            ctx.noMatch = true;
+            return ctx;
+        }
+        if (selected.size() < tables.size()) ctx.truncated = true;
 
         for (MetadataTable t : selected) {
             Map<String, Object> m = new LinkedHashMap<>();
             String schemaName = t.getSchemaId() != null ? schemaNameMap.getOrDefault(t.getSchemaId(), "") : "";
-            List<MetadataColumn> columns = colsMap.getOrDefault(t.getId(), Collections.emptyList());
-            if (columns.size() > MAX_COLUMNS_PER_TABLE) {
-                columns = columns.subList(0, MAX_COLUMNS_PER_TABLE);
+            List<MetadataColumn> columns = allColsMap.getOrDefault(t.getId(), Collections.emptyList());
+            int cap = keyTableIds.contains(t.getId()) ? MAX_KEY_COLUMNS_PER_TABLE : MAX_COLUMNS_PER_TABLE;
+            if (columns.size() > cap) {
+                columns = columns.subList(0, cap);
                 ctx.truncated = true;
             }
             m.put("schemaName", schemaName);
@@ -411,7 +456,111 @@ public class ReportService {
         return ctx;
     }
 
-    /** 从生成的 SQL 中提取实际引用的表（与注入的表清单大小写不敏感匹配），供前端回显 */
+    /**
+     * 关键词没有命中时，把目录摘要交给模型做一次“表选择”。
+     * 模型只返回表名，后端用真实元数据回填，避免模型直接编造字段。
+     */
+    private Set<Long> selectTablesByLlm(List<MetadataTable> tables, Map<Long, String> schemaNameMap,
+                                        Map<Long, List<MetadataColumn>> colsMap,
+                                        String requirement, String token) {
+        if (StrUtil.isBlank(requirement) || tables.isEmpty()) return Collections.emptySet();
+        try {
+            StringBuilder digest = new StringBuilder();
+            int limit = Math.min(tables.size(), 300);
+            for (int i = 0; i < limit; i++) {
+                MetadataTable t = tables.get(i);
+                String schema = t.getSchemaId() != null ? schemaNameMap.getOrDefault(t.getSchemaId(), "") : "";
+                String full = StrUtil.isNotBlank(schema) && !"public".equalsIgnoreCase(schema)
+                        ? schema + "." + t.getTableName() : t.getTableName();
+                digest.append(full).append(" | ").append(StrUtil.blankToDefault(t.getTableComment(), "-"));
+                List<MetadataColumn> cols = colsMap.getOrDefault(t.getId(), Collections.emptyList());
+                if (!cols.isEmpty()) {
+                    digest.append(" | 字段：");
+                    int n = Math.min(cols.size(), 12);
+                    for (int j = 0; j < n; j++) {
+                        MetadataColumn c = cols.get(j);
+                        if (j > 0) digest.append("，");
+                        digest.append(c.getColumnName());
+                        if (StrUtil.isNotBlank(c.getColumnComment())) digest.append("(").append(c.getColumnComment()).append(")");
+                    }
+                }
+                digest.append("\n");
+            }
+            String prompt = "你是数据目录检索助手。用户不会写 SQL，只会描述业务需求。\n"
+                    + "请从下面的表目录中选出最可能包含目标数据的表，最多 8 张。\n"
+                    + "只输出 JSON 字符串数组，例如 [\"schema.table\"]；没有合适的表输出 []，不要解释。\n\n"
+                    + "用户需求：" + requirement + "\n\n表目录：\n" + digest;
+            String raw = callAgent(prompt, token);
+            if (StrUtil.isBlank(raw)) return Collections.emptySet();
+            int l = raw.indexOf('[');
+            int r = raw.lastIndexOf(']');
+            if (l < 0 || r <= l) return Collections.emptySet();
+            JsonNode arr = MAPPER.readTree(raw.substring(l, r + 1));
+            if (!arr.isArray()) return Collections.emptySet();
+            Set<String> names = new HashSet<>();
+            for (JsonNode n : arr) {
+                String name = n.asText("").replace("`", "").replace("\"", "").trim().toLowerCase(Locale.ROOT);
+                if (!name.isEmpty()) names.add(name);
+            }
+            Set<Long> ids = new HashSet<>();
+            for (MetadataTable t : tables) {
+                String schema = t.getSchemaId() != null ? schemaNameMap.getOrDefault(t.getSchemaId(), "") : "";
+                String table = t.getTableName() == null ? "" : t.getTableName().toLowerCase(Locale.ROOT);
+                String full = StrUtil.isNotBlank(schema) ? (schema + "." + table).toLowerCase(Locale.ROOT) : table;
+                if (names.contains(table) || names.contains(full)) ids.add(t.getId());
+            }
+            return ids;
+        } catch (Exception e) {
+            log.warn("报表目录模型检索失败，回退为空: {}", e.getMessage());
+            return Collections.emptySet();
+        }
+    }
+
+    /** 中文按 2 字滑窗、英文按单词切分，作为轻量全库检索 token */
+    private List<String> queryTokens(String requirement) {
+        if (StrUtil.isBlank(requirement)) return List.of();
+        String req = requirement.toLowerCase(Locale.ROOT);
+        java.util.LinkedHashSet<String> tokens = new java.util.LinkedHashSet<>();
+        java.util.regex.Matcher m = Pattern.compile("[a-z0-9_]{2,}|[\\u4e00-\\u9fa5]{2,}").matcher(req);
+        while (m.find()) {
+            String token = m.group();
+            if (STOP_WORDS.contains(token)) continue;
+            tokens.add(token);
+            if (token.matches("[\\u4e00-\\u9fa5]+")) {
+                for (int i = 0; i + 2 <= token.length(); i++) tokens.add(token.substring(i, i + 2));
+            }
+            if (tokens.size() > 120) break;
+        }
+        return new ArrayList<>(tokens);
+    }
+
+    /** 表名/表注释/字段名/字段注释/业务域 加权打分 */
+    private int scoreTable(MetadataTable t, String schemaName, List<MetadataColumn> columns,
+                           String requirement, List<String> tokens) {
+        String req = requirement == null ? "" : requirement.toLowerCase(Locale.ROOT);
+        String name = t.getTableName() == null ? "" : t.getTableName().toLowerCase(Locale.ROOT);
+        String comment = t.getTableComment() == null ? "" : t.getTableComment().toLowerCase(Locale.ROOT);
+        String domain = t.getSubjectDomain() == null ? "" : t.getSubjectDomain().toLowerCase(Locale.ROOT);
+        int score = 0;
+        if (name.length() >= 4 && req.contains(name)) score += 200;
+        if (comment.length() >= 2 && req.contains(comment)) score += 100;
+        for (String token : tokens) {
+            if (token.length() < 2) continue;
+            if (name.contains(token)) score += 15;
+            if (comment.contains(token)) score += 10;
+            if (!domain.isEmpty() && domain.contains(token)) score += 4;
+            if (!schemaName.isEmpty() && schemaName.toLowerCase(Locale.ROOT).contains(token)) score += 2;
+            for (MetadataColumn c : columns) {
+                String columnName = c.getColumnName() == null ? "" : c.getColumnName().toLowerCase(Locale.ROOT);
+                String columnComment = c.getColumnComment() == null ? "" : c.getColumnComment().toLowerCase(Locale.ROOT);
+                if (columnName.contains(token)) score += 3;
+                if (columnComment.contains(token)) score += 6;
+            }
+        }
+        return score;
+    }
+
+    /** 从生成的 SQL 中提取实际引用的表    /** 从生成的 SQL 中提取实际引用的表（与注入的表清单大小写不敏感匹配），供前端回显 */
     private List<Map<String, Object>> extractUsedTables(String sql, TableContext ctx) {
         String lowerSql = sql.toLowerCase();
         List<Map<String, Object>> used = new ArrayList<>();
@@ -428,10 +577,84 @@ public class ReportService {
         return used;
     }
 
+    /** 生成 SQL 自检：表必须来自上下文；别名.字段必须属于对应表 */
+    private void validateGeneratedSql(String sql, TableContext ctx) {
+        Set<String> allowedTables = new HashSet<>();
+        Map<String, Set<String>> tableColumns = new HashMap<>();
+        for (Map<String, Object> t : ctx.tables) {
+            String tableName = String.valueOf(t.get("tableName")).toLowerCase(Locale.ROOT);
+            String schemaName = String.valueOf(t.getOrDefault("schemaName", "")).toLowerCase(Locale.ROOT);
+            allowedTables.add(tableName);
+            if (StrUtil.isNotBlank(schemaName) && !"null".equals(schemaName)) {
+                allowedTables.add(schemaName + "." + tableName);
+            }
+            Set<String> cols = new HashSet<>();
+            @SuppressWarnings("unchecked")
+            List<MetadataColumn> columns = (List<MetadataColumn>) t.get("columns");
+            for (MetadataColumn c : columns) {
+                if (c.getColumnName() != null) cols.add(c.getColumnName().toLowerCase(Locale.ROOT));
+            }
+            tableColumns.put(tableName, cols);
+        }
+        // CTE 名称允许作为 FROM/JOIN 目标
+        Set<String> cteNames = new HashSet<>();
+        java.util.regex.Matcher cte = Pattern.compile("(?i)\\bwith\\s+([a-zA-Z_][\\w$]*)").matcher(sql);
+        while (cte.find()) cteNames.add(cte.group(1).toLowerCase(Locale.ROOT));
+
+        // 表名校验：FROM / JOIN 后面的裸表名
+        java.util.regex.Matcher tm = Pattern.compile(
+                "(?i)\\b(?:from|join)\\s+([`\"\\[]?[a-zA-Z_][\\w$]*(?:\\.[a-zA-Z_][\\w$]*)?[`\"\\]]?)").matcher(sql);
+        Set<String> unknownTables = new LinkedHashSet<>();
+        while (tm.find()) {
+            String raw = tm.group(1).replace("`", "").replace("\"", "").replace("[", "").replace("]", "").toLowerCase(Locale.ROOT);
+            if (raw.isEmpty() || cteNames.contains(raw) || allowedTables.contains(raw)) continue;
+            String shortName = raw.contains(".") ? raw.substring(raw.lastIndexOf('.') + 1) : raw;
+            if (allowedTables.contains(shortName) || cteNames.contains(shortName)) continue;
+            unknownTables.add(raw);
+        }
+        if (!unknownTables.isEmpty()) {
+            throw new BusinessException("AI 生成的 SQL 使用了未提供的表：" + String.join(", ", unknownTables)
+                    + "。请确认表名已同步，或在需求中明确表名后重试");
+        }
+
+        // 别名映射：FROM/JOIN table [AS] alias
+        Map<String, String> aliasToTable = new HashMap<>();
+        java.util.regex.Matcher am = Pattern.compile(
+                "(?i)\\b(?:from|join)\\s+([a-zA-Z_][\\w$]*(?:\\.[a-zA-Z_][\\w$]*)?)(?:\\s+(?:as\\s+)?([a-zA-Z_][\\w$]*))?").matcher(sql);
+        Set<String> keywords = Set.of("where", "on", "join", "left", "right", "inner", "outer", "full", "group",
+                "order", "limit", "offset", "union", "having", "cross", "natural", "window", "fetch", "using");
+        while (am.find()) {
+            String table = am.group(1).toLowerCase(Locale.ROOT);
+            String alias = am.group(2) == null ? null : am.group(2).toLowerCase(Locale.ROOT);
+            if (alias == null || keywords.contains(alias)) continue;
+            aliasToTable.put(alias, table);
+        }
+        Set<String> badColumns = new LinkedHashSet<>();
+        java.util.regex.Matcher cm = Pattern.compile("\\b([a-zA-Z_][\\w$]*)\\.([a-zA-Z_][\\w$]*)\\b").matcher(sql);
+        while (cm.find()) {
+            String alias = cm.group(1).toLowerCase(Locale.ROOT);
+            String column = cm.group(2).toLowerCase(Locale.ROOT);
+            String table = aliasToTable.get(alias);
+            if (table == null) continue;
+            String shortName = table.contains(".") ? table.substring(table.lastIndexOf('.') + 1) : table;
+            Set<String> cols = tableColumns.get(shortName);
+            if (cols != null && !cols.contains(column)) badColumns.add(alias + "." + column);
+        }
+        if (!badColumns.isEmpty()) {
+            throw new BusinessException("AI 生成的 SQL 使用了不存在的字段：" + String.join(", ", badColumns)
+                    + "。请检查字段注释或补充表结构后重试");
+        }
+    }
+
     /** 组装编码智能体 Prompt */
     private String buildPrompt(String requirement, String dsType, TableContext ctx) {
         StringBuilder sb = new StringBuilder();
         sb.append("你是医疗行业数据治理专家，擅长编写 SQL。请根据用户的报表需求和给定的数据库表结构，生成一条可直接执行的 SELECT 查询语句。\n\n");
+        sb.append("最高优先级规则：\n");
+        sb.append("1. 用户明确点名的表，必须在下面上下文中；只能用下面列出的表和字段。\n");
+        sb.append("2. 禁止编造表名、字段名、别名和指标；不确定的字段不要猜。\n");
+        sb.append("3. 如果上下文中缺少用户点名的表或字段，不要生成 SQL，只输出：-- 无法生成：缺少 <表/字段>。\n");
+        sb.append("4. 生成前自检：FROM/JOIN 的每一张表、SELECT/WHERE/GROUP BY 的每一个字段，都必须能在下面找到。\n\n");
         sb.append("数据源类型：").append(StrUtil.isBlank(dsType) ? "UNKNOWN" : dsType.toUpperCase()).append("\n\n");
         sb.append("可用表结构（表名/注释 + 字段名/类型/注释，PK=主键，FK=外键）：\n");
         for (Map<String, Object> t : ctx.tables) {
@@ -461,11 +684,12 @@ public class ReportService {
         sb.append("用户需求：").append(requirement).append("\n\n");
         sb.append("要求：\n");
         sb.append("1. 只生成一条 SELECT 语句（可含 JOIN、GROUP BY、聚合、排序、LIMIT）\n");
-        sb.append("2. 表名、字段名必须严格使用上面给出的真实名称，不得编造\n");
+        sb.append("2. 表名、字段名必须严格使用上面给出的真实名称，不得编造；只能用上下文中出现的表\n");
         sb.append("3. 多表关联时优先参考字段注释中标注的 FK 外键关系\n");
         sb.append("4. 使用上述数据源类型的 SQL 方言语法\n");
         sb.append("5. 结果集行数建议控制在合理范围（如加 LIMIT 或聚合）\n");
-        sb.append("6. 只输出 SQL 本身，不要任何解释、不要 markdown 代码块、不要分号以外的多余内容");
+        sb.append("6. 只输出 SQL 本身，不要任何解释、不要 markdown 代码块、不要分号以外的多余内容\n");
+        sb.append("7. 如果无法在给定结构中完成，输出 -- 无法生成：缺少 <具体表或字段>，不要编造");
         return sb.toString();
     }
 
