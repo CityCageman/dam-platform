@@ -19,7 +19,14 @@ export const reportApi = {
     return request.post('/catalog/report/generate', data, { timeout: 300000 })
   },
   /** 异步生成报表：创建 REPORT 任务，后台生成并登记到报表体系 */
-  generateAsync(data: { requirement: string; dataSourceId: number }) {
+  generateAsync(data: {
+    requirement: string
+    dataSourceId: number
+    mode?: 'NEW' | 'MODIFY'
+    reportId?: number
+    baseSql?: string
+    displayRequirement?: string
+  }) {
     return request.post('/catalog/report/generate/async', data, { timeout: 30000 })
   },
   /** 执行报表 SQL（仅 SELECT，后端安全校验后只读执行） */
@@ -397,6 +404,18 @@ export const operationsApi = {
   evaluateAsset(assetId: number) { return request.get(`/operations/valuation/${assetId}`) },
   // 用户行为
   getUserBehavior() { return request.get('/operations/user-behavior') }
+}
+
+export const metricApi = {
+  list(params: any) { return request.get('/catalog/metrics', { params }) },
+  get(id: number) { return request.get(`/catalog/metrics/${id}`) },
+  create(data: any) { return request.post('/catalog/metrics', data) },
+  update(id: number, data: any) { return request.put(`/catalog/metrics/${id}`, data) },
+  remove(id: number) { return request.delete(`/catalog/metrics/${id}`) },
+  aiSql(id: number) { return request.post(`/catalog/metrics/${id}/ai-sql`, null, { timeout: 300000 }) },
+  values(id: number) { return request.get(`/catalog/metrics/${id}/values`) },
+  addValue(id: number, data: any) { return request.post(`/catalog/metrics/${id}/values`, data) },
+  removeValue(id: number, valueId: number) { return request.delete(`/catalog/metrics/${id}/values/${valueId}`) }
 }
 
 export const modelApi = {

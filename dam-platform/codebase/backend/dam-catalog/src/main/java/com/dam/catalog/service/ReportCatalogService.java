@@ -213,6 +213,11 @@ public class ReportCatalogService {
 
     // ==================== 详情 / 维护 ====================
 
+    /** 供异步任务使用：按ID取报表，已删除的拒绝 */
+    public ReportCatalog getReport(Long id) {
+        return requireReport(id);
+    }
+
     /** 报表详情（含资产信息、主题域归属、参数定义） */
     public Map<String, Object> getDetail(Long id) {
         ReportCatalog rc = requireReport(id);

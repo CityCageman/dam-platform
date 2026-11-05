@@ -4,6 +4,7 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dam.catalog.entity.AiTask;
 import com.dam.catalog.entity.AiTaskItem;
+import com.dam.catalog.entity.ReportCatalog;
 import com.dam.catalog.repository.AiTaskItemMapper;
 import com.dam.catalog.repository.AiTaskMapper;
 import lombok.RequiredArgsConstructor;
@@ -63,7 +64,7 @@ public class AiTaskRunner {
      * 任务进度用 totalCount=1 / acceptedCount=0→1 表示。
      */
     @Async("aiTaskExecutor")
-    public void runReport(Long taskId, String requirement, Long dataSourceId, String token) {
+    public void runReport(Long taskId, String requirement, Long dataSourceId, String token, String mode, Long baseReportId) {
         AiTask task = taskMapper.selectById(taskId);
         if (task == null) return;
         try {
@@ -78,16 +79,20 @@ public class AiTaskRunner {
             String sql = String.valueOf(generated.getOrDefault("sql", ""));
             if (sql.isBlank()) throw new IllegalStateException("AI 未生成有效 SQL");
 
-            String reportName = ("AI报表｜" + requirement).trim();
+            boolean modify = "MODIFY".equalsIgnoreCase(mode);
+            ReportCatalog existing = modify ? reportCatalogService.getReport(baseReportId) : null;
+            String reportName = existing != null ? existing.getReportName() : ("AI报表｜" + requirement).trim();
+            if (reportName == null || reportName.isBlank()) reportName = "AI报表｜" + taskId;
             if (reportName.length() > 200) reportName = reportName.substring(0, 200);
             Map<String, Object> body = new java.util.LinkedHashMap<>();
-            body.put("reportCode", "AI_RPT_" + taskId);
+            if (existing != null) body.put("id", existing.getId());
+            body.put("reportCode", existing != null ? existing.getReportCode() : "AI_RPT_" + taskId);
             body.put("reportName", reportName);
             body.put("reportTypeId", "REPORT");
             body.put("execType", "SQL");
             body.put("dataSourceId", dataSourceId);
             body.put("sqlContent", sql);
-            String description = "AI 生成｜任务 #" + taskId + "｜" + requirement;
+            String description = (modify ? "AI 修改" : "AI 生成") + "｜任务 #" + taskId + "｜" + requirement;
             if (description.length() > 500) description = description.substring(0, 500);
             body.put("description", description);
             body.put("owner", task.getCreatedBy());

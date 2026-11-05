@@ -14,6 +14,7 @@ const routes = [
       // { path: 'data-sources', component: () => import('@/views/catalog/DataSourceList.vue'), meta: { title: '数据源管理', icon: 'Connection' } }, // 已合并到元数据管理
       { path: 'models', component: () => import('@/views/catalog/ModelManagement.vue'), meta: { title: '模型管理', icon: 'Collection' } },
       { path: 'lineage', component: () => import('@/views/lineage/Index.vue'), meta: { title: '数据血缘', icon: 'Connection' } },
+      { path: 'metrics', component: () => import('@/views/metric/MetricManagement.vue'), meta: { title: '指标管理', icon: 'TrendCharts' } },
       { path: 'reports', component: () => import('@/views/report/ReportCenter.vue'), meta: { title: '报表体系', icon: 'DataAnalysis' } },
       { path: 'standard', component: () => import('@/views/standard/Index.vue'), meta: { title: '数据标准', icon: 'Document' } },
       { path: 'quality', component: () => import('@/views/quality/Index.vue'), meta: { title: '数据质量', icon: 'List' } },

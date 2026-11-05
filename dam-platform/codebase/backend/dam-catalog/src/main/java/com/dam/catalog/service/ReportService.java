@@ -6,10 +6,12 @@ import com.dam.catalog.entity.DamDataSource;
 import com.dam.catalog.entity.MetadataColumn;
 import com.dam.catalog.entity.MetadataSchema;
 import com.dam.catalog.entity.MetadataTable;
+import com.dam.catalog.entity.MetricDefinition;
 import com.dam.catalog.repository.DamDataSourceMapper;
 import com.dam.catalog.repository.MetadataColumnMapper;
 import com.dam.catalog.repository.MetadataSchemaMapper;
 import com.dam.catalog.repository.MetadataTableMapper;
+import com.dam.catalog.repository.MetricDefinitionMapper;
 import com.dam.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -88,6 +90,7 @@ public class ReportService {
     private final DamDataSourceMapper dataSourceMapper;
     private final MetadataTableMapper tableMapper;
     private final MetadataColumnMapper columnMapper;
+    private final MetricDefinitionMapper metricMapper;
     private final MetadataSchemaMapper schemaMapper;
     private final CryptoService cryptoService;
 
@@ -132,7 +135,7 @@ public class ReportService {
         }
 
         // 2. 组装 Prompt 并调用编码智能体
-        String prompt = buildPrompt(requirement, ds.getDsType(), ctx);
+        String prompt = buildPrompt(requirement, ds.getDsType(), ctx, dataSourceId);
         String raw = callAgent(prompt, token);
         String sql = cleanSql(raw);
         if (StrUtil.isBlank(sql)) {
@@ -146,6 +149,44 @@ public class ReportService {
         result.put("dataSourceName", ds.getDsName());
         result.put("tableCount", ctx.totalTables);
         result.put("truncatedTables", ctx.truncated);
+        result.put("tablesUsed", extractUsedTables(sql, ctx));
+        return result;
+    }
+
+    /**
+     * 根据指标定义和计算公式生成指标 SQL（供指标中心 AI 分析使用）。
+     * 只生成 SQL，不执行；表/字段仍走全库检索 + 白名单校验。
+     */
+    public Map<String, Object> generateMetricSql(MetricDefinition metric, String token) {
+        if (metric == null) throw new BusinessException("指标不存在");
+        if (!"COMPUTED".equalsIgnoreCase(metric.getMetricType())) {
+            throw new BusinessException("手工填报指标不需要生成 SQL");
+        }
+        if (metric.getDataSourceId() == null) throw new BusinessException("请先为指标选择数据源");
+        DamDataSource ds = dataSourceMapper.selectById(metric.getDataSourceId());
+        if (ds == null) throw new BusinessException("指标数据源不存在");
+
+        String requirement = "指标名称：" + StrUtil.blankToDefault(metric.getMetricName(), "")
+                + "\n业务定义：" + StrUtil.blankToDefault(metric.getDefinition(), "")
+                + "\n计算公式：" + StrUtil.blankToDefault(metric.getFormula(), "")
+                + "\n来源表：" + StrUtil.blankToDefault(metric.getSourceTables(), "")
+                + "\n单位：" + StrUtil.blankToDefault(metric.getUnit(), "")
+                + "\n维度：" + StrUtil.blankToDefault(metric.getDimensions(), "")
+                + "\n请只生成该指标的 SELECT 查询，不要生成其他指标。";
+        TableContext ctx = buildTableContext(metric.getDataSourceId(), requirement, token);
+        if (ctx.tables.isEmpty()) {
+            if (ctx.noMatch) throw new BusinessException("没有从表名/注释中检索到该指标准备使用的表，请补充来源表或注释");
+            throw new BusinessException("该数据源暂无已同步的表结构");
+        }
+        String prompt = buildPrompt(requirement, ds.getDsType(), ctx, metric.getDataSourceId());
+        String raw = callAgent(prompt, token);
+        String sql = cleanSql(raw);
+        if (StrUtil.isBlank(sql)) throw new BusinessException("智能体未返回有效的指标 SQL");
+        validateGeneratedSql(sql, ctx);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("sql", sql);
+        result.put("dataSourceName", ds.getDsName());
         result.put("tablesUsed", extractUsedTables(sql, ctx));
         return result;
     }
@@ -647,7 +688,7 @@ public class ReportService {
     }
 
     /** 组装编码智能体 Prompt */
-    private String buildPrompt(String requirement, String dsType, TableContext ctx) {
+    private String buildPrompt(String requirement, String dsType, TableContext ctx, Long dataSourceId) {
         StringBuilder sb = new StringBuilder();
         sb.append("你是医疗行业数据治理专家，擅长编写 SQL。请根据用户的报表需求和给定的数据库表结构，生成一条可直接执行的 SELECT 查询语句。\n\n");
         sb.append("最高优先级规则：\n");
@@ -680,6 +721,32 @@ public class ReportService {
         }
         if (ctx.truncated) {
             sb.append("（注：表/字段较多，以上仅列出部分表和字段，请优先使用已列出的结构）\n\n");
+        }
+        // 指标定义/公式：业务用户说“门诊量/收入”时，优先使用已维护的口径
+        try {
+            List<MetricDefinition> metrics = metricMapper.selectList(
+                    new LambdaQueryWrapper<MetricDefinition>()
+                            .eq(MetricDefinition::getDataSourceId, dataSourceId)
+                            .eq(MetricDefinition::getStatus, 1)
+                            .isNull(MetricDefinition::getDeletedAt)
+                            .last("LIMIT 50"));
+            if (!metrics.isEmpty()) {
+                sb.append("业务指标定义（用户提到指标时，必须优先使用这里的口径/公式，不得自行发明）：\n");
+                for (MetricDefinition m : metrics) {
+                    sb.append("- ").append(m.getMetricName()).append("（").append(m.getMetricCode()).append("）");
+                    if ("MANUAL".equalsIgnoreCase(m.getMetricType())) {
+                        sb.append(" [手工填报，不能从数据库表计算]");
+                    } else {
+                        if (StrUtil.isNotBlank(m.getDefinition())) sb.append(" 定义：").append(m.getDefinition());
+                        if (StrUtil.isNotBlank(m.getFormula())) sb.append("；公式：").append(m.getFormula());
+                        if (StrUtil.isNotBlank(m.getSqlExpression())) sb.append("；参考SQL：").append(m.getSqlExpression());
+                    }
+                    sb.append("\n");
+                }
+                sb.append("\n");
+            }
+        } catch (Exception e) {
+            log.warn("加载指标定义失败: {}", e.getMessage());
         }
         sb.append("用户需求：").append(requirement).append("\n\n");
         sb.append("要求：\n");

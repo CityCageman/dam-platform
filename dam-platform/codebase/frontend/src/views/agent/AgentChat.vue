@@ -84,7 +84,8 @@
                 >
                   执行查询
                 </el-button>
-                <el-button size="small" @click="regenerateReport(m)">修改需求</el-button>
+                <el-button v-if="m.report.reportId" size="small" @click="modifyReport(m)">修改当前报表</el-button>
+                <el-button size="small" @click="newReport">新建报表</el-button>
                 <el-button
                   v-if="m.report.status === 'done' && m.report.columns && m.report.columns.length"
                   size="small"
@@ -280,7 +281,7 @@ async function sendReport(text: string) {
   await scrollBottom()
 
   try {
-    await runReportTask(report, text)
+    await runReportTask(report, text, 'NEW')
   } catch (e: any) {
     report.status = 'error'
     report.error = e.message || '生成失败'
@@ -295,10 +296,16 @@ function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-async function runReportTask(report: ReportState, requirement: string) {
+async function runReportTask(report: ReportState, requirement: string,
+                             mode: 'NEW' | 'MODIFY' = 'NEW',
+                             reportId?: number, baseSql?: string) {
   const created: any = await reportApi.generateAsync({
     requirement,
-    dataSourceId: report.dataSourceId!
+    dataSourceId: report.dataSourceId!,
+    mode,
+    reportId,
+    baseSql,
+    displayRequirement: requirement
   })
   const taskId = Number(created.data?.taskId)
   if (!taskId) throw new Error('报表任务创建失败')
@@ -360,16 +367,16 @@ async function executeReport(m: Msg) {
   await scrollBottom()
 }
 
-/** 修改需求后重新生成报表 SQL（异步任务） */
-async function regenerateReport(m: Msg) {
+/** 针对当前报表的 SQL/结果提出修改，更新同一张报表，不新建报表 */
+async function modifyReport(m: Msg) {
   const r = m.report
-  if (!r || r.status === 'executing') return
+  if (!r || r.status === 'executing' || !r.reportId) return
   let value: string
   try {
-    const res = await ElMessageBox.prompt('修改报表需求后重新生成 SQL', '重新生成', {
-      confirmButtonText: '生成',
+    const res = await ElMessageBox.prompt('请输入对当前报表的修改意见（例如：把统计口径改成按出院日期）', '修改当前报表', {
+      confirmButtonText: '提交修改',
       cancelButtonText: '取消',
-      inputValue: r.requirement || '',
+      inputValue: '',
       inputType: 'textarea'
     })
     value = res.value || ''
@@ -377,31 +384,36 @@ async function regenerateReport(m: Msg) {
     return
   }
   if (!value.trim()) return
-  r.requirement = value.trim()
+  const baseSql = r.sql
+  const baseReportId = r.reportId
   r.status = 'generating'
   r.progress = 0
   r.taskId = undefined
-  r.reportId = undefined
-  r.reportName = undefined
-  r.sql = undefined
-  r.tablesUsed = []
-  r.columns = undefined
-  r.rows = undefined
-  r.rowCount = undefined
-  r.truncated = undefined
   r.error = undefined
   await scrollBottom()
   try {
-    await runReportTask(r, value.trim())
+    // 保留 reportId，完成后仍指向同一张报表
+    await runReportTask(r, value.trim(), 'MODIFY', baseReportId, baseSql)
   } catch (e: any) {
     r.status = 'error'
-    r.error = e.message || '生成失败'
+    r.error = e.message || '修改失败'
     ElMessage.error(r.error)
   }
   await scrollBottom()
 }
 
-/** 导出结果到表格/** 导出结果到表格（CSV，UTF-8 BOM，Excel 可直接打开；剔除高危依赖 xlsx） */
+/** 完全新的报表：保留当前对话，但下一条需求创建新报表 */
+function newReport() {
+  reportMode.value = true
+  input.value = ''
+  ElMessage.info('请描述新的报表需求，提交后会创建一张新报表')
+}
+
+async function regenerateReport(m: Msg) {
+  return modifyReport(m)
+}
+
+/** 导出结果到表格/** 导出结果到表格/** 导出结果到表格（CSV，UTF-8 BOM，Excel 可直接打开；剔除高危依赖 xlsx） */
 function exportExcel(m: Msg) {
   const r = m.report
   if (!r || !r.columns || !r.columns.length || !r.rows) return

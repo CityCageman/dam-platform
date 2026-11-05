@@ -157,7 +157,7 @@ const menuTree = computed(() => {
 const MODULE_GROUPS = [
   { title: '总览', keys: ['dashboard'] },
   { title: '数据资产', keys: ['catalog', 'catalog-detail', 'metadata', 'models', 'lineage'] },
-  { title: '治理能力', keys: ['standard', 'quality', 'security', 'lifecycle'] },
+  { title: '治理能力', keys: ['standard', 'quality', 'metrics', 'security', 'lifecycle'] },
   { title: '平台运营', keys: ['operations', 'agent'] }
 ]
 

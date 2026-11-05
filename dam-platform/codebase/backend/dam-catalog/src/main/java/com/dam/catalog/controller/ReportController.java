@@ -56,16 +56,26 @@ public class ReportController {
                 ? ((Number) params.get("dataSourceId")).longValue() : null;
         if (dataSourceId == null) throw new BusinessException("请选择数据源");
 
-        String title = requirement.trim();
+        String mode = params.get("mode") == null ? "NEW" : String.valueOf(params.get("mode")).toUpperCase();
+        Long reportId = params.get("reportId") != null ? ((Number) params.get("reportId")).longValue() : null;
+        String baseSql = params.get("baseSql") == null ? null : String.valueOf(params.get("baseSql"));
+        if ("MODIFY".equals(mode)) {
+            if (reportId == null) throw new BusinessException("修改报表缺少报表ID");
+            if (baseSql == null || baseSql.isBlank()) throw new BusinessException("修改报表缺少上一版SQL");
+            requirement = "这是对上一版报表的修改请求，不要生成另一张无关报表。\n"
+                    + "上一版 SQL：\n" + baseSql + "\n修改意见：" + requirement;
+        }
+
+        String title = params.get("displayRequirement") == null ? requirement : String.valueOf(params.get("displayRequirement"));
         if (title.length() > 180) title = title.substring(0, 180) + "…";
         Map<String, Object> taskBody = new java.util.LinkedHashMap<>();
         taskBody.put("taskType", "REPORT");
-        taskBody.put("title", "AI 报表 · " + title);
+        taskBody.put("title", ("MODIFY".equals(mode) ? "AI 报表修改 · " : "AI 报表 · ") + title);
         taskBody.put("targetType", "DATASOURCE");
         taskBody.put("targetId", dataSourceId);
         taskBody.put("prompt", requirement);
         AiTask task = aiTaskService.create(taskBody);
-        aiTaskRunner.runReport(task.getId(), requirement, dataSourceId, token);
+        aiTaskRunner.runReport(task.getId(), requirement, dataSourceId, token, mode, reportId);
         return Result.success(Map.of("taskId", task.getId()));
     }
 
