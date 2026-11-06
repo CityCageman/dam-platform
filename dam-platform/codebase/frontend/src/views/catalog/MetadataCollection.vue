@@ -203,13 +203,13 @@
                 <el-button type="primary" plain :icon="Search" @click="openScanDialog(selectedDs)">扫描表</el-button>
               </div>
               <div class="filter-row">
-                <el-input v-model="dbTableKeyword" placeholder="搜索表名/注释..." clearable style="width: 240px;" @keyup.enter="loadDsTables" />
+                <el-input v-model="dbTableKeyword" placeholder="搜索表名/注释..." clearable style="width: 240px;" @keyup.enter="searchDsTables" />
                 <el-select v-model="dbTableSubjectDomain" placeholder="主题域" clearable filterable style="width: 170px;" @change="loadDsTables">
                   <el-option v-for="s in subjectDomainOptions" :key="s.value" :label="`${s.value}-${s.label}`" :value="s.value" />
                   <el-option label="未设置" value="NONE" />
                 </el-select>
                 <el-tag v-if="dbTableSchema" closable type="primary" @close="clearSchema">Schema：{{ dbTableSchema }}</el-tag>
-                <el-button type="primary" @click="loadDsTables">查询</el-button>
+                <el-button type="primary" @click="searchDsTables">查询</el-button>
                 <el-button @click="loadDsTables">刷新</el-button>
                 <div class="toolbar-spacer"></div>
                 <span class="ds-sub">共 {{ dbTableTotal }} 张表</span>
@@ -1391,7 +1391,7 @@ async function loadDbTableAssets() {
     dsIdMap.value = idMap
 
     const res: any = await catalogApi.searchAssets({
-      keyword: dbTableKeyword.value || undefined,
+      keyword: dbTableKeyword.value.trim() || undefined,
       assetType: 'table',
       subjectDomain: dbTableSubjectDomain.value || undefined,
       page: dbTablePage.value,
@@ -2888,6 +2888,11 @@ function clearSchema() {
   loadDsTables()
 }
 
+function searchDsTables() {
+  dbTablePage.value = 1
+  loadDsTables()
+}
+
 async function loadDsTables() {
   if (!selectedDs.value) return
   dbTableLoading.value = true
@@ -2899,7 +2904,7 @@ async function loadDsTables() {
     dsNameMap.value = map
 
     const res: any = await catalogApi.searchAssets({
-      keyword: dbTableKeyword.value || undefined,
+      keyword: dbTableKeyword.value.trim() || undefined,
       assetType: 'table',
       dataSourceId: selectedDs.value.id,
       schemaName: dbTableSchema.value || undefined,
@@ -3236,7 +3241,9 @@ async function batchRegister() {
 // 计算过滤后的表
 const filteredTables = computed(() => {
   if (!tableSearch.value) return tables.value
-  return tables.value.filter((t: any) => t.tableName?.toLowerCase().includes(tableSearch.value.toLowerCase()))
+  return tables.value.filter((t: any) =>
+    String(t.tableName || '').toLowerCase().includes(tableSearch.value.toLowerCase()) ||
+    String(t.tableComment || t.tableComment || t.remarks || '').toLowerCase().includes(tableSearch.value.toLowerCase()))
 })
 
 // 计算扩展属性数据

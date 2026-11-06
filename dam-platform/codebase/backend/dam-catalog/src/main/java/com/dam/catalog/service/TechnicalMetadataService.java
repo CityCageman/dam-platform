@@ -269,8 +269,9 @@ public class TechnicalMetadataService {
             wrapper.eq(MetadataTable::getSchemaId, schemaId);
         }
         if (StrUtil.isNotBlank(keyword)) {
-            wrapper.and(w -> w.like(MetadataTable::getTableName, keyword)
-                    .or().like(MetadataTable::getTableComment, keyword));
+            String kw = keyword.trim();
+            wrapper.and(w -> w.apply("LOWER(table_name) LIKE LOWER({0})", "%" + kw + "%")
+                    .or().apply("LOWER(table_comment) LIKE LOWER({0})", "%" + kw + "%"));
         }
         wrapper.orderByDesc(MetadataTable::getLastSyncTime);
         return tableMapper.selectList(wrapper);

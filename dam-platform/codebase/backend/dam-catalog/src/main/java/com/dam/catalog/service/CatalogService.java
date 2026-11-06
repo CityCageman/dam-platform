@@ -887,8 +887,23 @@ public class CatalogService {
         Page<DamAsset> p = new Page<>(page, pageSize);
         LambdaQueryWrapper<DamAsset> wrapper = new LambdaQueryWrapper<>();
         if (StrUtil.isNotBlank(keyword)) {
-            wrapper.and(w -> w.like(DamAsset::getAssetName, keyword)
-                    .or().like(DamAsset::getDescription, keyword));
+            String kw = keyword.trim();
+            // 表名/表注释也参与检索：老资产可能没有把表注释同步到 description
+            List<MetadataTable> matchedTables = metadataTableMapper.selectList(
+                    new LambdaQueryWrapper<MetadataTable>()
+                            .and(w -> w.like(MetadataTable::getTableName, kw)
+                                    .or().like(MetadataTable::getTableComment, kw))
+                            .last("LIMIT 2000"));
+            Set<Long> matchedTableIds = matchedTables.stream()
+                    .map(MetadataTable::getId).filter(Objects::nonNull).collect(Collectors.toSet());
+            wrapper.and(w -> {
+                // PostgreSQL/TBase 的 LIKE 区分大小写，这里统一转小写做模糊匹配
+                w.apply("LOWER(asset_name) LIKE LOWER({0})", "%" + kw + "%")
+                        .or().apply("LOWER(description) LIKE LOWER({0})", "%" + kw + "%");
+                if (!matchedTableIds.isEmpty()) {
+                    w.or().in(DamAsset::getSourceMetadataId, matchedTableIds);
+                }
+            });
         }
         // 按资产类型过滤（新表用 source_metadata_type 承载 TABLE/VIEW/FILE/API 类型）
         if (StrUtil.isNotBlank(assetType)) {
