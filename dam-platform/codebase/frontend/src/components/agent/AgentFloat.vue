@@ -99,7 +99,7 @@ onBeforeUnmount(() => {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: var(--med-primary, #1a56db);
+  background: var(--med-primary, #72156A);
   color: #fff;
   display: flex;
   align-items: center;
@@ -143,7 +143,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--med-primary, #1a56db);
+  background: var(--med-primary, #72156A);
   color: #fff;
 }
 .agent-panel__title {

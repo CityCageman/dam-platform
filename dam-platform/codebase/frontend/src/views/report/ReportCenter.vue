@@ -452,7 +452,7 @@ async function removeReport(report: any) {
 .report-card:hover { box-shadow: 0 8px 24px rgba(16, 41, 76, .1); transform: translateY(-2px); }
 .card-cover {
   height: 76px;
-  background: linear-gradient(135deg, #2f7bff 0%, #16c2c2 100%);
+  background: linear-gradient(135deg, #72156A 0%, #2FA6A1 100%);
   display: flex;
   align-items: center;
   justify-content: center;

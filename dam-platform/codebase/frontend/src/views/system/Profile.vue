@@ -91,7 +91,7 @@ async function logout() {
 <style scoped>
 .profile-grid { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 14px; align-items: start; }
 .profile-card { text-align: center; padding: 26px 20px; }
-.avatar { width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #3b82f6, #0ea5e9); }
+.avatar { width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #8E247F, #2FA6A1); }
 .profile-name { font-size: 18px; font-weight: 700; color: var(--med-text); }
 .profile-role { color: var(--med-text-light); font-size: 12px; margin-top: 4px; }
 .profile-tags { display: flex; gap: 6px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }

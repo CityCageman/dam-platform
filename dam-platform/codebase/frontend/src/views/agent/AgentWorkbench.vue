@@ -211,13 +211,13 @@ let evalInstance: any = null
 let miniInstance: any = null
 
 const COLORS: Record<string, string> = {
-  COMMENT: '#2563EB', CLASSIFY: '#D97706', LINEAGE: '#0D9488', REPORT: '#7C3AED'
+  COMMENT: '#72156A', CLASSIFY: '#D99A1C', LINEAGE: '#2FA6A1', REPORT: '#5BAE47'
 }
 const typeBg = (v: string) => (COLORS[v] || '#64748B') + '14'
 const typeColor = (v: string) => COLORS[v] || '#64748B'
 const typeLabel = (v: string) => ({ COMMENT: '中文注释', CLASSIFY: '业务分类', LINEAGE: '血缘解析', REPORT: '报表生成' } as any)[v] || v || '-'
 const statusLabel = (v: string) => ({ PENDING: '待生成', RUNNING: '执行中', REVIEW: '待复核', DONE: '已完成', FAILED: '失败' } as any)[v] || v || '-'
-const statusColor = (v: string) => v === 'DONE' ? '#16A34A' : v === 'REVIEW' ? '#D97706' : v === 'FAILED' ? '#DC2626' : v === 'RUNNING' ? '#2563EB' : '#94A3B8'
+const statusColor = (v: string) => v === 'DONE' ? '#16A34A' : v === 'REVIEW' ? '#D97706' : v === 'FAILED' ? '#DC2626' : v === 'RUNNING' ? '#72156A' : '#94A3B8'
 const statusTag = (v: string) => v === 'DONE' ? 'success' : v === 'REVIEW' ? 'warning' : v === 'FAILED' ? 'danger' : 'info'
 const formatTime = (v: string) => v ? String(v).replace('T', ' ').slice(0, 16) : '-'
 
@@ -237,7 +237,7 @@ const knowledgeItems = computed(() => knowledgeCategories.value.map((c: any, i: 
   name: c.categoryName,
   desc: c.description || c.categoryCode,
   count: '—',
-  color: ['#2563EB', '#7C3AED', '#0D9488', '#D97706'][i % 4],
+  color: ['#72156A', '#2FA6A1', '#D99A1C', '#5BAE47'][i % 4],
   icon: [Collection, TrendCharts, Document, Files][i % 4],
   id: c.id
 })))

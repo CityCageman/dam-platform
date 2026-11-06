@@ -121,7 +121,7 @@ async function handleLogin() {
 
 .logo-mark {
   width: 44px; height: 44px; border-radius: 12px;
-  background: linear-gradient(135deg, #2f7bff, #16c2c2);
+  background: linear-gradient(135deg, #72156A, #2FA6A1);
   display: flex; align-items: center; justify-content: center;
   color: #fff; font-weight: 700; font-size: 15px;
   box-shadow: 0 8px 20px rgba(47, 123, 255, .4);

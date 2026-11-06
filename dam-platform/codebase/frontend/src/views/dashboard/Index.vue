@@ -120,8 +120,8 @@ const stats = ref([
 
 // 治理能力快捷入口（与左侧导航大模块保持一致）
 const entries = [
-  { title: '数据标准', desc: '标准制定与落标核查', path: '/standard', icon: 'Document', color: '#2f7bff' },
-  { title: '数据质量', desc: '质量规则与稽核结果', path: '/quality', icon: 'List', color: '#16c2c2' },
+  { title: '数据标准', desc: '标准制定与落标核查', path: '/standard', icon: 'Document', color: '#72156A' },
+  { title: '数据质量', desc: '质量规则与稽核结果', path: '/quality', icon: 'List', color: '#2FA6A1' },
   { title: '安全管控', desc: '分级分类与脱敏策略', path: '/security', icon: 'Lock', color: '#ef4444' },
   { title: '生命周期', desc: '冷热分层与归档清理', path: '/lifecycle', icon: 'Timer', color: '#f59e0b' },
   { title: '工单中心', desc: '治理工单协同处理', path: '/operations', icon: 'Tickets', color: '#8b5cf6' },
@@ -137,7 +137,7 @@ const AXIS_COLOR = '#8a94a6'
 const SPLIT_COLOR = '#f0f2f7'
 const GRADIENT = (horizontal = false) => new echarts.graphic.LinearGradient(
   horizontal ? 0 : 0, horizontal ? 0 : 0, horizontal ? 1 : 0, horizontal ? 0 : 1,
-  [{ offset: 0, color: '#2f7bff' }, { offset: 1, color: '#16c2c2' }]
+  [{ offset: 0, color: '#72156A' }, { offset: 1, color: '#2FA6A1' }]
 )
 
 function mount(el: HTMLElement | undefined, option: any) {
@@ -175,7 +175,7 @@ async function load() {
           yAxis: { type: 'value', splitLine: { lineStyle: { color: SPLIT_COLOR } }, axisLabel: { color: AXIS_COLOR } },
           series: [
             { name: '资产增量', data: t.assetCounts, type: 'bar', barWidth: 16, itemStyle: { borderRadius: [4, 4, 0, 0], color: GRADIENT() } },
-            { name: '工单增量', data: t.ticketCounts, type: 'line', smooth: true, itemStyle: { color: '#16c2c2' }, lineStyle: { width: 2.5 } }
+            { name: '工单增量', data: t.ticketCounts, type: 'line', smooth: true, itemStyle: { color: '#2FA6A1' }, lineStyle: { width: 2.5 } }
           ],
           tooltip: { trigger: 'axis' }
         })

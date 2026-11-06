@@ -144,7 +144,7 @@ function nodeMeta(d: any) {
 function nodeColor(d: any): string {
   if (d.type === 'FIELD') return '#059669'
   if (d.layer && LAYER_COLORS[d.layer]) return LAYER_COLORS[d.layer]
-  return TYPE_COLORS[d.type] || '#3b82f6'
+  return TYPE_COLORS[d.type] || '#72156A'
 }
 
 // ==================== 数据加载 ====================
