@@ -44,6 +44,11 @@ public class KnowledgeController {
         return Result.success(null);
     }
 
+    @GetMapping("/stats")
+    public Result<Map<String, Object>> stats() {
+        return Result.success(knowledgeService.stats());
+    }
+
     // ==================== 条目 ====================
     @GetMapping("/entries")
     public Result<List<KnowledgeEntry>> entries(@RequestParam(required = false) Long categoryId,

@@ -8,7 +8,7 @@
       <div class="kb-cat-list">
         <div v-for="c in categories" :key="c.id" class="kb-cat" :class="{ active: selectedCategoryId === c.id }" @click="selectCategory(c.id)">
           <div class="kb-cat-main">
-            <b>{{ c.categoryName }}</b>
+            <b>{{ c.categoryName }} <em class="kb-cat-count">{{ categoryCount(c.id) }}</em></b>
             <span>{{ c.description || c.categoryCode }}</span>
           </div>
           <div class="kb-cat-actions" @click.stop>
@@ -21,6 +21,12 @@
     </aside>
 
     <section class="kb-main panel">
+      <div class="kb-overview">
+        <div class="kb-stat"><span>知识总数</span><b>{{ stats.total || 0 }}</b><em>可维护条目</em></div>
+        <div class="kb-stat pending"><span>待索引</span><b>{{ stats.pending || 0 }}</b><em>等待向量化</em></div>
+        <div class="kb-stat synced"><span>已索引</span><b>{{ stats.synced || 0 }}</b><em>向量库可用</em></div>
+        <div class="kb-stat failed"><span>索引失败</span><b>{{ stats.failed || 0 }}</b><em>可重新索引</em></div>
+      </div>
       <div class="kb-toolbar">
         <div>
           <h3 class="kb-title">{{ currentCategory?.categoryName || '全部知识' }}</h3>
@@ -127,6 +133,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 
 const categories = ref<any[]>([])
 const entries = ref<any[]>([])
+const stats = ref<any>({})
 const selectedCategoryId = ref<number | undefined>(undefined)
 const keyword = ref('')
 const sourceFilter = ref('')
@@ -146,6 +153,7 @@ const candidateLoading = ref(false)
 const syncing = ref(false)
 
 const currentCategory = computed(() => categories.value.find(c => c.id === selectedCategoryId.value))
+const categoryCount = (id: number) => Number(stats.value.byCategory?.[String(id)] || 0)
 const sourceLabel = (v: string) => ({ MANUAL: '手工', METADATA: '元数据', METRIC: '指标', STANDARD: '标准' } as any)[v] || v || '手工'
 const sourceTag = (v: string) => (v === 'METRIC' ? 'success' : v === 'METADATA' ? 'primary' : v === 'STANDARD' ? 'warning' : 'info')
 const vectorLabel = (v: string) => ({ PENDING: '待索引', SYNCED: '已索引', FAILED: '失败' } as any)[v] || v || '待索引'
@@ -158,6 +166,18 @@ async function loadCategories() {
     categories.value = res.data || []
     if (!selectedCategoryId.value && categories.value.length) selectedCategoryId.value = categories.value[0].id
   } catch (e: any) { ElMessage.error(e.message || '加载知识分类失败') }
+}
+
+async function loadStats() {
+  try {
+    const res: any = await knowledgeApi.stats()
+    stats.value = res.data || {}
+  } catch { stats.value = {} }
+}
+
+async function loadAll() {
+  await loadCategories()
+  await Promise.all([loadStats(), loadEntries()])
 }
 
 async function loadEntries() {
@@ -190,7 +210,7 @@ async function saveCategory() {
     else await knowledgeApi.createCategory(categoryForm.value)
     ElMessage.success('分类已保存')
     showCategory.value = false
-    await loadCategories()
+    await Promise.all([loadCategories(), loadStats()])
   } catch (e: any) { ElMessage.error(e.message || '保存失败') }
   finally { saving.value = false }
 }
@@ -200,8 +220,7 @@ async function removeCategory(c: any) {
     await knowledgeApi.deleteCategory(c.id)
     ElMessage.success('已删除')
     if (selectedCategoryId.value === c.id) selectedCategoryId.value = undefined
-    await loadCategories()
-    await loadEntries()
+    await Promise.all([loadCategories(), loadStats(), loadEntries()])
   } catch (_e) { /* cancel */ }
 }
 
@@ -223,7 +242,7 @@ async function saveEntry() {
     else await knowledgeApi.createEntry(payload)
     ElMessage.success('知识已保存')
     showEntry.value = false
-    await loadEntries()
+    await Promise.all([loadEntries(), loadStats()])
   } catch (e: any) { ElMessage.error(e.message || '保存失败') }
   finally { saving.value = false }
 }
@@ -232,14 +251,14 @@ async function removeEntry(row: any) {
     await ElMessageBox.confirm(`确认删除「${row.title}」？`, '删除知识', { type: 'warning' })
     await knowledgeApi.deleteEntry(row.id)
     ElMessage.success('已删除')
-    await loadEntries()
+    await Promise.all([loadEntries(), loadStats()])
   } catch (_e) { /* cancel */ }
 }
 async function reindex(row: any) {
   try {
     await knowledgeApi.reindex(row.id)
     ElMessage.success('已重新加入向量索引队列')
-    await loadEntries()
+    await Promise.all([loadEntries(), loadStats()])
   } catch (e: any) { ElMessage.error(e.message || '操作失败') }
 }
 
@@ -272,12 +291,12 @@ async function doSync() {
     ElMessage.success(`已同步 ${res.data?.synced || selectedSources.value.length} 条`)
     showSync.value = false
     selectedCategoryId.value = syncCategoryId.value
-    await loadEntries()
+    await Promise.all([loadEntries(), loadStats()])
   } catch (e: any) { ElMessage.error(e.message || '同步失败') }
   finally { syncing.value = false }
 }
 
-onMounted(async () => { await loadCategories(); await loadEntries() })
+onMounted(loadAll)
 </script>
 
 <style scoped>
@@ -292,6 +311,15 @@ onMounted(async () => { await loadCategories(); await loadEntries() })
 .kb-cat-actions { display: none; margin-top: 2px; }
 .kb-cat.active .kb-cat-actions, .kb-cat:hover .kb-cat-actions { display: flex; }
 .kb-main { padding: 14px; min-width: 0; }
+.kb-overview { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+.kb-stat { border: 1px solid var(--med-border); border-radius: 10px; padding: 9px 11px; background: #FCF9FC; border-top: 2px solid var(--med-primary); }
+.kb-stat.pending { border-top-color: var(--med-gold); }
+.kb-stat.synced { border-top-color: var(--med-green); }
+.kb-stat.failed { border-top-color: var(--med-danger); }
+.kb-stat span { display: block; font-size: 10px; color: var(--med-text-light); }
+.kb-stat b { display: block; font-size: 20px; line-height: 1.4; color: var(--med-text); }
+.kb-stat em { font-style: normal; font-size: 9.5px; color: var(--med-text-light); }
+.kb-cat-count { display: inline-block; font-style: normal; font-size: 9px; min-width: 16px; text-align: center; padding: 1px 4px; border-radius: 8px; background: var(--med-primary-lighter); color: var(--med-primary); margin-left: 4px; }
 .kb-toolbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
 .kb-title { margin: 0; font-size: 14px; color: #1E293B; }
 .kb-desc { margin: 3px 0 0; font-size: 11px; color: #94A3B8; }

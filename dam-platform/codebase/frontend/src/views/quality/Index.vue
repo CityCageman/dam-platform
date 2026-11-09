@@ -223,6 +223,7 @@ import { qualityApi, catalogApi } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
+import { getChartTheme } from '@/utils/chartTheme'
 
 const TYPE_OPTIONS = [
   { value: 'completeness', label: '完整性' },
@@ -438,19 +439,20 @@ async function loadTrendChart() {
     const res: any = await qualityApi.getTrend(trendRuleId.value || undefined, trendDays.value)
     const data = res.data || {}
     if (!trendChart) trendChart = echarts.init(trendChartRef.value)
+    const ct = getChartTheme()
     trendChart.setOption({
       tooltip: { trigger: 'axis' },
       grid: { left: 46, right: 20, top: 24, bottom: 36 },
-      xAxis: { type: 'category', data: data.dates || [], axisLabel: { color: '#94A3B8' }, axisLine: { lineStyle: { color: '#E6EAF2' } } },
-      yAxis: { type: 'value', min: 0, max: 100, axisLabel: { color: '#94A3B8', formatter: '{value}%' }, splitLine: { lineStyle: { color: '#F1F4F9' } } },
+      xAxis: { type: 'category', data: data.dates || [], axisLabel: { color: ct.textLight }, axisLine: { lineStyle: { color: ct.border } } },
+      yAxis: { type: 'value', min: 0, max: 100, axisLabel: { color: ct.textLight, formatter: '{value}%' }, splitLine: { lineStyle: { color: ct.split } } },
       series: [{
         name: '通过率',
         type: 'line',
         smooth: true,
         data: data.scores || [],
-        areaStyle: { opacity: 0.15, color: '#2563EB' },
-        lineStyle: { width: 2.5, color: '#2563EB' },
-        itemStyle: { color: '#2563EB' }
+        areaStyle: { opacity: 0.15, color: ct.primary },
+        lineStyle: { width: 2.5, color: ct.primary },
+        itemStyle: { color: ct.primary }
       }]
     }, true)
   } catch (_e) { /* ignore */ }

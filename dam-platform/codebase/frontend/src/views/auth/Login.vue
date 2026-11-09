@@ -1,25 +1,46 @@
 <template>
   <div class="login-wrap">
-    <!-- 左侧品牌区：深色渐变 -->
+    <!-- 左侧品牌区：深紫 + 四色光晕 -->
     <div class="login-left">
+      <div class="login-orbs">
+        <span class="orb orb-purple"></span>
+        <span class="orb orb-teal"></span>
+        <span class="orb orb-gold"></span>
+        <span class="orb orb-green"></span>
+      </div>
+
+      <div class="brand-kicker">HOSPITAL DATA GOVERNANCE</div>
       <div class="logo-row">
-        <div class="logo-mark">DA</div>
+        <div class="logo-mark">
+          <span class="lm-dot d1"></span><span class="lm-dot d2"></span>
+          <span class="lm-dot d3"></span><span class="lm-dot d4"></span>
+        </div>
         <div>
           <div class="logo-title">数据资产管理平台</div>
           <div class="logo-sub">DATA ASSET PLATFORM</div>
         </div>
       </div>
-      <h1 class="slogan">让医院的数据资产<br />看得见、管得住、用得好</h1>
+
+      <h1 class="slogan">让医院的数据资产<br /><span>看得见</span>、<span>管得住</span>、<span>用得好</span></h1>
+
       <ul class="features">
-        <li>元数据采集 · 资产目录 · 数据血缘</li>
-        <li>数据标准 · 质量稽核 · 安全分级</li>
-        <li>数据服务 API 网关 · 定时调度 · 动态脱敏</li>
+        <li><i class="f-dot purple"></i><div><b>资产可见</b><span>元数据采集 · 资产目录 · 数据血缘</span></div></li>
+        <li><i class="f-dot teal"></i><div><b>治理可控</b><span>数据标准 · 质量稽核 · 安全分级</span></div></li>
+        <li><i class="f-dot gold"></i><div><b>智能可用</b><span>数据服务 · AI 报表 · 指标与知识库</span></div></li>
       </ul>
+
+      <div class="trust-row">
+        <span><i class="f-dot green"></i>内网部署</span>
+        <span><i class="f-dot purple"></i>统一治理</span>
+        <span><i class="f-dot teal"></i>AI 增强</span>
+      </div>
     </div>
 
     <!-- 右侧登录区 -->
     <div class="login-right">
+      <div class="login-glow"></div>
       <div class="login-card">
+        <div class="card-kicker">WELCOME BACK</div>
         <h2 class="card-title">登录</h2>
         <p class="card-sub">请使用平台账号登录</p>
         <el-form :model="form" :rules="rules" ref="formRef" @keyup.enter="handleLogin">
@@ -105,80 +126,157 @@ async function handleLogin() {
 .login-wrap {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  background: #0c1a30;
+  grid-template-columns: 1.15fr 1fr;
+  background: #F7F2F7;
 }
 
 .login-left {
-  background: radial-gradient(130% 100% at 0% 0%, #1d4b8f 0%, #10294c 55%, #0c1a30 100%);
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(130% 100% at 0% 0%, #5B1354 0%, #3A0A36 50%, #250622 100%);
   color: #fff;
-  padding: 64px 72px;
+  padding: 58px 68px;
   display: flex;
   flex-direction: column;
 }
 
-.logo-row { display: flex; align-items: center; gap: 12px; }
+.login-left::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 52px 52px;
+  mask-image: linear-gradient(180deg, rgba(0,0,0,.65), transparent 82%);
+  pointer-events: none;
+}
+
+.login-orbs .orb {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(8px);
+  opacity: .5;
+  pointer-events: none;
+}
+.orb-purple { width: 280px; height: 280px; right: -90px; top: -70px; background: #A33394; }
+.orb-teal { width: 180px; height: 180px; right: 80px; bottom: 90px; background: #2FA6A1; opacity: .22; }
+.orb-gold { width: 120px; height: 120px; left: 58%; top: 32%; background: #D99A1C; opacity: .16; }
+.orb-green { width: 150px; height: 150px; left: -60px; bottom: -50px; background: #5BAE47; opacity: .18; }
+
+.brand-kicker {
+  position: relative;
+  z-index: 1;
+  font-size: 10px;
+  letter-spacing: 2.6px;
+  color: #C9A5C4;
+  margin-bottom: 34px;
+}
+
+.logo-row { position: relative; z-index: 1; display: flex; align-items: center; gap: 13px; }
 
 .logo-mark {
-  width: 44px; height: 44px; border-radius: 12px;
-  background: linear-gradient(135deg, #72156A, #2FA6A1);
-  display: flex; align-items: center; justify-content: center;
-  color: #fff; font-weight: 700; font-size: 15px;
-  box-shadow: 0 8px 20px rgba(47, 123, 255, .4);
+  width: 46px; height: 46px; border-radius: 13px;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.18);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  padding: 10px;
+  box-shadow: 0 10px 26px rgba(0,0,0,.22);
 }
+.lm-dot { border-radius: 5px; display: block; }
+.lm-dot.d1 { background: #B33AA4; }
+.lm-dot.d2 { background: #2FA6A1; }
+.lm-dot.d3 { background: #D99A1C; }
+.lm-dot.d4 { background: #5BAE47; }
 
-.logo-title { font-size: 16px; font-weight: 600; }
-.logo-sub { font-size: 10.5px; color: #7f97bb; letter-spacing: 2px; margin-top: 2px; }
+.logo-title { font-size: 17px; font-weight: 600; letter-spacing: .3px; }
+.logo-sub { font-size: 10px; color: #C7A3C2; letter-spacing: 2.2px; margin-top: 3px; }
 
 .slogan {
-  margin-top: 12vh;
-  font-size: 34px;
-  line-height: 1.5;
+  position: relative;
+  z-index: 1;
+  margin-top: 11vh;
+  font-size: 37px;
+  line-height: 1.55;
   font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: .8px;
 }
+.slogan span { color: #E8B94F; }
+.slogan span:nth-child(2) { color: #62C3BE; }
+.slogan span:nth-child(3) { color: #8CCB77; }
 
-.features { margin-top: 28px; list-style: none; padding: 0; color: #9fb4d4; font-size: 13.5px; line-height: 2.2; }
+.features {
+  position: relative;
+  z-index: 1;
+  margin-top: 34px;
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  color: #CDB5C8;
+}
+.features li { display: flex; align-items: flex-start; gap: 10px; }
+.features b { display: block; color: #F5EAF3; font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+.features span { font-size: 12px; line-height: 1.5; color: #B99AB4; }
+.f-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex: 0 0 7px; margin-top: 5px; }
+.f-dot.purple { background: #B33AA4; }
+.f-dot.teal { background: #2FA6A1; }
+.f-dot.gold { background: #D99A1C; }
+.f-dot.green { background: #5BAE47; }
+
+.trust-row {
+  position: relative;
+  z-index: 1;
+  margin-top: auto;
+  display: flex;
+  gap: 18px;
+  padding-top: 28px;
+  color: #B99AB4;
+  font-size: 10.5px;
+}
+.trust-row span { display: inline-flex; align-items: center; gap: 6px; }
+.trust-row .f-dot { margin-top: 0; width: 6px; height: 6px; flex-basis: 6px; }
 
 .login-right {
+  position: relative;
   display: flex; align-items: center; justify-content: center;
-  background: var(--med-bg);
+  background: #F7F2F7;
+  overflow: hidden;
 }
-.login-foot { margin-top: 18px; color: var(--med-text-light); font-size: 11px; text-align: center; letter-spacing: .3px; }
-
+.login-glow {
+  position: absolute;
+  width: 520px; height: 520px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(114,21,106,.10), rgba(47,166,161,.06) 45%, transparent 70%);
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+}
 .login-card {
-  width: 380px;
-  background: #fff;
-  border-radius: 16px;
-  padding: 36px 34px 30px;
-  box-shadow: 0 18px 48px rgba(16, 41, 76, .12);
+  position: relative;
+  width: 390px;
+  background: rgba(255,255,255,.94);
+  border: 1px solid #EEE3EC;
+  border-radius: 20px;
+  padding: 34px 34px 28px;
+  box-shadow: 0 24px 70px rgba(74,13,69,.13);
+  backdrop-filter: blur(14px);
 }
-
-.card-title { margin: 0; font-size: 22px; color: var(--med-text); }
-.card-sub { color: #8a94a6; font-size: 13px; margin: 6px 0 22px; }
-
-.submit { width: 100%; margin-top: 4px; font-size: 15px; letter-spacing: 6px; }
-
-.demo-accounts {
-  margin-top: 26px;
-  border-top: 1px dashed #e8ecf3;
-  padding-top: 16px;
+.login-card::before {
+  content: '';
+  position: absolute; left: 34px; right: 34px; top: 0; height: 3px;
+  border-radius: 0 0 4px 4px;
+  background: linear-gradient(90deg, #72156A, #2FA6A1 55%, #D99A1C 80%, #5BAE47);
 }
-
-.demo-title { font-size: 11.5px; color: #98a2b3; margin-bottom: 8px; }
-
-.demo-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 6px 8px; margin: 2px -8px; border-radius: 8px;
-  cursor: pointer; font-size: 12.5px; color: #34405a;
-}
-
-.demo-row:hover { background: #f4f6fa; }
-
-.demo-role {
-  font-size: 11px; border: 1px solid; border-radius: 4px; padding: 1px 6px;
-}
-
+.card-kicker { font-size: 9px; letter-spacing: 2.4px; color: var(--med-text-light); margin-bottom: 12px; }
+.card-title { margin: 0; font-size: 25px; color: var(--med-text); letter-spacing: .5px; }
+.card-sub { color: #8A7F8C; font-size: 13px; margin: 7px 0 24px; }
+.submit { width: 100%; margin-top: 4px; font-size: 15px; letter-spacing: 6px; height: 44px; }
+.login-foot { margin-top: 18px; color: var(--med-text-light); font-size: 10.5px; text-align: center; letter-spacing: .3px; }
+.demo-accounts { margin-top: 24px; border-top: 1px dashed #EADDE8; padding-top: 14px; }
+.demo-title { font-size: 10.5px; color: #A095A2; margin-bottom: 7px; }
+.demo-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; margin: 2px -8px; border-radius: 8px; cursor: pointer; font-size: 12px; color: #4E4552; }
+.demo-row:hover { background: #FAF3F9; }
+.demo-role { font-size: 10.5px; border: 1px solid; border-radius: 4px; padding: 1px 6px; }
 .mono { font-family: 'JetBrains Mono', Consolas, 'Courier New', monospace; }
 
 @media (max-width: 900px) {

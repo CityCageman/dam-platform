@@ -63,17 +63,17 @@
           <h4 class="panel-title">治理待办</h4>
           <div class="todo-list">
             <router-link to="/operations" class="todo-item">
-              <span class="todo-dot" style="background:#D97706;"></span>
+              <span class="todo-dot" style="background:var(--med-gold);"></span>
               <div><b>待处理工单</b><span>及时响应数据申请/质量问题</span></div>
               <em>{{ stats.find(s => s.label === '待办工单')?.value ?? '-' }}</em>
             </router-link>
             <router-link to="/quality" class="todo-item">
-              <span class="todo-dot" style="background:#2563EB;"></span>
+              <span class="todo-dot" style="background:var(--med-primary);"></span>
               <div><b>质量检测</b><span>执行规则并查看异常样例</span></div>
               <em>进入</em>
             </router-link>
             <router-link to="/security" class="todo-item">
-              <span class="todo-dot" style="background:#DC2626;"></span>
+              <span class="todo-dot" style="background:var(--med-danger);"></span>
               <div><b>安全审批</b><span>处理数据访问申请与权限</span></div>
               <em>进入</em>
             </router-link>
@@ -108,6 +108,7 @@ import { ref, onMounted, shallowRef, onBeforeUnmount } from 'vue'
 import * as echarts from 'echarts'
 import { Refresh } from '@element-plus/icons-vue'
 import { operationsApi } from '@/api'
+import { getChartTheme } from '@/utils/chartTheme'
 
 const loading = ref(false)
 const hasHot = ref(false)
@@ -119,13 +120,14 @@ const stats = ref([
 ])
 
 // 治理能力快捷入口（与左侧导航大模块保持一致）
+const ct = getChartTheme()
 const entries = [
-  { title: '数据标准', desc: '标准制定与落标核查', path: '/standard', icon: 'Document', color: '#72156A' },
-  { title: '数据质量', desc: '质量规则与稽核结果', path: '/quality', icon: 'List', color: '#2FA6A1' },
-  { title: '安全管控', desc: '分级分类与脱敏策略', path: '/security', icon: 'Lock', color: '#ef4444' },
-  { title: '生命周期', desc: '冷热分层与归档清理', path: '/lifecycle', icon: 'Timer', color: '#f59e0b' },
-  { title: '工单中心', desc: '治理工单协同处理', path: '/operations', icon: 'Tickets', color: '#8b5cf6' },
-  { title: 'AI 工作台', desc: '任务 · 知识 · 评估', path: '/agent', icon: 'ChatDotRound', color: '#0ea5e9' }
+  { title: '数据标准', desc: '标准制定与落标核查', path: '/standard', icon: 'Document', color: ct.primary },
+  { title: '数据质量', desc: '质量规则与稽核结果', path: '/quality', icon: 'List', color: ct.accent },
+  { title: '安全管控', desc: '分级分类与脱敏策略', path: '/security', icon: 'Lock', color: ct.gold },
+  { title: '生命周期', desc: '冷热分层与归档清理', path: '/lifecycle', icon: 'Timer', color: ct.green },
+  { title: '工单中心', desc: '治理工单协同处理', path: '/operations', icon: 'Tickets', color: ct.danger },
+  { title: 'AI 工作台', desc: '任务 · 知识 · 评估', path: '/agent', icon: 'ChatDotRound', color: ct.accent }
 ]
 
 const trendChart = shallowRef<HTMLElement>()
@@ -133,11 +135,11 @@ const hotChart = shallowRef<HTMLElement>()
 const ticketChart = shallowRef<HTMLElement>()
 const charts: echarts.ECharts[] = []
 
-const AXIS_COLOR = '#8a94a6'
-const SPLIT_COLOR = '#f0f2f7'
+const AXIS_COLOR = ct.textLight
+const SPLIT_COLOR = ct.split
 const GRADIENT = (horizontal = false) => new echarts.graphic.LinearGradient(
   horizontal ? 0 : 0, horizontal ? 0 : 0, horizontal ? 1 : 0, horizontal ? 0 : 1,
-  [{ offset: 0, color: '#72156A' }, { offset: 1, color: '#2FA6A1' }]
+  [{ offset: 0, color: ct.primary }, { offset: 1, color: ct.accent }]
 )
 
 function mount(el: HTMLElement | undefined, option: any) {
@@ -171,11 +173,11 @@ async function load() {
         const t = data.monthlyTrend
         mount(trendChart.value, {
           grid: { left: 40, right: 16, top: 24, bottom: 30 },
-          xAxis: { type: 'category', data: t.months, axisLine: { lineStyle: { color: '#e5e9f2' } }, axisLabel: { color: AXIS_COLOR } },
+          xAxis: { type: 'category', data: t.months, axisLine: { lineStyle: { color: ct.border } }, axisLabel: { color: AXIS_COLOR } },
           yAxis: { type: 'value', splitLine: { lineStyle: { color: SPLIT_COLOR } }, axisLabel: { color: AXIS_COLOR } },
           series: [
             { name: '资产增量', data: t.assetCounts, type: 'bar', barWidth: 16, itemStyle: { borderRadius: [4, 4, 0, 0], color: GRADIENT() } },
-            { name: '工单增量', data: t.ticketCounts, type: 'line', smooth: true, itemStyle: { color: '#2FA6A1' }, lineStyle: { width: 2.5 } }
+            { name: '工单增量', data: t.ticketCounts, type: 'line', smooth: true, itemStyle: { color: ct.accent }, lineStyle: { width: 2.5 } }
           ],
           tooltip: { trigger: 'axis' }
         })
@@ -187,7 +189,7 @@ async function load() {
         mount(hotChart.value, {
           grid: { left: 70, right: 24, top: 12, bottom: 24 },
           xAxis: { type: 'value', splitLine: { lineStyle: { color: SPLIT_COLOR } }, axisLabel: { color: AXIS_COLOR } },
-          yAxis: { type: 'category', data: top10.map((a: any) => '#' + a.assetId), inverse: true, axisLine: { lineStyle: { color: '#e5e9f2' } }, axisLabel: { color: '#5b6b85' } },
+          yAxis: { type: 'category', data: top10.map((a: any) => '#' + a.assetId), inverse: true, axisLine: { lineStyle: { color: ct.border } }, axisLabel: { color: ct.text } },
           series: [{ data: top10.map((a: any) => a.queryCount || 0), type: 'bar', barWidth: 14, itemStyle: { borderRadius: [0, 6, 6, 0], color: GRADIENT(true) } }],
           tooltip: { trigger: 'axis' }
         })
@@ -203,10 +205,10 @@ async function load() {
             radius: ['45%', '70%'],
             center: ['50%', '44%'],
             data: [
-              { name: '待处理', value: t.pending || 0, itemStyle: { color: '#D97706' } },
-              { name: '处理中', value: t.processing || 0, itemStyle: { color: '#2563EB' } },
-              { name: '已完成', value: t.completed || 0, itemStyle: { color: '#16A34A' } },
-              { name: '已驳回', value: t.rejected || 0, itemStyle: { color: '#DC2626' } }
+              { name: '待处理', value: t.pending || 0, itemStyle: { color: ct.gold } },
+              { name: '处理中', value: t.processing || 0, itemStyle: { color: ct.primary } },
+              { name: '已完成', value: t.completed || 0, itemStyle: { color: ct.green } },
+              { name: '已驳回', value: t.rejected || 0, itemStyle: { color: ct.danger } }
             ],
             label: { show: false }
           }]

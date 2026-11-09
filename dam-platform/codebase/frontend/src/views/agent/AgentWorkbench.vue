@@ -189,6 +189,7 @@ import { catalogApi, knowledgeApi } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, ChatDotRound, MagicStick, Check, CircleCheck, Collection, TrendCharts, Document, Files } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
+import { getChartTheme } from '@/utils/chartTheme'
 import AgentChat from './AgentChat.vue'
 
 const tab = ref('tasks')
@@ -217,7 +218,7 @@ const typeBg = (v: string) => (COLORS[v] || '#64748B') + '14'
 const typeColor = (v: string) => COLORS[v] || '#64748B'
 const typeLabel = (v: string) => ({ COMMENT: '中文注释', CLASSIFY: '业务分类', LINEAGE: '血缘解析', REPORT: '报表生成' } as any)[v] || v || '-'
 const statusLabel = (v: string) => ({ PENDING: '待生成', RUNNING: '执行中', REVIEW: '待复核', DONE: '已完成', FAILED: '失败' } as any)[v] || v || '-'
-const statusColor = (v: string) => v === 'DONE' ? '#16A34A' : v === 'REVIEW' ? '#D97706' : v === 'FAILED' ? '#DC2626' : v === 'RUNNING' ? '#72156A' : '#94A3B8'
+const statusColor = (v: string) => v === 'DONE' ? getChartTheme().green : v === 'REVIEW' ? getChartTheme().gold : v === 'FAILED' ? getChartTheme().danger : v === 'RUNNING' ? getChartTheme().primary : getChartTheme().textLight
 const statusTag = (v: string) => v === 'DONE' ? 'success' : v === 'REVIEW' ? 'warning' : v === 'FAILED' ? 'danger' : 'info'
 const formatTime = (v: string) => v ? String(v).replace('T', ' ').slice(0, 16) : '-'
 
@@ -407,21 +408,23 @@ function renderCharts() {
   const values = series.length ? series.map(x => x.value) : [0]
   if (evalChart.value && evalChart.value.clientWidth > 0) {
     if (!evalInstance) evalInstance = echarts.init(evalChart.value)
+    const ct = getChartTheme()
     evalInstance.setOption({
       grid: { left: 42, right: 20, top: 20, bottom: 30 },
       tooltip: { trigger: 'axis' },
-      xAxis: { type: 'category', data: categories, axisLabel: { color: '#94A3B8', fontSize: 10 } },
-      yAxis: { type: 'value', max: 100, axisLabel: { color: '#94A3B8', fontSize: 10 }, splitLine: { lineStyle: { color: '#EEF2F7' } } },
-      series: [{ type: 'line', data: values, smooth: true, symbolSize: 6, lineStyle: { color: '#16A34A', width: 2 }, itemStyle: { color: '#16A34A' }, areaStyle: { color: 'rgba(22,163,74,.08)' } }]
+      xAxis: { type: 'category', data: categories, axisLabel: { color: ct.textLight, fontSize: 10 } },
+      yAxis: { type: 'value', max: 100, axisLabel: { color: ct.textLight, fontSize: 10 }, splitLine: { lineStyle: { color: ct.split } } },
+      series: [{ type: 'line', data: values, smooth: true, symbolSize: 6, lineStyle: { color: ct.green, width: 2 }, itemStyle: { color: ct.green }, areaStyle: { color: ct.green + '14' } }]
     }, true)
   }
   if (miniChart.value && miniChart.value.clientWidth > 0) {
     if (!miniInstance) miniInstance = echarts.init(miniChart.value)
+    const ct = getChartTheme()
     miniInstance.setOption({
       grid: { left: 4, right: 4, top: 8, bottom: 4 },
       xAxis: { type: 'category', show: false, data: categories },
       yAxis: { type: 'value', show: false, max: 100 },
-      series: [{ type: 'line', data: values, smooth: true, symbol: 'none', lineStyle: { color: '#16A34A', width: 2 }, areaStyle: { color: 'rgba(22,163,74,.08)' } }]
+      series: [{ type: 'line', data: values, smooth: true, symbol: 'none', lineStyle: { color: ct.green, width: 2 }, areaStyle: { color: ct.green + '14' } }]
     }, true)
     miniInstance.resize()
   }
@@ -479,8 +482,8 @@ onBeforeUnmount(() => {
 .block-title { margin: 14px 18px 7px; font-size: 11px; font-weight: 600; color: var(--med-text-secondary); }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 18px; }
 .chip { font-size: 10px; border-radius: 5px; padding: 3px 8px; }
-.chip.blue { color: #2563EB; background: #EFF6FF; }
-.chip.violet { color: #7C3AED; background: #F5F3FF; }
+.chip.blue { color: var(--med-primary); background: var(--med-primary-lighter); }
+.chip.violet { color: var(--med-accent); background: rgba(47,166,161,.10); }
 .chip.teal { color: #0D9488; background: #F0FDFA; }
 .chip.gray { color: #64748B; background: #F1F5F9; }
 .detail-panel :deep(.el-textarea) { padding: 0 18px; }

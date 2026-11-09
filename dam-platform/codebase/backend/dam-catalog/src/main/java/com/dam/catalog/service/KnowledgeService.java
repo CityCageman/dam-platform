@@ -118,6 +118,30 @@ public class KnowledgeService {
         entryMapper.updateById(e);
     }
 
+    /** 知识库维护概览：总数、索引状态、分类/来源分布 */
+    public Map<String, Object> stats() {
+        List<KnowledgeEntry> entries = entryMapper.selectList(new LambdaQueryWrapper<KnowledgeEntry>()
+                .isNull(KnowledgeEntry::getDeletedAt));
+        Map<String, Integer> byCategory = new LinkedHashMap<>();
+        Map<String, Integer> bySource = new LinkedHashMap<>();
+        long pending = 0, synced = 0, failed = 0;
+        for (KnowledgeEntry e : entries) {
+            byCategory.merge(String.valueOf(e.getCategoryId()), 1, Integer::sum);
+            bySource.merge(StrUtil.blankToDefault(e.getSourceType(), "MANUAL"), 1, Integer::sum);
+            if ("SYNCED".equals(e.getEmbeddingStatus())) synced++;
+            else if ("FAILED".equals(e.getEmbeddingStatus())) failed++;
+            else pending++;
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("total", entries.size());
+        result.put("pending", pending);
+        result.put("synced", synced);
+        result.put("failed", failed);
+        result.put("byCategory", byCategory);
+        result.put("bySource", bySource);
+        return result;
+    }
+
     /** 可同步来源：只返回候选项，用户勾选后才进入知识库 */
     public List<Map<String, Object>> sourceCandidates(String sourceType, String keyword, Integer limit) {
         int size = Math.clamp(limit == null ? 100 : limit, 1, 300);

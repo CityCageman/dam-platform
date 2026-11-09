@@ -1,11 +1,19 @@
 <template>
   <div class="agent-chat">
     <div v-if="!hideHeader" class="chat-header">
-      <div>
-        <div class="chat-title">AI 助手</div>
-        <div class="chat-subtitle">基于大模型的智能问答</div>
+      <div class="chat-brand">
+        <div class="chat-mark">
+          <span></span><span></span><span></span><span></span>
+        </div>
+        <div>
+          <div class="chat-title">AI 数据助手</div>
+          <div class="chat-subtitle">资产 · 指标 · 报表 · 知识库</div>
+        </div>
       </div>
-      <el-button v-if="sending && !reportMode" size="small" @click="stop">停止生成</el-button>
+      <div class="chat-header-right">
+        <span class="chat-online"><i></i>在线</span>
+        <el-button v-if="sending && !reportMode" size="small" @click="stop">停止生成</el-button>
+      </div>
     </div>
 
     <!-- 报表模式工具栏 -->
@@ -25,6 +33,16 @@
     </div>
 
     <div ref="listRef" class="chat-list">
+      <div v-if="!messages.length" class="chat-welcome">
+        <div class="welcome-mark">
+          <span></span><span></span><span></span><span></span>
+        </div>
+        <h3>今天想从数据里知道什么？</h3>
+        <p>可以直接提问，也可以打开报表模式，用自然语言生成一张可确认入库的报表。</p>
+        <div class="welcome-chips">
+          <button v-for="s in suggestions" :key="s" type="button" @click="useSuggestion(s)">{{ s }}</button>
+        </div>
+      </div>
       <div v-for="(m, i) in messages" :key="i" class="msg-row" :class="m.role">
         <div class="bubble">
           <template v-if="m.role === 'user'">
@@ -200,6 +218,12 @@ let abortCtrl: AbortController | null = null
 const reportMode = ref(false)
 const dataSourceId = ref<number | null>(null)
 const dataSources = ref<any[]>([])
+const suggestions = [
+  '统计各科室上月门诊量',
+  '查看重点指标口径',
+  '生成一张体检人次报表',
+  '知识库里有哪些指标定义'
+]
 
 onMounted(async () => {
   try {
@@ -220,6 +244,10 @@ const lastAssistantReasoning = computed(() => {
   const last = lastMsg.value
   return last && last.role === 'assistant' ? !!last.reasoning : false
 })
+
+function useSuggestion(text: string) {
+  input.value = text
+}
 
 async function send() {
   const text = input.value.trim()
@@ -665,4 +693,83 @@ async function scrollBottom() {
   font-size: 12px;
   margin-bottom: 6px;
 }
+
+/* ===== AI 对话视觉强化 ===== */
+.agent-chat { background: radial-gradient(120% 80% at 50% 0%, #FCF8FC 0%, #F8F4F8 45%, #F5F0F5 100%); }
+.chat-header {
+  padding: 15px 22px;
+  background: rgba(255,255,255,.94);
+  box-shadow: 0 2px 14px rgba(57,25,52,.045);
+}
+.chat-brand { display: flex; align-items: center; gap: 10px; }
+.chat-mark, .welcome-mark {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 2px;
+  width: 31px; height: 31px; padding: 7px; border-radius: 10px;
+  background: #FBF3FA; border: 1px solid #EEDFEB;
+}
+.chat-mark span, .welcome-mark span { border-radius: 3px; display: block; }
+.chat-mark span:nth-child(1), .welcome-mark span:nth-child(1) { background: #72156A; }
+.chat-mark span:nth-child(2), .welcome-mark span:nth-child(2) { background: #2FA6A1; }
+.chat-mark span:nth-child(3), .welcome-mark span:nth-child(3) { background: #D99A1C; }
+.chat-mark span:nth-child(4), .welcome-mark span:nth-child(4) { background: #5BAE47; }
+.chat-title { font-size: 14px; font-weight: 650; color: var(--med-text); letter-spacing: .2px; }
+.chat-subtitle { color: var(--med-text-light); font-size: 10px; margin-top: 2px; }
+.chat-header-right { display: flex; align-items: center; gap: 10px; }
+.chat-online { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; color: var(--med-green); }
+.chat-online i { width: 6px; height: 6px; border-radius: 50%; background: var(--med-green); box-shadow: 0 0 8px rgba(91,174,71,.6); }
+
+.report-toolbar {
+  padding: 9px 22px;
+  background: rgba(255,250,255,.7);
+  border-bottom: 1px solid var(--med-border-light);
+}
+.chat-list { padding: 22px clamp(16px, 4vw, 30px); gap: 16px; }
+.chat-welcome {
+  margin: auto;
+  max-width: 540px;
+  text-align: center;
+  padding: 28px 16px 38px;
+}
+.welcome-mark { width: 48px; height: 48px; margin: 0 auto 18px; padding: 11px; border-radius: 15px; box-shadow: 0 10px 26px rgba(114,21,106,.1); }
+.chat-welcome h3 { margin: 0; font-size: 21px; color: var(--med-text); letter-spacing: .2px; }
+.chat-welcome p { margin: 10px auto 20px; max-width: 440px; font-size: 12.5px; line-height: 1.8; color: var(--med-text-light); }
+.welcome-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.welcome-chips button {
+  border: 1px solid #EADDE8; background: rgba(255,255,255,.8); color: #6D4768;
+  border-radius: 999px; padding: 7px 13px; font-size: 11px; cursor: pointer;
+  transition: all .16s;
+}
+.welcome-chips button:hover { border-color: var(--med-primary-soft); color: var(--med-primary); background: #fff; box-shadow: 0 4px 12px rgba(114,21,106,.08); }
+
+.bubble { border-radius: 12px; font-size: 13.5px; box-shadow: 0 2px 8px rgba(57,25,52,.035); }
+.msg-row.user .bubble {
+  background: linear-gradient(135deg, #7B1A72, #5A1453);
+  box-shadow: 0 6px 16px rgba(114,21,106,.18);
+  border-radius: 12px 12px 3px 12px;
+}
+.msg-row.assistant .bubble {
+  background: #fff;
+  border-color: #EDE3EB;
+  border-radius: 12px 12px 12px 3px;
+  box-shadow: 0 3px 14px rgba(57,25,52,.05);
+}
+.reasoning-part { background: #FAF6FA; border-color: #EEE3EC; }
+.reasoning-box { border-left-color: #D9C5D5; color: #766A78; }
+.answer-part { border-left-color: var(--med-accent); }
+.answer-dot { background: var(--med-accent); }
+.chat-input {
+  padding: 13px 22px 15px;
+  background: rgba(255,255,255,.92);
+  border-top-color: var(--med-border-light);
+  box-shadow: 0 -6px 20px rgba(57,25,52,.03);
+}
+.chat-input :deep(.el-textarea__inner) {
+  border-radius: 11px; background: #FCF9FC; border-color: #EEE5ED;
+  box-shadow: none; font-size: 13px; padding: 10px 12px;
+}
+.chat-input :deep(.el-textarea__inner:focus) { border-color: var(--med-primary-soft); background: #fff; }
+.chat-actions .el-button { min-width: 84px; }
+.report-sql { background: #2A1F2A; color: #E9DCE7; border: 1px solid #3C2B3A; }
+.report-registered { background: #EFF8ED; color: #3F8A30; }
+.report-review { background: #FCF5E7; color: #A66F00; }
 </style>
