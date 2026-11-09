@@ -2726,55 +2726,23 @@ async function finishAiTask(taskId: number | undefined, body: any) {
   }
 }
 
-/**
- * 轮询 AI 任务直到结束（REVIEW/DONE/FAILED），最多 30 分钟
- */
-async function waitAiTask(taskId: number, loading: any, label: string): Promise<any> {
-  for (let i = 0; i < 900; i++) {
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    try {
-      const res: any = await catalogApi.getAiTask(taskId)
-      const task = res.data?.task
-      if (task) {
-        loading.setText(`${label}中… 已生成草稿 ${task.totalCount || 0} 条`)
-        if (['REVIEW', 'DONE', 'FAILED'].includes(task.status)) {
-          return task
-        }
-      }
-    } catch (_e) {
-      // 轮询失败继续重试
-    }
-  }
-  throw new Error('AI 任务超时，请稍后到「AI 工作台 → 任务中心」查看')
-}
-
-/** AI 自动标注：后台任务 + 轮询，不再占用长请求 */
+/** AI 自动标注：创建后台任务后立即返回，进度到 AI 工作台查看 */
 async function aiAnnotate(row: any, pendingOnly = true) {
   if (!row || !row.id || row._aiLoading) return
   row._aiLoading = true
   const actionLabel = pendingOnly ? 'AI 补标注（仅未标注的表）' : 'AI 全量标注'
-  const taskId = await createAiTask('COMMENT', `AI 注释 · ${row.dsName || row.id} · ${actionLabel}`, row)
-  if (!taskId) {
-    row._aiLoading = false
-    ElMessage.error('创建 AI 任务失败，请稍后重试')
-    return
-  }
-  const loading = ElLoading.service({ lock: true, text: `${actionLabel}中…`, background: 'rgba(0,0,0,0.25)' })
   try {
+    const taskId = await createAiTask('COMMENT', `AI 注释 · ${row.dsName || row.id} · ${actionLabel}`, row)
+    if (!taskId) throw new Error('创建 AI 任务失败')
     await metadataApi.aiAnnotateAsync({ dataSourceId: row.id, pendingOnly, taskId })
-    const task = await waitAiTask(taskId, loading, actionLabel)
-    if (task.status === 'FAILED') {
-      throw new Error(task.errorMessage || 'AI 标注失败')
-    }
-    ElMessage.success(`${actionLabel}完成：生成草稿 ${task.totalCount || 0} 条，请到「AI 工作台 → 任务中心」审核`)
+    ElMessage.success(`${actionLabel}任务已创建，正在后台生成；可到「AI 工作台 → 任务队列」查看进度`)
     await loadSchemaStats()
     loadLayerOverview()
     if (selectedDsId.value === row.id) await loadDsTables()
   } catch (e: any) {
-    ElMessage.error(e?.message || 'AI 标注失败')
+    ElMessage.error(e?.message || 'AI 标注任务创建失败')
   } finally {
     row._aiLoading = false
-    loading.close()
   }
 }
 
@@ -2816,30 +2784,20 @@ async function aiAnnotateRow(row: any) {
   }
 }
 
-/** AI 智能识别资产分类：后台任务 + 轮询 */
+/** AI 智能识别资产分类：创建后台任务后立即返回 */
 async function aiClassifyDs(row: any, pendingOnly = true) {
   if (!row || !row.id || row._aiClassifyLoading) return
   row._aiClassifyLoading = true
-  const taskId = await createAiTask('CLASSIFY', `AI 分类 · ${row.dsName || row.id} · ${pendingOnly ? '未分类资产' : '全量资产'}`, row)
-  if (!taskId) {
-    row._aiClassifyLoading = false
-    ElMessage.error('创建 AI 任务失败，请稍后重试')
-    return
-  }
-  const loading = ElLoading.service({ lock: true, text: 'AI 正在识别资产分类…', background: 'rgba(0,0,0,0.25)' })
   try {
+    const taskId = await createAiTask('CLASSIFY', `AI 分类 · ${row.dsName || row.id} · ${pendingOnly ? '未分类资产' : '全量资产'}`, row)
+    if (!taskId) throw new Error('创建 AI 任务失败')
     await catalogApi.aiClassifyAsync({ dataSourceId: row.id, pendingOnly, taskId })
-    const task = await waitAiTask(taskId, loading, 'AI 分类')
-    if (task.status === 'FAILED') {
-      throw new Error(task.errorMessage || 'AI 分类失败')
-    }
-    ElMessage.success(`AI 分类完成：生成草稿 ${task.totalCount || 0} 条，请到「AI 工作台 → 任务中心」审核`)
+    ElMessage.success('AI 分类任务已创建，正在后台识别；可到「AI 工作台 → 任务队列」查看进度')
     if (selectedDsId.value === row.id) await loadDsTables()
   } catch (e: any) {
-    ElMessage.error(e?.message || 'AI 分类失败')
+    ElMessage.error(e?.message || 'AI 分类任务创建失败')
   } finally {
     row._aiClassifyLoading = false
-    loading.close()
   }
 }
 
