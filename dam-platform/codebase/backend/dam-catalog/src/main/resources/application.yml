@@ -19,3 +19,7 @@ sa-token:
   timeout: 86400
   token-style: jwt
   jwt-secret-key: ${SA_TOKEN_JWT_SECRET_KEY}
+
+dam:
+  jdbc:
+    drivers-dir: ${DAM_JDBC_DRIVERS_DIR:jdbc-drivers}

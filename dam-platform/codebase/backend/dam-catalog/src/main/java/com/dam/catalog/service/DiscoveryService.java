@@ -74,6 +74,7 @@ public class DiscoveryService {
 
     /** 技术元数据落库服务 */
     private final TechnicalMetadataService technicalMetadataService;
+    private final com.dam.catalog.config.JdbcDriverLoader jdbcDriverLoader;
 
     /** 密码加解密服务 */
     private final CryptoService cryptoService;
@@ -138,9 +139,7 @@ public class DiscoveryService {
         String url = buildUrl(typeConfig, host, actualPort, databaseName);
 
         // 加载驱动
-        try {
-            Class.forName(typeConfig.getDriverClass());
-        } catch (ClassNotFoundException e) {
+        if (!jdbcDriverLoader.ensureDriver(typeConfig.getDriverClass())) {
             log.warn("JDBC驱动未找到: {}, 尝试直接连接", typeConfig.getDriverClass());
         }
 
@@ -418,10 +417,9 @@ public class DiscoveryService {
         }
         String url = buildUrl(typeConfig, host, actualPort, databaseName);
 
-        try {
-            Class.forName(typeConfig.getDriverClass());
-        } catch (ClassNotFoundException e) {
-            throw new BusinessException("JDBC驱动未找到: " + typeConfig.getDriverClass());
+        if (!jdbcDriverLoader.ensureDriver(typeConfig.getDriverClass())) {
+            throw new BusinessException("JDBC驱动未找到: " + typeConfig.getDriverClass()
+                    + "，请把厂商 JDBC 驱动 jar 放到 jdbc-drivers 目录后重启服务");
         }
 
         java.util.Properties props = new java.util.Properties();
@@ -469,10 +467,9 @@ public class DiscoveryService {
         }
         String url = buildUrl(typeConfig, host, actualPort, databaseName);
 
-        try {
-            Class.forName(typeConfig.getDriverClass());
-        } catch (ClassNotFoundException e) {
-            throw new BusinessException("JDBC驱动未找到: " + typeConfig.getDriverClass());
+        if (!jdbcDriverLoader.ensureDriver(typeConfig.getDriverClass())) {
+            throw new BusinessException("JDBC驱动未找到: " + typeConfig.getDriverClass()
+                    + "，请把厂商 JDBC 驱动 jar 放到 jdbc-drivers 目录后重启服务");
         }
 
         java.util.Properties props = new java.util.Properties();
@@ -893,10 +890,9 @@ public class DiscoveryService {
         DamDataSourceType typeConfig = getTypeConfig(typeKey);
         String url = buildUrl(typeConfig, host, ds.getDsPort() != null ? Integer.parseInt(ds.getDsPort()) : 0, databaseName);
     
-        try {
-            Class.forName(typeConfig.getDriverClass());
-        } catch (ClassNotFoundException e) {
-            throw new BusinessException("JDBC驱动未找到: " + typeConfig.getDriverClass());
+        if (!jdbcDriverLoader.ensureDriver(typeConfig.getDriverClass())) {
+            throw new BusinessException("JDBC驱动未找到: " + typeConfig.getDriverClass()
+                    + "，请把厂商 JDBC 驱动 jar 放到 jdbc-drivers 目录后重启服务");
         }
     
         java.util.Properties props = new java.util.Properties();
