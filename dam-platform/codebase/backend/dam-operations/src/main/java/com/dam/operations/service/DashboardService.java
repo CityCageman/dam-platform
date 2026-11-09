@@ -1,6 +1,7 @@
 package com.dam.operations.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.dam.catalog.entity.DamAsset;
 import com.dam.catalog.repository.DamAssetMapper;
 import com.dam.operations.entity.DamTicket;
@@ -48,10 +49,8 @@ public class DashboardService {
         // 3. 热门资产TOP10
         data.put("hotAssets", getHotAssets(10));
 
-        // 4. 资产价值分布
-        data.put("valueDistribution", valuationService.getValueDistribution());
-
-        // 5. 工单状态分布
+        // 4. 工单状态分布
+        // 资产价值分布不在看板使用，且原来会逐资产查询使用统计，已从看板聚合中移除
         data.put("ticketOverview", getTicketOverview());
 
         return data;
@@ -89,27 +88,22 @@ public class DashboardService {
      */
     private Map<String, Object> getMonthlyTrend() {
         LocalDate now = LocalDate.now();
+        LocalDate startMonth = now.minusMonths(11).withDayOfMonth(1);
+        LocalDateTime start = startMonth.atStartOfDay();
+
+        // 一次聚合查询，避免 12 个月 × 2 张表共 24 次 COUNT
+        Map<String, Long> assetByMonth = groupedCount(assetMapper, "asset_info", "created_at", start);
+        Map<String, Long> ticketByMonth = groupedCount(ticketMapper, "ticket_order", "created_at", start);
+
         List<String> months = new ArrayList<>();
         List<Long> assetCounts = new ArrayList<>();
         List<Long> ticketCounts = new ArrayList<>();
-
-        for (int i = 11; i >= 0; i--) {
-            LocalDate monthStart = now.minusMonths(i).withDayOfMonth(1);
-            LocalDate monthEnd = monthStart.plusMonths(1).minusDays(1);
-            String label = monthStart.getYear() + "." + String.format("%02d", monthStart.getMonthValue());
+        for (int i = 0; i < 12; i++) {
+            LocalDate month = startMonth.plusMonths(i);
+            String label = month.getYear() + "." + String.format("%02d", month.getMonthValue());
             months.add(label);
-
-            // 当月创建的资产数
-            long assets = assetMapper.selectCount(new LambdaQueryWrapper<DamAsset>()
-                    .ge(DamAsset::getCreatedAt, monthStart.atStartOfDay())
-                    .lt(DamAsset::getCreatedAt, monthEnd.plusDays(1).atStartOfDay()));
-            assetCounts.add(assets);
-
-            // 当月创建的工单数
-            long tickets = ticketMapper.selectCount(new LambdaQueryWrapper<DamTicket>()
-                    .ge(DamTicket::getCreatedAt, monthStart.atStartOfDay())
-                    .lt(DamTicket::getCreatedAt, monthEnd.plusDays(1).atStartOfDay()));
-            ticketCounts.add(tickets);
+            assetCounts.add(assetByMonth.getOrDefault(label, 0L));
+            ticketCounts.add(ticketByMonth.getOrDefault(label, 0L));
         }
 
         Map<String, Object> trend = new LinkedHashMap<>();
@@ -117,6 +111,26 @@ public class DashboardService {
         trend.put("assetCounts", assetCounts);
         trend.put("ticketCounts", ticketCounts);
         return trend;
+    }
+
+    /** PostgreSQL/TBase 按月聚合，返回 YYYY.MM -> count */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private Map<String, Long> groupedCount(com.baomidou.mybatisplus.core.mapper.BaseMapper mapper,
+                                           String tableName, String timeColumn, LocalDateTime start) {
+        QueryWrapper<Object> qw = new QueryWrapper<>();
+        qw.select("to_char(date_trunc('month', " + timeColumn + "), 'YYYY.MM') AS month",
+                        "COUNT(*) AS cnt")
+                .ge(timeColumn, start)
+                .groupBy("date_trunc('month', " + timeColumn + ")");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> rows = mapper.selectMaps((com.baomidou.mybatisplus.core.conditions.Wrapper) qw);
+        Map<String, Long> result = new HashMap<>();
+        for (Map<String, Object> row : rows) {
+            Object month = row.get("month");
+            Object cnt = row.get("cnt");
+            if (month != null && cnt instanceof Number n) result.put(String.valueOf(month), n.longValue());
+        }
+        return result;
     }
 
     /**
@@ -156,22 +170,32 @@ public class DashboardService {
      * 工单概览
      */
     private Map<String, Object> getTicketOverview() {
-        long pending = ticketMapper.selectCount(
-                new LambdaQueryWrapper<DamTicket>().eq(DamTicket::getStatus, 0));
-        long processing = ticketMapper.selectCount(
-                new LambdaQueryWrapper<DamTicket>().eq(DamTicket::getStatus, 1));
-        long completed = ticketMapper.selectCount(
-                new LambdaQueryWrapper<DamTicket>().eq(DamTicket::getStatus, 2));
-        long rejected = ticketMapper.selectCount(
-                new LambdaQueryWrapper<DamTicket>().eq(DamTicket::getStatus, 3));
+        // 一次按状态分组，替代 4 次 COUNT
+        Map<Integer, Long> statusMap = new HashMap<>();
+        List<Map<String, Object>> statusRows = ticketMapper.selectMaps(
+                new QueryWrapper<DamTicket>().select("status", "COUNT(*) AS cnt").groupBy("status"));
+        for (Map<String, Object> row : statusRows) {
+            if (row.get("status") instanceof Number s && row.get("cnt") instanceof Number c) {
+                statusMap.put(s.intValue(), c.longValue());
+            }
+        }
+        long pending = statusMap.getOrDefault(0, 0L);
+        long processing = statusMap.getOrDefault(1, 0L);
+        long completed = statusMap.getOrDefault(2, 0L);
+        long rejected = statusMap.getOrDefault(3, 0L);
 
-        // 按类型统计
-        long dataAccess = ticketMapper.selectCount(
-                new LambdaQueryWrapper<DamTicket>().eq(DamTicket::getTicketType, "data_access"));
-        long qualityIssue = ticketMapper.selectCount(
-                new LambdaQueryWrapper<DamTicket>().eq(DamTicket::getTicketType, "quality_issue"));
-        long changeRequest = ticketMapper.selectCount(
-                new LambdaQueryWrapper<DamTicket>().eq(DamTicket::getTicketType, "change_request"));
+        // 按类型一次分组，替代 3 次 COUNT
+        Map<String, Long> typeMap = new HashMap<>();
+        List<Map<String, Object>> typeRows = ticketMapper.selectMaps(
+                new QueryWrapper<DamTicket>().select("ticket_type", "COUNT(*) AS cnt").groupBy("ticket_type"));
+        for (Map<String, Object> row : typeRows) {
+            if (row.get("ticket_type") != null && row.get("cnt") instanceof Number c) {
+                typeMap.put(String.valueOf(row.get("ticket_type")), c.longValue());
+            }
+        }
+        long dataAccess = typeMap.getOrDefault("data_access", 0L);
+        long qualityIssue = typeMap.getOrDefault("quality_issue", 0L);
+        long changeRequest = typeMap.getOrDefault("change_request", 0L);
 
         // SLA达标率（实际完成时间 <= 期望完成时间的已完成工单）
         long totalCompleted = completed;
@@ -201,13 +225,11 @@ public class DashboardService {
      * @return 平均评分（无评分时返回 0）
      */
     private Double getAverageScore() {
-        List<DamAsset> assets = assetMapper.selectList(
-                new LambdaQueryWrapper<DamAsset>().isNotNull(DamAsset::getQualityScore));
-        return assets.stream()
-                .map(DamAsset::getQualityScore)
-                .filter(Objects::nonNull)
-                .mapToDouble(BigDecimal::doubleValue)
-                .average().orElse(0);
+        List<Map<String, Object>> rows = assetMapper.selectMaps(
+                new QueryWrapper<DamAsset>().select("AVG(quality_score) AS avg_score")
+                        .isNotNull("quality_score"));
+        if (rows.isEmpty() || rows.get(0).get("avg_score") == null) return 0D;
+        return ((Number) rows.get(0).get("avg_score")).doubleValue();
     }
 
     /**
@@ -216,15 +238,11 @@ public class DashboardService {
      * @return 活跃用户数
      */
     private long estimateActiveUsers() {
-        // 最近30天有工单的申请人去重
+        // 最近30天有工单的申请人去重，直接在数据库聚合
         LocalDateTime since = LocalDateTime.now().minusDays(30);
-        List<DamTicket> recentTickets = ticketMapper.selectList(
-                new LambdaQueryWrapper<DamTicket>()
-                        .ge(DamTicket::getCreatedAt, since));
-        return recentTickets.stream()
-                .map(DamTicket::getApplicantId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .count();
+        List<Object> objs = ticketMapper.selectObjs(
+                new QueryWrapper<DamTicket>().select("COUNT(DISTINCT applicant_id)")
+                        .ge("created_at", since));
+        return objs.isEmpty() || objs.get(0) == null ? 0L : ((Number) objs.get(0)).longValue();
     }
 }
