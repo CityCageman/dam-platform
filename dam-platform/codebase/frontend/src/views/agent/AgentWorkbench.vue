@@ -83,9 +83,15 @@
                   <el-icon><Check /></el-icon>确认并写入
                 </el-button>
                 <el-button :disabled="!selectedItem" @click="reviewSelected(false)">驳回</el-button>
+                <el-button type="success" plain :loading="batchReviewing" :disabled="!draftCount" @click="reviewAll(true)">
+                  <el-icon><Check /></el-icon>全部采纳（{{ pendingCount }}）
+                </el-button>
+                <el-button type="danger" plain :loading="batchReviewing" :disabled="!draftCount" @click="reviewAll(false)">
+                  全部驳回
+                </el-button>
                 <el-button text :disabled="!selectedItem" @click="nextDraft">跳过</el-button>
                 <el-button v-if="selectedItem?.itemType === 'REPORT'" text type="primary" @click="openDraftEdit">修正报表</el-button>
-                <span class="draft-count">待审 {{ draftCount }} 条</span>
+                <span class="draft-count">待审 {{ pendingCount }} 条</span>
               </div>
 
               <div class="auto-check">
@@ -196,6 +202,7 @@ const tab = ref('tasks')
 const chatOpen = ref(false)
 const draftVisible = ref(false)
 const draftSaving = ref(false)
+const batchReviewing = ref(false)
 const draftForm = ref<any>({})
 const loading = ref(false)
 const tasks = ref<any[]>([])
@@ -227,6 +234,13 @@ const selectedItem = computed(() => {
   return drafts.find((x: any) => x.id === selectedItemId.value) || drafts[0] || null
 })
 const draftCount = computed(() => items.value.filter((x: any) => x.status === 'DRAFT').length)
+const pendingCount = computed(() => {
+  const t = selectedTask.value
+  if (!t) return draftCount.value
+  const total = Number(t.totalCount || 0)
+  const reviewed = Number(t.acceptedCount || 0) + Number(t.rejectedCount || 0)
+  return total > 0 ? Math.max(0, total - reviewed) : draftCount.value
+})
 const confidenceText = (item: any) => item?.confidence != null ? Number(item.confidence).toFixed(2) : '-'
 
 const totalReviewed = computed(() => tasks.value.reduce((s, t) => s + Number(t.acceptedCount || 0) + Number(t.rejectedCount || 0), 0))
@@ -355,6 +369,29 @@ async function deleteSelectedTask() {
     await loadStats()
   } catch (e: any) {
     if (e !== 'cancel' && e !== 'close') ElMessage.error(e.message || '删除失败')
+  }
+}
+
+async function reviewAll(accept: boolean) {
+  if (!selectedTask.value || !pendingCount.value) return
+  try {
+    await ElMessageBox.confirm(
+      accept ? `将采纳当前任务全部 ${pendingCount.value} 条草稿并写回业务表，是否继续？` : `将驳回当前任务全部 ${pendingCount.value} 条草稿，是否继续？`,
+      accept ? '全部采纳' : '全部驳回',
+      { type: 'warning', confirmButtonText: accept ? '全部采纳' : '全部驳回' }
+    )
+  } catch { return }
+  batchReviewing.value = true
+  try {
+    const res: any = await catalogApi.reviewAiTaskItems(selectedTask.value.id, { accept, all: true })
+    ElMessage.success(`已处理 ${res.data ?? pendingCount.value} 条`)
+    await selectTask(selectedTask.value)
+    await loadTasks()
+    await loadStats()
+  } catch (e: any) {
+    ElMessage.error(e.message || '批量处理失败')
+  } finally {
+    batchReviewing.value = false
   }
 }
 
