@@ -1037,6 +1037,9 @@
         <el-form-item label="主机地址"><el-input v-model="dsEditForm.dsIp" placeholder="localhost" /></el-form-item>
         <el-form-item label="端口"><el-input-number v-model="dsEditForm.dsPort" :min="1" :max="65535" /></el-form-item>
         <el-form-item label="数据库名"><el-input v-model="dsEditForm.databaseName" /></el-form-item>
+        <el-form-item label="JDBC URL">
+          <el-input v-model="dsEditForm.jdbcUrl" placeholder="可选；填写后优先使用，例如 jdbc:kingbase8://10.162.3.8:54321/Application?currentSchema=public" />
+        </el-form-item>
         <el-form-item label="用户名"><el-input v-model="dsEditForm.username" /></el-form-item>
         <el-form-item label="密码"><el-input v-model="dsEditForm.password" type="password" :placeholder="isDsCreate ? '请输入密码' : '留空则不修改原密码'" /></el-form-item>
         <el-form-item label="描述"><el-input v-model="dsEditForm.description" type="textarea" :rows="2" /></el-form-item>
@@ -2961,13 +2964,13 @@ function editDataSource(row: any) {
 
 function addDataSource() {
   isDsCreate.value = true
-  dsEditForm.value = { dsName: '', dsType: 'POSTGRESQL', dsIp: '', dsPort: 5432, databaseName: '', username: '', password: '', description: '', status: 1, dataLayer: 'SOURCE' }
+  dsEditForm.value = { dsName: '', dsType: 'POSTGRESQL', dsIp: '', dsPort: 5432, databaseName: '', jdbcUrl: '', username: '', password: '', description: '', status: 1, dataLayer: 'SOURCE' }
   showDsEdit.value = true
 }
 
 async function testDsConnection() {
-  if (!dsEditForm.value.dsIp || !dsEditForm.value.databaseName) {
-    ElMessage.warning('请先填写主机地址和数据库名')
+  if ((!dsEditForm.value.dsIp || !dsEditForm.value.databaseName) && !dsEditForm.value.jdbcUrl?.trim()) {
+    ElMessage.warning('请填写主机地址和数据库名，或直接填写 JDBC URL')
     return
   }
   dsTesting.value = true
@@ -2981,6 +2984,7 @@ async function testDsConnection() {
         dsIp: dsEditForm.value.dsIp,
         dsPort: dsEditForm.value.dsPort,
         databaseName: dsEditForm.value.databaseName,
+        jdbcUrl: dsEditForm.value.jdbcUrl?.trim() || undefined,
         username: dsEditForm.value.username,
         password: await encryptPassword(dsEditForm.value.password)
       })

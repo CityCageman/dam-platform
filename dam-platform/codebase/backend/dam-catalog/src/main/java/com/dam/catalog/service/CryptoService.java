@@ -1,5 +1,6 @@
 package com.dam.catalog.service;
 
+import com.dam.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -78,8 +79,8 @@ public class CryptoService {
             byte[] plain = cipher.doFinal(Base64.getDecoder().decode(encrypted));
             return new String(plain, StandardCharsets.UTF_8);
         } catch (Exception e) {
-            log.warn("RSA 解密失败(可能为明文直传): {}", e.getMessage());
-            return encrypted;
+            log.warn("RSA 解密失败(可能服务已重启，前端仍使用旧公钥): {}", e.getMessage());
+            throw new BusinessException("密码解密失败，请刷新页面后重试；服务重启后旧的公钥会失效");
         }
     }
 

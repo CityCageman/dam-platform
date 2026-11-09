@@ -458,6 +458,14 @@ public class DiscoveryService {
 
     public void testConnection(String sourceType, String host, Integer port,
                                 String databaseName, String username, String password) {
+        testConnection(sourceType, host, port, databaseName, username, password, null);
+    }
+
+    /**
+     * 测试连接；jdbcUrl 非空时直接使用完整 URL（可携带 currentSchema 等参数）。
+     */
+    public void testConnection(String sourceType, String host, Integer port,
+                                String databaseName, String username, String password, String jdbcUrl) {
         String typeKey = sourceType.toUpperCase();
         DamDataSourceType typeConfig = getTypeConfig(typeKey);
         int actualPort = (port != null && port > 0) ? port : typeConfig.getDefaultPort();
@@ -465,7 +473,7 @@ public class DiscoveryService {
         if ("IRIS".equals(typeKey) && StrUtil.isBlank(databaseName)) {
             throw new BusinessException("IRIS 数据源需填写 Namespace（如 USER、SAMPLES）");
         }
-        String url = buildUrl(typeConfig, host, actualPort, databaseName);
+        String url = StrUtil.isNotBlank(jdbcUrl) ? jdbcUrl.trim() : buildUrl(typeConfig, host, actualPort, databaseName);
 
         if (!jdbcDriverLoader.ensureDriver(typeConfig.getDriverClass())) {
             throw new BusinessException("JDBC驱动未找到: " + typeConfig.getDriverClass()
@@ -496,7 +504,7 @@ public class DiscoveryService {
         String username = ds.getUsername();
         String password = cryptoService.decryptStorage(ds.getPassword());
         Integer port = parsePort(ds.getDsPort());
-        testConnection(typeKey, ds.getDsIp(), port, databaseName, username, password);
+        testConnection(typeKey, ds.getDsIp(), port, databaseName, username, password, ds.getJdbcUrl());
     }
 
     // ============================================================

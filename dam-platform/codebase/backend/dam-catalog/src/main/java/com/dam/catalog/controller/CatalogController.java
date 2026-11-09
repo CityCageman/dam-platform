@@ -626,7 +626,8 @@ public class CatalogController {
                 Integer.parseInt(toString(params.getOrDefault("dsPort", "3306"))),
                 toString(params.get("databaseName")),
                 toString(params.get("username")),
-                toString(params.get("password")));
+                toString(params.get("password")),
+                toString(params.get("jdbcUrl")));
         return Result.success();
     }
 
