@@ -132,6 +132,13 @@ public class DiscoveryService {
     public Map<String, Object> scanDataSource(String host, Integer port, String databaseName,
                                                String username, String password, String sourceType,
                                                List<String> schemas, Long dataSourceId) {
+        return scanDataSource(host, port, databaseName, username, password, sourceType, schemas, dataSourceId, false);
+    }
+
+    private Map<String, Object> scanDataSource(String host, Integer port, String databaseName,
+                                               String username, String password, String sourceType,
+                                               List<String> schemas, Long dataSourceId,
+                                               boolean passwordAlreadyDecrypted) {
         String typeKey = sourceType.toUpperCase();
         DamDataSourceType typeConfig = getTypeConfig(typeKey);
 
@@ -145,7 +152,8 @@ public class DiscoveryService {
 
         java.util.Properties props = new java.util.Properties();
         props.setProperty("user", username != null ? username : "");
-        props.setProperty("password", cryptoService.decryptPassword(password));
+        props.setProperty("password", passwordAlreadyDecrypted ? (password == null ? "" : password)
+                : cryptoService.decryptPassword(password));
         props.setProperty("loginTimeout", "30");
         props.setProperty("connectTimeout", "30000");
 
@@ -240,7 +248,7 @@ public class DiscoveryService {
         String username = ds.getUsername();
         String password = cryptoService.decryptStorage(ds.getPassword());
         Integer port = parsePort(ds.getDsPort());
-        return scanDataSource(ds.getDsIp(), port, databaseName, username, password, typeKey, schemas, dataSourceId);
+        return scanDataSource(ds.getDsIp(), port, databaseName, username, password, typeKey, schemas, dataSourceId, true);
     }
 
     /** 安全解析端口字符串，解析失败返回 null */
@@ -408,6 +416,12 @@ public class DiscoveryService {
 
     public List<String> listSchemas(String host, Integer port, String databaseName,
                                      String username, String password, String sourceType) {
+        return listSchemas(host, port, databaseName, username, password, sourceType, false);
+    }
+
+    private List<String> listSchemas(String host, Integer port, String databaseName,
+                                     String username, String password, String sourceType,
+                                     boolean passwordAlreadyDecrypted) {
         String typeKey = sourceType.toUpperCase();
         DamDataSourceType typeConfig = getTypeConfig(typeKey);
         int actualPort = (port != null && port > 0) ? port : typeConfig.getDefaultPort();
@@ -424,7 +438,8 @@ public class DiscoveryService {
 
         java.util.Properties props = new java.util.Properties();
         props.setProperty("user", username != null ? username : "");
-        props.setProperty("password", cryptoService.decryptPassword(password));
+        props.setProperty("password", passwordAlreadyDecrypted ? (password == null ? "" : password)
+                : cryptoService.decryptPassword(password));
         props.setProperty("loginTimeout", "15");
         props.setProperty("connectTimeout", "15000");
 
@@ -449,7 +464,7 @@ public class DiscoveryService {
         String username = ds.getUsername();
         String password = cryptoService.decryptStorage(ds.getPassword());
         Integer port = parsePort(ds.getDsPort());
-        return listSchemas(ds.getDsIp(), port, databaseName, username, password, typeKey);
+        return listSchemas(ds.getDsIp(), port, databaseName, username, password, typeKey, true);
     }
 
     // ============================================================
@@ -466,6 +481,12 @@ public class DiscoveryService {
      */
     public void testConnection(String sourceType, String host, Integer port,
                                 String databaseName, String username, String password, String jdbcUrl) {
+        testConnection(sourceType, host, port, databaseName, username, password, jdbcUrl, false);
+    }
+
+    public void testConnection(String sourceType, String host, Integer port,
+                                String databaseName, String username, String password, String jdbcUrl,
+                                boolean passwordAlreadyDecrypted) {
         String typeKey = sourceType.toUpperCase();
         DamDataSourceType typeConfig = getTypeConfig(typeKey);
         int actualPort = (port != null && port > 0) ? port : typeConfig.getDefaultPort();
@@ -482,7 +503,8 @@ public class DiscoveryService {
 
         java.util.Properties props = new java.util.Properties();
         props.setProperty("user", username != null ? username : "");
-        props.setProperty("password", cryptoService.decryptPassword(password));
+        props.setProperty("password", passwordAlreadyDecrypted ? (password == null ? "" : password)
+                : cryptoService.decryptPassword(password));
         props.setProperty("loginTimeout", "10");
         props.setProperty("connectTimeout", "10000");
 
@@ -504,7 +526,7 @@ public class DiscoveryService {
         String username = ds.getUsername();
         String password = cryptoService.decryptStorage(ds.getPassword());
         Integer port = parsePort(ds.getDsPort());
-        testConnection(typeKey, ds.getDsIp(), port, databaseName, username, password, ds.getJdbcUrl());
+        testConnection(typeKey, ds.getDsIp(), port, databaseName, username, password, ds.getJdbcUrl(), true);
     }
 
     // ============================================================
