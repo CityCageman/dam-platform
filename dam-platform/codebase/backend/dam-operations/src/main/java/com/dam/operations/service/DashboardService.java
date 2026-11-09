@@ -228,8 +228,10 @@ public class DashboardService {
         List<Map<String, Object>> rows = assetMapper.selectMaps(
                 new QueryWrapper<DamAsset>().select("AVG(quality_score) AS avg_score")
                         .isNotNull("quality_score"));
-        if (rows.isEmpty() || rows.get(0).get("avg_score") == null) return 0D;
-        return ((Number) rows.get(0).get("avg_score")).doubleValue();
+        // 聚合查询无数据时，MyBatis 可能返回 [null]，不能直接 rows.get(0).get(...)
+        if (rows == null || rows.isEmpty() || rows.get(0) == null) return 0D;
+        Object avg = rows.get(0).get("avg_score");
+        return avg instanceof Number n ? n.doubleValue() : 0D;
     }
 
     /**
