@@ -424,6 +424,7 @@ export const knowledgeApi = {
   reindex(id: number) { return request.post(`/catalog/knowledge/entries/${id}/vector-reindex`) },
   externalStatus() { return request.get('/catalog/knowledge/external/status') },
   initializeExternal() { return request.post('/catalog/knowledge/external/initialize', null, { timeout: 60000 }) },
+  refreshExternal(data?: any) { return request.post('/catalog/knowledge/external/refresh', data || {}, { timeout: 120000 }) },
   migrateExternal() { return request.post('/catalog/knowledge/external/migrate', null, { timeout: 600000 }) },
   externalSearch(data: any) { return request.post('/catalog/knowledge/external/search', data, { timeout: 60000 }) }
 }

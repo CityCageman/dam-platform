@@ -130,6 +130,11 @@ public class WeKnoraClient {
         return result;
     }
 
+    /** 重新解析文档，用于模型/解析配置变更后刷新旧文档 */
+    public void reparseKnowledge(String knowledgeId) {
+        call(HttpMethod.POST, "/knowledge/" + enc(knowledgeId) + "/reparse", new LinkedHashMap<>());
+    }
+
     public JsonNode getKnowledge(String knowledgeId) {
         return call(HttpMethod.GET, "/knowledge/" + enc(knowledgeId), null);
     }

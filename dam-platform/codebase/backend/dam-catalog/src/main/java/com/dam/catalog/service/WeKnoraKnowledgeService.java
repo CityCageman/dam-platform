@@ -159,11 +159,13 @@ public class WeKnoraKnowledgeService {
         List<KnowledgeEntry> entries = entryMapper.selectList(new LambdaQueryWrapper<KnowledgeEntry>()
                 .isNull(KnowledgeEntry::getDeletedAt)
                 .eq(KnowledgeEntry::getEnabled, 1));
-        int synced = 0, failed = 0;
+        int synced = 0, failed = 0, pending = 0;
         for (KnowledgeEntry entry : entries) {
             try {
                 syncEntry(entry);
-                if ("SYNCED".equals(entry.getSyncStatus())) synced++; else failed++;
+                if ("SYNCED".equals(entry.getSyncStatus())) synced++;
+                else if ("FAILED".equals(entry.getSyncStatus())) failed++;
+                else pending++;
             } catch (Exception e) {
                 entry.setSyncStatus("FAILED");
                 entry.setLastError(abbreviate(e.getMessage()));
@@ -179,6 +181,7 @@ public class WeKnoraKnowledgeService {
         result.put("entries", entries.size());
         result.put("synced", synced);
         result.put("failed", failed);
+        result.put("pending", pending);
         return result;
     }
 
@@ -209,11 +212,10 @@ public class WeKnoraKnowledgeService {
         catch (Exception e) { log.warn("写入 WeKnora 来源元数据失败 [{}]: {}", entry.getId(), e.getMessage()); }
 
         entry.setExternalKbId(c.getExternalKbId());
-        entry.setSyncStatus("SYNCED");
         entry.setLastSyncedAt(LocalDateTime.now());
-        entry.setLastError(null);
-        entry.setEmbeddingStatus("SYNCED");
         entry.setUpdatedAt(LocalDateTime.now());
+        // 写入成功只代表 WeKnora 已接收；解析/向量化仍异步
+        applyParseStatus(entry, client.getKnowledge(entry.getExternalDocId()));
         entryMapper.updateById(entry);
     }
 
@@ -295,6 +297,61 @@ public class WeKnoraKnowledgeService {
             entry.setLastSyncedAt(null);
             entry.setUpdatedAt(LocalDateTime.now());
             entryMapper.updateById(entry);
+        }
+    }
+
+    /** 主动刷新 WeKnora 解析状态；对失败的文档可重新解析 */
+    public Map<String, Object> refreshStatuses(boolean reparseFailed) {
+        List<KnowledgeEntry> entries = entryMapper.selectList(new LambdaQueryWrapper<KnowledgeEntry>()
+                .isNull(KnowledgeEntry::getDeletedAt)
+                .isNotNull(KnowledgeEntry::getExternalDocId));
+        int synced = 0, pending = 0, failed = 0, reparsed = 0;
+        for (KnowledgeEntry entry : entries) {
+            try {
+                JsonNode doc = client.getKnowledge(entry.getExternalDocId());
+                applyParseStatus(entry, doc);
+                if ("FAILED".equals(entry.getSyncStatus()) && reparseFailed) {
+                    client.reparseKnowledge(entry.getExternalDocId());
+                    entry.setSyncStatus("PENDING");
+                    entry.setLastError(null);
+                    reparsed++;
+                }
+                entry.setUpdatedAt(LocalDateTime.now());
+                entryMapper.updateById(entry);
+                if ("SYNCED".equals(entry.getSyncStatus())) synced++;
+                else if ("FAILED".equals(entry.getSyncStatus())) failed++;
+                else pending++;
+            } catch (Exception e) {
+                entry.setLastError(abbreviate(e.getMessage()));
+                entry.setUpdatedAt(LocalDateTime.now());
+                entryMapper.updateById(entry);
+                failed++;
+            }
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("total", entries.size());
+        result.put("synced", synced);
+        result.put("pending", pending);
+        result.put("failed", failed);
+        result.put("reparsed", reparsed);
+        return result;
+    }
+
+    private void applyParseStatus(KnowledgeEntry entry, JsonNode doc) {
+        String parseStatus = doc == null ? null : text(doc, "parse_status");
+        String status = StrUtil.blankToDefault(parseStatus, "pending").toLowerCase();
+        if ("completed".equals(status) || "success".equals(status)) {
+            entry.setSyncStatus("SYNCED");
+            entry.setEmbeddingStatus("SYNCED");
+            entry.setLastError(null);
+        } else if ("failed".equals(status) || "error".equals(status)) {
+            entry.setSyncStatus("FAILED");
+            entry.setEmbeddingStatus("FAILED");
+            String err = text(doc, "error") != null ? text(doc, "error") : text(doc, "parse_error");
+            entry.setLastError(abbreviate(err));
+        } else {
+            entry.setSyncStatus("PENDING");
+            entry.setEmbeddingStatus("PENDING");
         }
     }
 

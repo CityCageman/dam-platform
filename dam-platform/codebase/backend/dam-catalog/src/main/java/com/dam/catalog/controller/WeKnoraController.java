@@ -33,6 +33,13 @@ public class WeKnoraController {
         return Result.success(weKnoraKnowledgeService.migrate());
     }
 
+    @PostMapping("/refresh")
+    public Result<Map<String, Object>> refresh(@RequestBody(required = false) Map<String, Object> body) {
+        boolean reparseFailed = body != null && (Boolean.TRUE.equals(body.get("reparseFailed"))
+                || "true".equalsIgnoreCase(String.valueOf(body.get("reparseFailed"))));
+        return Result.success(weKnoraKnowledgeService.refreshStatuses(reparseFailed));
+    }
+
     @PostMapping("/search")
     public Result<Map<String, Object>> search(@RequestBody Map<String, Object> body) {
         String query = body.get("query") == null ? "" : String.valueOf(body.get("query"));

@@ -49,6 +49,9 @@
           <el-button v-if="external.configured" plain :loading="initializing" @click="initializeExternal">
             初始化 Agent 知识库
           </el-button>
+          <el-button v-if="external.configured" plain :loading="refreshingExternal" @click="refreshExternal">
+            刷新 Agent 状态
+          </el-button>
           <el-button type="success" plain :loading="migrating" :disabled="!external.configured" @click="migrateExternal">
             迁移到 Agent 知识库
           </el-button>
@@ -152,6 +155,7 @@ const stats = ref<any>({})
 const external = ref<any>({ configured: false })
 const migrating = ref(false)
 const initializing = ref(false)
+const refreshingExternal = ref(false)
 const selectedCategoryId = ref<number | undefined>(undefined)
 const keyword = ref('')
 const sourceFilter = ref('')
@@ -176,7 +180,7 @@ const sourceLabel = (v: string) => ({ MANUAL: '手工', METADATA: '元数据', M
 const sourceTag = (v: string) => (v === 'METRIC' ? 'success' : v === 'METADATA' ? 'primary' : v === 'STANDARD' ? 'warning' : 'info')
 const vectorLabel = (v: string) => ({ PENDING: '待索引', SYNCED: '已索引', FAILED: '失败' } as any)[v] || v || '待索引'
 const vectorTag = (v: string) => (v === 'SYNCED' ? 'success' : v === 'FAILED' ? 'danger' : 'info')
-const syncLabel = (v: string) => ({ LOCAL_ONLY: '未同步', SYNCED: '已同步', FAILED: '失败' } as any)[v] || '未同步'
+const syncLabel = (v: string) => ({ LOCAL_ONLY: '未同步', PENDING: '解析中', SYNCED: '已同步', FAILED: '失败' } as any)[v] || '未同步'
 const syncTag = (v: string) => (v === 'SYNCED' ? 'success' : v === 'FAILED' ? 'danger' : 'info')
 const formatTime = (v: string) => v ? String(v).replace('T', ' ').slice(0, 16) : '-'
 
@@ -332,6 +336,17 @@ async function initializeExternal() {
     ElMessage.success('Agent 知识库模型绑定已初始化')
   } catch (e: any) { ElMessage.error(e.message || '初始化失败') }
   finally { initializing.value = false }
+}
+
+async function refreshExternal() {
+  refreshingExternal.value = true
+  try {
+    const res: any = await knowledgeApi.refreshExternal({ reparseFailed: true })
+    const d = res.data || {}
+    ElMessage.success(`状态已刷新：已同步 ${d.synced || 0}，解析中 ${d.pending || 0}，失败 ${d.failed || 0}，重新解析 ${d.reparsed || 0}`)
+    await Promise.all([loadEntries(), loadStats(), loadExternal()])
+  } catch (e: any) { ElMessage.error(e.message || '刷新失败') }
+  finally { refreshingExternal.value = false }
 }
 
 async function migrateExternal() {
