@@ -257,13 +257,14 @@ public class WeKnoraKnowledgeService {
         KnowledgeCategory category = entry.getCategoryId() == null ? null : categoryMapper.selectById(entry.getCategoryId());
         String tagId = category == null ? null : ensureTag(c.getExternalKbId(), category);
         List<String> tagIds = StrUtil.isBlank(tagId) ? List.of() : List.of(tagId);
-        String content = StrUtil.blankToDefault(entry.getContent(), entry.getTitle());
+        String content = renderDocument(entry);
+        String publishStatus = "DRAFT".equalsIgnoreCase(entry.getPublishStatus()) ? "draft" : "publish";
         JsonNode data;
         if (StrUtil.isBlank(entry.getExternalDocId())) {
-            data = client.createManual(c.getExternalKbId(), entry.getTitle(), content, tagIds);
+            data = client.createManual(c.getExternalKbId(), entry.getTitle(), content, tagIds, publishStatus);
             entry.setExternalDocId(text(data, "id"));
         } else {
-            data = client.updateManual(entry.getExternalDocId(), entry.getTitle(), content);
+            data = client.updateManual(entry.getExternalDocId(), entry.getTitle(), content, publishStatus);
         }
         if (StrUtil.isBlank(entry.getExternalDocId())) {
             throw new BusinessException("WeKnora 未返回知识文档 ID");
@@ -273,6 +274,14 @@ public class WeKnoraKnowledgeService {
         metadata.put("damSourceType", StrUtil.blankToDefault(entry.getSourceType(), "MANUAL"));
         metadata.put("damSourceKey", StrUtil.blankToDefault(entry.getSourceKey(), "entry:" + entry.getId()));
         metadata.put("damCategoryId", entry.getCategoryId() == null ? "" : String.valueOf(entry.getCategoryId()));
+        metadata.put("entryType", StrUtil.blankToDefault(entry.getEntryType(), "TERM"));
+        metadata.put("aliases", cut(StrUtil.blankToDefault(entry.getAliases(), ""), 1000));
+        metadata.put("fieldMappings", cut(StrUtil.blankToDefault(entry.getFieldMappings(), ""), 1000));
+        metadata.put("relatedMetrics", cut(StrUtil.blankToDefault(entry.getRelatedMetrics(), ""), 1000));
+        metadata.put("sourceSystem", cut(StrUtil.blankToDefault(entry.getSourceSystem(), ""), 1000));
+        metadata.put("owner", cut(StrUtil.blankToDefault(entry.getOwner(), ""), 1000));
+        metadata.put("publishStatus", StrUtil.blankToDefault(entry.getPublishStatus(), "PUBLISHED"));
+        metadata.put("version", entry.getVersion() == null ? "1" : String.valueOf(entry.getVersion()));
         try { client.updateCustomMetadata(entry.getExternalDocId(), metadata); }
         catch (Exception e) { log.warn("写入 WeKnora 来源元数据失败 [{}]: {}", entry.getId(), e.getMessage()); }
 
@@ -454,6 +463,58 @@ public class WeKnoraKnowledgeService {
         result.put("failed", failed);
         result.put("reparsed", reparsed);
         return result;
+    }
+
+    /** 结构化知识渲染为 WeKnora Markdown，保证 RAG 能读到完整上下文 */
+    private String renderDocument(KnowledgeEntry entry) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("# ").append(StrUtil.blankToDefault(entry.getTitle(), "")).append("\n\n");
+        sb.append("## 类型\n").append(typeLabel(entry.getEntryType())).append("\n\n");
+        if (StrUtil.isNotBlank(entry.getDefinition())) {
+            sb.append("## 解释\n").append(entry.getDefinition()).append("\n\n");
+        }
+        if (StrUtil.isNotBlank(entry.getUsageNote())) {
+            sb.append("## 使用说明\n").append(entry.getUsageNote()).append("\n\n");
+        }
+        appendJsonList(sb, "别名", entry.getAliases());
+        appendJsonList(sb, "字段映射", entry.getFieldMappings());
+        appendJsonList(sb, "关联指标", entry.getRelatedMetrics());
+        if (StrUtil.isNotBlank(entry.getSourceSystem())) {
+            sb.append("## 来源系统\n").append(entry.getSourceSystem()).append("\n\n");
+        }
+        if (StrUtil.isNotBlank(entry.getOwner())) {
+            sb.append("## 负责人\n").append(entry.getOwner()).append("\n\n");
+        }
+        sb.append("## 状态\n").append(StrUtil.blankToDefault(entry.getPublishStatus(), "PUBLISHED")).append("\n");
+        if (StrUtil.isNotBlank(entry.getContent())) {
+            sb.append("\n## 补充说明\n").append(entry.getContent()).append("\n");
+        }
+        return sb.toString();
+    }
+
+    private void appendJsonList(StringBuilder sb, String title, String json) {
+        if (StrUtil.isBlank(json)) return;
+        try {
+            JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
+            if (node.isArray()) {
+                sb.append("## ").append(title).append("\n");
+                for (JsonNode item : node) sb.append("- ").append(item.asText()).append("\n");
+                sb.append("\n");
+            } else {
+                sb.append("## ").append(title).append("\n").append(node.asText()).append("\n\n");
+            }
+        } catch (Exception e) {
+            sb.append("## ").append(title).append("\n").append(json).append("\n\n");
+        }
+    }
+
+    private String typeLabel(String type) {
+        return switch (StrUtil.blankToDefault(type, "TERM").toUpperCase()) {
+            case "METRIC" -> "指标解释";
+            case "STANDARD" -> "标准与编码";
+            case "CASE" -> "案例与变更";
+            default -> "业务术语";
+        };
     }
 
     /** 把 WeKnora 文档的摘要、custom_metadata、tags、parse_status 同步回 DAM */

@@ -24,6 +24,28 @@ public class KnowledgeEntry {
     private String vectorId;
     /** WeKnora 外部知识库/文档 ID */
     private String externalKbId;
+    /** TERM / METRIC / STANDARD / CASE */
+    private String entryType;
+    private String definition;
+    private String usageNote;
+
+    @TableField(typeHandler = JsonbTypeHandler.class)
+    private String aliases;
+
+    @TableField(typeHandler = JsonbTypeHandler.class)
+    private String fieldMappings;
+
+    @TableField(typeHandler = JsonbTypeHandler.class)
+    private String relatedMetrics;
+
+    private String sourceSystem;
+    private String owner;
+    /** DRAFT / PUBLISHED / DEPRECATED */
+    private String publishStatus;
+    private Integer version;
+    private LocalDateTime effectiveFrom;
+    private LocalDateTime effectiveTo;
+
     private String externalDocId;
     private String externalSummary;
 

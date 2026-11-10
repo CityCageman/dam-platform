@@ -127,19 +127,27 @@ public class WeKnoraClient {
     }
 
     public JsonNode createManual(String kbId, String title, String content, List<String> tagIds) {
+        return createManual(kbId, title, content, tagIds, "publish");
+    }
+
+    public JsonNode createManual(String kbId, String title, String content, List<String> tagIds, String status) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("title", title);
         body.put("content", content);
-        body.put("status", "publish");
+        body.put("status", status == null || status.isBlank() ? "publish" : status);
         if (tagIds != null && !tagIds.isEmpty()) body.put("tag_ids", tagIds);
         return call(HttpMethod.POST, "/knowledge-bases/" + enc(kbId) + "/knowledge/manual", body);
     }
 
     public JsonNode updateManual(String knowledgeId, String title, String content) {
+        return updateManual(knowledgeId, title, content, "publish");
+    }
+
+    public JsonNode updateManual(String knowledgeId, String title, String content, String status) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("title", title);
         body.put("content", content);
-        body.put("status", "publish");
+        body.put("status", status == null || status.isBlank() ? "publish" : status);
         return call(HttpMethod.PUT, "/knowledge/manual/" + enc(knowledgeId), body);
     }
 

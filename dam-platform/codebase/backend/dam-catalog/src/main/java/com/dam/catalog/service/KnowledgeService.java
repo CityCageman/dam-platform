@@ -166,6 +166,18 @@ public class KnowledgeService {
         e.setCategoryId(categoryId);
         e.setTitle(cut(title, 300));
         e.setContent(str(body.get("content")));
+        e.setEntryType(StrUtil.blankToDefault(str(body.get("entryType")), "TERM").toUpperCase());
+        e.setDefinition(str(body.get("definition")));
+        e.setUsageNote(str(body.get("usageNote")));
+        e.setAliases(jsonArray(body.get("aliases")));
+        e.setFieldMappings(jsonArray(body.get("fieldMappings")));
+        e.setRelatedMetrics(jsonArray(body.get("relatedMetrics")));
+        e.setSourceSystem(cut(str(body.get("sourceSystem")), 100));
+        e.setOwner(cut(str(body.get("owner")), 100));
+        e.setPublishStatus(StrUtil.blankToDefault(str(body.get("publishStatus")), "PUBLISHED").toUpperCase());
+        e.setVersion(id == null ? 1 : (e.getVersion() == null ? 1 : e.getVersion() + 1));
+        e.setEffectiveFrom(parseDateTime(str(body.get("effectiveFrom"))));
+        e.setEffectiveTo(parseDateTime(str(body.get("effectiveTo"))));
         e.setSourceType(id == null ? "MANUAL" : StrUtil.blankToDefault(e.getSourceType(), "MANUAL"));
         e.setTags(body.get("tags") == null ? null : (body.get("tags") instanceof String s ? s : JSONUtil.toJsonStr(body.get("tags"))));
         e.setEmbeddingStatus("PENDING");
@@ -365,6 +377,26 @@ public class KnowledgeService {
         KnowledgeEntry e = id == null ? null : entryMapper.selectById(id);
         if (e == null || e.getDeletedAt() != null) throw new BusinessException("知识条目不存在");
         return e;
+    }
+
+    /** 数组/对象统一存 JSON；字符串按逗号拆成数组，兼容前端文本输入 */
+    private String jsonArray(Object value) {
+        if (value == null) return null;
+        if (value instanceof String s) {
+            String text = s.trim();
+            if (text.isEmpty()) return null;
+            if (text.startsWith("[") || text.startsWith("{")) return text;
+            List<String> values = Arrays.stream(text.split("[,，\\n]"))
+                    .map(String::trim).filter(v -> !v.isEmpty()).toList();
+            return values.isEmpty() ? null : JSONUtil.toJsonStr(values);
+        }
+        return JSONUtil.toJsonStr(value);
+    }
+
+    private LocalDateTime parseDateTime(String value) {
+        if (StrUtil.isBlank(value)) return null;
+        try { return LocalDateTime.parse(value.trim().replace(" ", "T")); }
+        catch (Exception e) { return null; }
     }
 
     private String currentUser() {

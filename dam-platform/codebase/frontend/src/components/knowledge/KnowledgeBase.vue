@@ -12,7 +12,7 @@
              @click="selectCategory(c.id)">
           <div class="kb-cat-main">
             <b>{{ c.categoryName }} <em class="kb-cat-count">{{ categoryCount(c.id) }}</em></b>
-            <span>{{ c.categoryPath || c.categoryCode }}</span>
+            <span>{{ c.description || c.categoryPath || c.categoryCode }}</span>
           </div>
           <div class="kb-cat-actions" @click.stop>
             <el-button text size="small" @click="openCategory(c)">编辑</el-button>
@@ -71,7 +71,12 @@
             <el-link type="primary" :underline="false" @click="openEntryDetail(row)">{{ row.title }}</el-link>
           </template>
         </el-table-column>
-        <el-table-column prop="content" label="内容" min-width="260" show-overflow-tooltip />
+        <el-table-column label="类型" width="95">
+          <template #default="{ row }">
+            <el-tag size="small" type="info">{{ entryTypeLabel(row.entryType) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="definition" label="解释" min-width="240" show-overflow-tooltip />
         <el-table-column label="来源" width="100">
           <template #default="{ row }">
             <el-tag size="small" :type="sourceTag(row.sourceType)">{{ sourceLabel(row.sourceType) }}</el-tag>
@@ -111,7 +116,11 @@
           </el-select>
         </el-form-item>
         <el-form-item label="分类路径"><el-input :model-value="categoryForm.categoryPath" disabled placeholder="保存后自动生成" /></el-form-item>
-        <el-form-item label="说明"><el-input v-model="categoryForm.description" type="textarea" :rows="2" /></el-form-item>
+        <el-form-item label="分类说明">
+          <el-input v-model="categoryForm.description" type="textarea" :rows="3"
+                    placeholder="解释这个分类的边界。例如：业务术语用于解释病人号、就诊号等；指标解释用于说明指标口径。" />
+        </el-form-item>
+        <div class="form-tip">分类说明会显示在左侧分类下，帮助业务人员理解这个分类放什么内容。</div>
         <el-form-item label="排序"><el-input-number v-model="categoryForm.sortOrder" :min="0" /></el-form-item>
         <el-form-item label="状态"><el-switch v-model="categoryForm.status" :active-value="1" :inactive-value="0" active-text="启用" inactive-text="停用" /></el-form-item>
       </el-form>
@@ -121,14 +130,59 @@
     <!-- 条目 -->
     <el-dialog v-model="showEntry" :title="entryForm.id ? '编辑知识' : '新增知识'" width="680px" top="8vh">
       <el-form :model="entryForm" label-width="80px">
-        <el-form-item label="分类" required>
-          <el-select v-model="entryForm.categoryId" style="width: 100%;">
-            <el-option v-for="c in categories" :key="c.id" :label="c.categoryName" :value="c.id" />
-          </el-select>
+        <el-row :gutter="12">
+          <el-col :span="12">
+            <el-form-item label="分类" required>
+              <el-select v-model="entryForm.categoryId" style="width: 100%;">
+                <el-option v-for="c in categories" :key="c.id" :label="c.categoryPath || c.categoryName" :value="c.id" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="知识类型">
+              <el-select v-model="entryForm.entryType" style="width: 100%;">
+                <el-option label="业务术语" value="TERM" />
+                <el-option label="指标解释" value="METRIC" />
+                <el-option label="标准与编码" value="STANDARD" />
+                <el-option label="案例与变更" value="CASE" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="标题" required><el-input v-model="entryForm.title" placeholder="如：病人号" /></el-form-item>
+        <el-form-item label="解释">
+          <el-input v-model="entryForm.definition" type="textarea" :rows="4"
+                    placeholder="如：病人号是患者唯一号，也叫主索引 ID；与病人相关的内容都需要通过病人号关联。" />
         </el-form-item>
-        <el-form-item label="标题" required><el-input v-model="entryForm.title" /></el-form-item>
-        <el-form-item label="内容"><el-input v-model="entryForm.content" type="textarea" :rows="8" placeholder="业务定义、口径、字段映射、案例等" /></el-form-item>
+        <el-row :gutter="12">
+          <el-col :span="12"><el-form-item label="别名"><el-input v-model="entryForm.aliasesText" placeholder="逗号分隔，如：患者唯一号、主索引 ID" /></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="来源系统"><el-input v-model="entryForm.sourceSystem" placeholder="如：HIS / 患者主索引" /></el-form-item></el-col>
+        </el-row>
+        <el-form-item label="字段映射">
+          <el-input v-model="entryForm.fieldMappingsText" type="textarea" :rows="2"
+                    placeholder="一行一个，如：PA_PatMas.PAPMI_No → 病人号" />
+        </el-form-item>
+        <el-form-item label="使用说明">
+          <el-input v-model="entryForm.usageNote" type="textarea" :rows="2" placeholder="如：患者、就诊、费用等数据关联时使用该字段。" />
+        </el-form-item>
+        <el-row :gutter="12">
+          <el-col :span="12"><el-form-item label="关联指标"><el-input v-model="entryForm.relatedMetricsText" placeholder="逗号分隔，如：门诊量、住院人次" /></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="负责人"><el-input v-model="entryForm.owner" /></el-form-item></el-col>
+        </el-row>
+        <el-row :gutter="12">
+          <el-col :span="12">
+            <el-form-item label="发布状态">
+              <el-select v-model="entryForm.publishStatus" style="width: 100%;">
+                <el-option label="草稿" value="DRAFT" />
+                <el-option label="已发布" value="PUBLISHED" />
+                <el-option label="已废弃" value="DEPRECATED" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12"><el-form-item label="版本"><el-input-number v-model="entryForm.version" :min="1" style="width: 100%;" /></el-form-item></el-col>
+        </el-row>
         <el-form-item label="标签"><el-input v-model="entryForm.tagsText" placeholder="逗号分隔" /></el-form-item>
+        <el-form-item label="补充说明"><el-input v-model="entryForm.content" type="textarea" :rows="3" placeholder="案例、注意事项等补充内容" /></el-form-item>
       </el-form>
       <template #footer><el-button @click="showEntry = false">取消</el-button><el-button type="primary" :loading="saving" @click="saveEntry">保存</el-button></template>
     </el-dialog>
@@ -164,7 +218,16 @@
       <template v-if="entryDetail">
         <el-descriptions :column="1" border size="small">
           <el-descriptions-item label="标题">{{ entryDetail.title }}</el-descriptions-item>
+          <el-descriptions-item label="类型">{{ entryTypeLabel(entryDetail.entryType) }}</el-descriptions-item>
           <el-descriptions-item label="分类">{{ categoryName(entryDetail.categoryId) }}</el-descriptions-item>
+          <el-descriptions-item label="解释">{{ entryDetail.definition || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="别名">{{ prettyJson(entryDetail.aliases) }}</el-descriptions-item>
+          <el-descriptions-item label="字段映射">{{ prettyJson(entryDetail.fieldMappings) }}</el-descriptions-item>
+          <el-descriptions-item label="使用说明">{{ entryDetail.usageNote || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="关联指标">{{ prettyJson(entryDetail.relatedMetrics) }}</el-descriptions-item>
+          <el-descriptions-item label="来源系统">{{ entryDetail.sourceSystem || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="负责人">{{ entryDetail.owner || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="发布状态">{{ entryDetail.publishStatus || '-' }}</el-descriptions-item>
           <el-descriptions-item label="DAM 内容">
             <div class="detail-pre">{{ entryDetail.content || '-' }}</div>
           </el-descriptions-item>
@@ -236,6 +299,7 @@ const vectorLabel = (v: string) => ({ PENDING: '待索引', SYNCED: '已索引',
 const vectorTag = (v: string) => (v === 'SYNCED' ? 'success' : v === 'FAILED' ? 'danger' : 'info')
 const syncLabel = (v: string) => ({ LOCAL_ONLY: '未同步', PENDING: '解析中', SYNCED: '已同步', FAILED: '失败' } as any)[v] || '未同步'
 const syncTag = (v: string) => (v === 'SYNCED' ? 'success' : v === 'FAILED' ? 'danger' : 'info')
+const entryTypeLabel = (v: string) => ({ TERM: '业务术语', METRIC: '指标解释', STANDARD: '标准与编码', CASE: '案例与变更' } as any)[v] || '业务术语'
 const formatTime = (v: string) => v ? String(v).replace('T', ' ').slice(0, 16) : '-'
 
 async function loadCategories() {
@@ -323,7 +387,15 @@ async function removeCategory(c: any) {
 }
 
 function openEntry(row?: any) {
-  entryForm.value = row ? { ...row, tagsText: parseTags(row.tags) } : { categoryId: selectedCategoryId.value }
+  entryForm.value = row
+    ? {
+        ...row,
+        tagsText: parseTags(row.tags),
+        aliasesText: parseTags(row.aliases),
+        fieldMappingsText: parseTags(row.fieldMappings),
+        relatedMetricsText: parseTags(row.relatedMetrics)
+      }
+    : { categoryId: selectedCategoryId.value, entryType: 'TERM', publishStatus: 'PUBLISHED', version: 1 }
   showEntry.value = true
 }
 function parseTags(v: any): string {
@@ -334,8 +406,17 @@ async function saveEntry() {
   if (!entryForm.value.title?.trim()) { ElMessage.warning('标题不能为空'); return }
   saving.value = true
   try {
-    const payload = { ...entryForm.value, tags: entryForm.value.tagsText ? entryForm.value.tagsText.split(/[,，]/).map((s: string) => s.trim()).filter(Boolean) : [] }
+    const payload = {
+      ...entryForm.value,
+      tags: entryForm.value.tagsText ? entryForm.value.tagsText.split(/[,，]/).map((s: string) => s.trim()).filter(Boolean) : [],
+      aliases: entryForm.value.aliasesText ? entryForm.value.aliasesText.split(/[,，]/).map((s: string) => s.trim()).filter(Boolean) : [],
+      relatedMetrics: entryForm.value.relatedMetricsText ? entryForm.value.relatedMetricsText.split(/[,，]/).map((s: string) => s.trim()).filter(Boolean) : [],
+      fieldMappings: entryForm.value.fieldMappingsText ? entryForm.value.fieldMappingsText.split(/\n/).map((s: string) => s.trim()).filter(Boolean) : []
+    }
     delete payload.tagsText
+    delete payload.aliasesText
+    delete payload.relatedMetricsText
+    delete payload.fieldMappingsText
     if (entryForm.value.id) await knowledgeApi.updateEntry(entryForm.value.id, payload)
     else await knowledgeApi.createEntry(payload)
     ElMessage.success('知识已保存')
@@ -474,4 +555,5 @@ onMounted(loadAll)
 .detail-json { margin: 0; white-space: pre-wrap; word-break: break-all; font-size: 11px; color: var(--med-text-secondary); max-height: 180px; overflow: auto; }
 .detail-muted { font-size: 11px; color: var(--med-text-light); margin-left: 4px; }
 .detail-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
+.form-tip { margin: -6px 0 12px 90px; font-size: 11px; line-height: 1.6; color: var(--med-text-light); }
 </style>
