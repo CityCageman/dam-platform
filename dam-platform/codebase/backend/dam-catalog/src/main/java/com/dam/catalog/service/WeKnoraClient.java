@@ -66,14 +66,16 @@ public class WeKnoraClient {
     public List<JsonNode> listModels() {
         JsonNode data = call(HttpMethod.GET, "/models", null);
         List<JsonNode> result = new ArrayList<>();
-        if (data != null && data.isArray()) data.forEach(result::add);
+        JsonNode rows = arrayData(data);
+        if (rows != null) rows.forEach(result::add);
         return result;
     }
 
     public List<JsonNode> listKnowledgeBases() {
         JsonNode data = call(HttpMethod.GET, "/knowledge-bases?page=1&page_size=100", null);
         List<JsonNode> result = new ArrayList<>();
-        if (data != null && data.isArray()) data.forEach(result::add);
+        JsonNode rows = arrayData(data);
+        if (rows != null) rows.forEach(result::add);
         return result;
     }
 
@@ -83,9 +85,10 @@ public class WeKnoraClient {
         for (int page = 1; page <= 50; page++) {
             JsonNode data = call(HttpMethod.GET,
                     "/knowledge-bases/" + enc(kbId) + "/tags?page=" + page + "&page_size=100", null);
-            if (data == null || !data.isArray() || data.isEmpty()) break;
-            data.forEach(result::add);
-            if (data.size() < 100) break;
+            JsonNode rows = arrayData(data);
+            if (rows == null || rows.isEmpty()) break;
+            rows.forEach(result::add);
+            if (rows.size() < 100) break;
         }
         return result;
     }
@@ -97,11 +100,12 @@ public class WeKnoraClient {
             String q = java.net.URLEncoder.encode(name, java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
             JsonNode data = call(HttpMethod.GET,
                     "/knowledge-bases/" + enc(kbId) + "/tags?page=" + page + "&page_size=100&keyword=" + q, null);
-            if (data == null || !data.isArray() || data.isEmpty()) break;
-            for (JsonNode tag : data) {
+            JsonNode rows = arrayData(data);
+            if (rows == null || rows.isEmpty()) break;
+            for (JsonNode tag : rows) {
                 if (name.trim().equalsIgnoreCase(text(tag, "name"))) return tag;
             }
-            if (data.size() < 100) break;
+            if (rows.size() < 100) break;
         }
         return null;
     }
@@ -185,6 +189,16 @@ public class WeKnoraClient {
             log.warn("WeKnora {} {} 异常: {}", method, path, e.getMessage());
             throw new BusinessException("WeKnora 调用失败: " + e.getMessage());
         }
+    }
+
+    /** 兼容 data:[...] 和 data:{data:[...],total...} 两种分页返回 */
+    private JsonNode arrayData(JsonNode data) {
+        if (data == null) return null;
+        if (data.isArray()) return data;
+        if (data.has("data") && data.get("data").isArray()) return data.get("data");
+        if (data.has("items") && data.get("items").isArray()) return data.get("items");
+        if (data.has("list") && data.get("list").isArray()) return data.get("list");
+        return null;
     }
 
     private String text(JsonNode node, String field) {
