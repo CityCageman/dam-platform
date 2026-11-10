@@ -45,16 +45,19 @@
             <el-option label="标准" value="STANDARD" />
           </el-select>
           <el-button type="primary" @click="openEntry()">新增知识</el-button>
-          <el-button @click="openSync">从其他模块同步</el-button>
-          <el-button v-if="external.configured" plain :loading="initializing" @click="initializeExternal">
-            初始化 Agent 知识库
-          </el-button>
-          <el-button v-if="external.configured" plain :loading="refreshingExternal" @click="refreshExternal">
-            刷新 Agent 状态
-          </el-button>
-          <el-button type="success" plain :loading="migrating" :disabled="!external.configured" @click="migrateExternal">
-            迁移到 Agent 知识库
-          </el-button>
+          <el-dropdown trigger="click" @command="handleMoreCommand">
+            <el-button :loading="moreBusy">
+              更多操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="sync">从其他模块同步</el-dropdown-item>
+                <el-dropdown-item command="initialize" :disabled="!external.configured" divided>初始化 Agent 知识库</el-dropdown-item>
+                <el-dropdown-item command="refresh" :disabled="!external.configured">刷新 Agent 状态</el-dropdown-item>
+                <el-dropdown-item command="migrate" :disabled="!external.configured">迁移到 Agent 知识库</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
       </div>
 
@@ -148,6 +151,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { knowledgeApi } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { ArrowDown } from '@element-plus/icons-vue'
 
 const categories = ref<any[]>([])
 const entries = ref<any[]>([])
@@ -176,6 +180,14 @@ const syncing = ref(false)
 
 const currentCategory = computed(() => categories.value.find(c => c.id === selectedCategoryId.value))
 const categoryCount = (id: number) => Number(stats.value.byCategory?.[String(id)] || 0)
+const moreBusy = computed(() => migrating.value || initializing.value || refreshingExternal.value)
+
+function handleMoreCommand(command: string) {
+  if (command === 'sync') openSync()
+  else if (command === 'initialize') initializeExternal()
+  else if (command === 'refresh') refreshExternal()
+  else if (command === 'migrate') migrateExternal()
+}
 const sourceLabel = (v: string) => ({ MANUAL: '手工', METADATA: '元数据', METRIC: '指标', STANDARD: '标准' } as any)[v] || v || '手工'
 const sourceTag = (v: string) => (v === 'METRIC' ? 'success' : v === 'METADATA' ? 'primary' : v === 'STANDARD' ? 'warning' : 'info')
 const vectorLabel = (v: string) => ({ PENDING: '待索引', SYNCED: '已索引', FAILED: '失败' } as any)[v] || v || '待索引'
