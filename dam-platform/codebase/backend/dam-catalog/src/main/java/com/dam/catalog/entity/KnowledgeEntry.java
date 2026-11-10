@@ -22,6 +22,13 @@ public class KnowledgeEntry {
     private String tags;
 
     private String vectorId;
+    /** WeKnora 外部知识库/文档 ID */
+    private String externalKbId;
+    private String externalDocId;
+    /** LOCAL_ONLY / SYNCED / FAILED */
+    private String syncStatus;
+    private LocalDateTime lastSyncedAt;
+    private String lastError;
     /** PENDING / SYNCED / FAILED */
     private String embeddingStatus;
     private Integer enabled;

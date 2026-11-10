@@ -7,6 +7,9 @@ spring:
 
 # dam-lineage 服务地址（外键血缘自动落库）
 dam:
+  weknora:
+    base-url: ${DAM_WEKNORA_BASE_URL:https://wiki-medical.cuhkszmc.cn/api/v1}
+    api-key: ${DAM_WEKNORA_API_KEY:}
   jdbc:
     drivers-dir: ${DAM_JDBC_DRIVERS_DIR:jdbc-drivers}
   lineage-url: http://localhost:8093

@@ -28,6 +28,7 @@ public class KnowledgeService {
     private final MetadataSchemaMapper schemaMapper;
     private final MetricDefinitionMapper metricMapper;
     private final JdbcTemplate jdbcTemplate;
+    private final WeKnoraKnowledgeService weKnoraKnowledgeService;
 
     public List<KnowledgeCategory> categories() {
         return categoryMapper.selectList(new LambdaQueryWrapper<KnowledgeCategory>()
@@ -59,6 +60,7 @@ public class KnowledgeService {
         c.setUpdatedAt(now);
         c.setUpdatedBy(user);
         if (id == null) categoryMapper.insert(c); else categoryMapper.updateById(c);
+        weKnoraKnowledgeService.syncCategory(c);
         return c;
     }
 
@@ -96,7 +98,12 @@ public class KnowledgeService {
         KnowledgeEntry e = id == null ? new KnowledgeEntry() : requireEntry(id);
         String user = currentUser();
         LocalDateTime now = LocalDateTime.now();
-        if (id == null) { e.setCreatedAt(now); e.setCreatedBy(user); e.setSourceType("MANUAL"); }
+        if (id == null) {
+            e.setCreatedAt(now);
+            e.setCreatedBy(user);
+            e.setSourceType("MANUAL");
+            e.setSyncStatus("LOCAL_ONLY");
+        }
         e.setCategoryId(categoryId);
         e.setTitle(cut(title, 300));
         e.setContent(str(body.get("content")));
@@ -107,11 +114,21 @@ public class KnowledgeService {
         e.setUpdatedAt(now);
         e.setUpdatedBy(user);
         if (id == null) entryMapper.insert(e); else entryMapper.updateById(e);
+        try {
+            weKnoraKnowledgeService.syncEntry(e);
+        } catch (Exception ex) {
+            e.setSyncStatus("FAILED");
+            e.setLastError(String.valueOf(ex.getMessage()).length() > 1000
+                    ? String.valueOf(ex.getMessage()).substring(0, 1000) : ex.getMessage());
+            e.setUpdatedAt(LocalDateTime.now());
+            entryMapper.updateById(e);
+        }
         return e;
     }
 
     public void deleteEntry(Long id) {
         KnowledgeEntry e = requireEntry(id);
+        weKnoraKnowledgeService.deleteExternal(e);
         e.setDeletedAt(LocalDateTime.now());
         e.setUpdatedAt(LocalDateTime.now());
         e.setUpdatedBy(currentUser());

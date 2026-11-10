@@ -14,6 +14,8 @@ public class KnowledgeCategory {
     private String description;
     private Integer sortOrder;
     private Integer status;
+    /** WeKnora 分类标签 ID */
+    private String externalTagId;
     private LocalDateTime createdAt;
     private String createdBy;
     private LocalDateTime updatedAt;

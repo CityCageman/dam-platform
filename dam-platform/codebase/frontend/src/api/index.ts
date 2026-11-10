@@ -410,6 +410,7 @@ export const operationsApi = {
 
 export const knowledgeApi = {
   categories() { return request.get('/catalog/knowledge/categories') },
+  stats() { return request.get('/catalog/knowledge/stats') },
   createCategory(data: any) { return request.post('/catalog/knowledge/categories', data) },
   updateCategory(id: number, data: any) { return request.put(`/catalog/knowledge/categories/${id}`, data) },
   deleteCategory(id: number) { return request.delete(`/catalog/knowledge/categories/${id}`) },
@@ -419,7 +420,10 @@ export const knowledgeApi = {
   deleteEntry(id: number) { return request.delete(`/catalog/knowledge/entries/${id}`) },
   sources(params: any) { return request.get('/catalog/knowledge/sources', { params }) },
   sync(data: any) { return request.post('/catalog/knowledge/sync', data) },
-  reindex(id: number) { return request.post(`/catalog/knowledge/entries/${id}/vector-reindex`) }
+  reindex(id: number) { return request.post(`/catalog/knowledge/entries/${id}/vector-reindex`) },
+  externalStatus() { return request.get('/catalog/knowledge/external/status') },
+  migrateExternal() { return request.post('/catalog/knowledge/external/migrate', null, { timeout: 600000 }) },
+  externalSearch(data: any) { return request.post('/catalog/knowledge/external/search', data, { timeout: 60000 }) }
 }
 
 export const metricApi = {

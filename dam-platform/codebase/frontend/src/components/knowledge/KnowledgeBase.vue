@@ -29,7 +29,11 @@
       </div>
       <div class="kb-toolbar">
         <div>
-          <h3 class="kb-title">{{ currentCategory?.categoryName || '全部知识' }}</h3>
+          <h3 class="kb-title">{{ currentCategory?.categoryName || '全部知识' }}
+            <el-tag v-if="external.externalKbId" size="small" type="success" style="margin-left: 8px;">Agent 知识库已连接</el-tag>
+            <el-tag v-else-if="external.configured" size="small" type="info" style="margin-left: 8px;">Agent 知识库待迁移</el-tag>
+            <el-tag v-else size="small" type="warning" style="margin-left: 8px;">Agent 知识库未配置</el-tag>
+          </h3>
           <p class="kb-desc">{{ currentCategory?.description || '可维护的知识条目，支持从指标、元数据、标准选择性同步。' }}</p>
         </div>
         <div class="kb-actions">
@@ -42,6 +46,9 @@
           </el-select>
           <el-button type="primary" @click="openEntry()">新增知识</el-button>
           <el-button @click="openSync">从其他模块同步</el-button>
+          <el-button type="success" plain :loading="migrating" :disabled="!external.configured" @click="migrateExternal">
+            迁移到 Agent 知识库
+          </el-button>
         </div>
       </div>
 
@@ -56,6 +63,11 @@
         <el-table-column label="向量" width="100">
           <template #default="{ row }">
             <el-tag size="small" :type="vectorTag(row.embeddingStatus)">{{ vectorLabel(row.embeddingStatus) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="Agent 同步" width="105">
+          <template #default="{ row }">
+            <el-tag size="small" :type="syncTag(row.syncStatus)">{{ syncLabel(row.syncStatus) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="更新时间" width="150"><template #default="{ row }">{{ formatTime(row.updatedAt) }}</template></el-table-column>
@@ -134,6 +146,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 const categories = ref<any[]>([])
 const entries = ref<any[]>([])
 const stats = ref<any>({})
+const external = ref<any>({ configured: false })
+const migrating = ref(false)
 const selectedCategoryId = ref<number | undefined>(undefined)
 const keyword = ref('')
 const sourceFilter = ref('')
@@ -158,6 +172,8 @@ const sourceLabel = (v: string) => ({ MANUAL: '手工', METADATA: '元数据', M
 const sourceTag = (v: string) => (v === 'METRIC' ? 'success' : v === 'METADATA' ? 'primary' : v === 'STANDARD' ? 'warning' : 'info')
 const vectorLabel = (v: string) => ({ PENDING: '待索引', SYNCED: '已索引', FAILED: '失败' } as any)[v] || v || '待索引'
 const vectorTag = (v: string) => (v === 'SYNCED' ? 'success' : v === 'FAILED' ? 'danger' : 'info')
+const syncLabel = (v: string) => ({ LOCAL_ONLY: '未同步', SYNCED: '已同步', FAILED: '失败' } as any)[v] || '未同步'
+const syncTag = (v: string) => (v === 'SYNCED' ? 'success' : v === 'FAILED' ? 'danger' : 'info')
 const formatTime = (v: string) => v ? String(v).replace('T', ' ').slice(0, 16) : '-'
 
 async function loadCategories() {
@@ -175,9 +191,16 @@ async function loadStats() {
   } catch { stats.value = {} }
 }
 
+async function loadExternal() {
+  try {
+    const res: any = await knowledgeApi.externalStatus()
+    external.value = res.data || { configured: false }
+  } catch { external.value = { configured: false } }
+}
+
 async function loadAll() {
   await loadCategories()
-  await Promise.all([loadStats(), loadEntries()])
+  await Promise.all([loadStats(), loadEntries(), loadExternal()])
 }
 
 async function loadEntries() {
@@ -294,6 +317,21 @@ async function doSync() {
     await Promise.all([loadEntries(), loadStats()])
   } catch (e: any) { ElMessage.error(e.message || '同步失败') }
   finally { syncing.value = false }
+}
+
+async function migrateExternal() {
+  if (!external.value.configured) { ElMessage.warning('请先配置 WeKnora API Key'); return }
+  try {
+    await ElMessageBox.confirm('将把全部分类和知识条目迁移到 Agent 知识库；已迁移条目会更新，是否继续？', '迁移知识库', { type: 'warning' })
+  } catch { return }
+  migrating.value = true
+  try {
+    const res: any = await knowledgeApi.migrateExternal()
+    const d = res.data || {}
+    ElMessage.success(`迁移完成：成功 ${d.synced || 0} 条，失败 ${d.failed || 0} 条`)
+    await Promise.all([loadStats(), loadEntries(), loadExternal()])
+  } catch (e: any) { ElMessage.error(e.message || '迁移失败') }
+  finally { migrating.value = false }
 }
 
 onMounted(loadAll)
