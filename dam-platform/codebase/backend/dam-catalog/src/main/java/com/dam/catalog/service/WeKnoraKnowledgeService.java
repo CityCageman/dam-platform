@@ -12,6 +12,7 @@ import com.dam.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -30,6 +31,12 @@ public class WeKnoraKnowledgeService {
     private final KnowledgeSyncConfigMapper configMapper;
     private final KnowledgeCategoryMapper categoryMapper;
     private final KnowledgeEntryMapper entryMapper;
+
+    @Value("${dam.weknora.llm-model:qwen3-coder-30b-a3b}")
+    private String preferredLlmModel;
+
+    @Value("${dam.weknora.embedding-model:bge-m3}")
+    private String preferredEmbeddingModel;
 
     private KnowledgeSyncConfig config() {
         KnowledgeSyncConfig c = configMapper.selectById(1L);
@@ -51,19 +58,22 @@ public class WeKnoraKnowledgeService {
     public KnowledgeSyncConfig ensureKnowledgeBase() {
         if (!client.isConfigured()) throw new BusinessException("未配置 DAM_WEKNORA_API_KEY");
         KnowledgeSyncConfig c = config();
-        String embeddingId = defaultModelId("Embedding");
-        String summaryId = defaultModelId("KnowledgeQA");
+        String embeddingId = preferredModelId("Embedding", preferredEmbeddingModel);
+        String summaryId = preferredModelId("KnowledgeQA", preferredLlmModel);
         if (StrUtil.isNotBlank(c.getExternalKbId())) {
-            // 修复 DAM 之前自动创建、但没有绑定模型的 KB
+            // 绑定用户指定的模型；已有 KB 也允许纠正为 DAM 配置的模型
             try {
                 JsonNode kb = client.getKnowledgeBase(c.getExternalKbId());
                 String currentEmbedding = text(kb, "embedding_model_id");
                 String currentSummary = text(kb, "summary_model_id");
-                if (StrUtil.isBlank(currentEmbedding) || StrUtil.isBlank(currentSummary)) {
+                boolean needEmbedding = StrUtil.isNotBlank(embeddingId) && !embeddingId.equals(currentEmbedding);
+                boolean needSummary = StrUtil.isNotBlank(summaryId) && !summaryId.equals(currentSummary);
+                if (needEmbedding || needSummary) {
                     client.bindDefaultModels(c.getExternalKbId(),
-                            StrUtil.isBlank(currentEmbedding) ? embeddingId : null,
-                            StrUtil.isBlank(currentSummary) ? summaryId : null);
-                    log.info("已为 WeKnora 知识库 {} 补齐默认模型", c.getExternalKbId());
+                            needEmbedding ? embeddingId : null,
+                            needSummary ? summaryId : null);
+                    log.info("已为 WeKnora 知识库 {} 绑定模型：embedding={}, summary={}",
+                            c.getExternalKbId(), embeddingId, summaryId);
                 }
             } catch (Exception e) {
                 log.warn("检查/修复 WeKnora 知识库模型失败: {}", e.getMessage());
@@ -71,7 +81,8 @@ public class WeKnoraKnowledgeService {
             return c;
         }
         if (StrUtil.isBlank(embeddingId) || StrUtil.isBlank(summaryId)) {
-            throw new BusinessException("WeKnora 未找到默认 Embedding/KnowledgeQA 模型，请先在 WeKnora 设置中配置默认模型");
+            throw new BusinessException("WeKnora 未找到指定模型：LLM=" + preferredLlmModel
+                    + "，Embedding=" + preferredEmbeddingModel + "，请确认模型名称");
         }
         JsonNode data = client.createKnowledgeBase("DAM 数据资产知识库",
                 "由 DAM 数据资产管理平台同步的知识条目", embeddingId, summaryId);
@@ -254,17 +265,24 @@ public class WeKnoraKnowledgeService {
         return result;
     }
 
-    /** 取 WeKnora 默认模型；优先 is_default，其次第一个匹配类型 */
-    private String defaultModelId(String type) {
-        String fallback = null;
+    /** 按用户指定名称选模型；找不到名称时回退 is_default，再回退同类型第一个 */
+    private String preferredModelId(String type, String preferredName) {
+        String fallbackDefault = null;
+        String fallbackAny = null;
         for (JsonNode m : client.listModels()) {
             if (!type.equalsIgnoreCase(text(m, "type"))) continue;
             String id = text(m, "id");
             if (StrUtil.isBlank(id)) continue;
-            if (fallback == null) fallback = id;
-            if (m.path("is_default").asBoolean(false)) return id;
+            if (fallbackAny == null) fallbackAny = id;
+            String name = text(m, "name");
+            String displayName = text(m, "display_name");
+            if (StrUtil.isNotBlank(preferredName)
+                    && (preferredName.equalsIgnoreCase(name) || preferredName.equalsIgnoreCase(displayName))) {
+                return id;
+            }
+            if (m.path("is_default").asBoolean(false) && fallbackDefault == null) fallbackDefault = id;
         }
-        return fallback;
+        return fallbackDefault != null ? fallbackDefault : fallbackAny;
     }
 
     private String text(JsonNode node, String field) {

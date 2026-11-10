@@ -24,5 +24,7 @@ dam:
   weknora:
     base-url: ${DAM_WEKNORA_BASE_URL:https://wiki-medical.cuhkszmc.cn/api/v1}
     api-key: ${DAM_WEKNORA_API_KEY:}
+    llm-model: ${DAM_WEKNORA_LLM_MODEL:qwen3-coder-30b-a3b}
+    embedding-model: ${DAM_WEKNORA_EMBEDDING_MODEL:bge-m3}
   jdbc:
     drivers-dir: ${DAM_JDBC_DRIVERS_DIR:jdbc-drivers}
