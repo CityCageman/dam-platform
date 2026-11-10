@@ -477,7 +477,9 @@ public class WeKnoraKnowledgeService {
         if ("completed".equals(status) || "success".equals(status)) {
             entry.setSyncStatus("SYNCED");
             entry.setEmbeddingStatus("SYNCED");
-            entry.setLastError(null);
+            // 用空串而不是 null：MyBatis-Plus updateById 默认不会更新 null 字段
+            entry.setLastError("");
+            entry.setLastSyncedAt(LocalDateTime.now());
         } else if ("failed".equals(status) || "error".equals(status)) {
             entry.setSyncStatus("FAILED");
             entry.setEmbeddingStatus("FAILED");
@@ -486,6 +488,7 @@ public class WeKnoraKnowledgeService {
         } else {
             entry.setSyncStatus("PENDING");
             entry.setEmbeddingStatus("PENDING");
+            entry.setLastError("");
         }
     }
 
