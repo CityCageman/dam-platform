@@ -61,24 +61,34 @@ public class WeKnoraKnowledgeService {
         String embeddingId = preferredModelId("Embedding", preferredEmbeddingModel);
         String summaryId = preferredModelId("KnowledgeQA", preferredLlmModel);
         if (StrUtil.isNotBlank(c.getExternalKbId())) {
-            // 绑定用户指定的模型；已有 KB 也允许纠正为 DAM 配置的模型
             try {
                 JsonNode kb = client.getKnowledgeBase(c.getExternalKbId());
-                String currentEmbedding = text(kb, "embedding_model_id");
-                String currentSummary = text(kb, "summary_model_id");
-                boolean needEmbedding = StrUtil.isNotBlank(embeddingId) && !embeddingId.equals(currentEmbedding);
-                boolean needSummary = StrUtil.isNotBlank(summaryId) && !summaryId.equals(currentSummary);
-                if (needEmbedding || needSummary) {
-                    client.bindDefaultModels(c.getExternalKbId(),
-                            needEmbedding ? embeddingId : null,
-                            needSummary ? summaryId : null);
-                    log.info("已为 WeKnora 知识库 {} 绑定模型：embedding={}, summary={}",
-                            c.getExternalKbId(), embeddingId, summaryId);
+                if (kb != null) {
+                    // 绑定用户指定的模型；已有 KB 也允许纠正为 DAM 配置的模型
+                    String currentEmbedding = text(kb, "embedding_model_id");
+                    String currentSummary = text(kb, "summary_model_id");
+                    boolean needEmbedding = StrUtil.isNotBlank(embeddingId) && !embeddingId.equals(currentEmbedding);
+                    boolean needSummary = StrUtil.isNotBlank(summaryId) && !summaryId.equals(currentSummary);
+                    if (needEmbedding || needSummary) {
+                        client.bindDefaultModels(c.getExternalKbId(),
+                                needEmbedding ? embeddingId : null,
+                                needSummary ? summaryId : null);
+                        log.info("已为 WeKnora 知识库 {} 绑定模型：embedding={}, summary={}",
+                                c.getExternalKbId(), embeddingId, summaryId);
+                    }
+                    return c;
                 }
             } catch (Exception e) {
-                log.warn("检查/修复 WeKnora 知识库模型失败: {}", e.getMessage());
+                String msg = String.valueOf(e.getMessage());
+                // 云端 KB 被手动删除：清空旧映射，继续走新建
+                if (msg.contains("404") || msg.contains("不存在") || msg.contains("not found")) {
+                    log.warn("WeKnora 知识库 {} 已不存在，将为 DAM 重新创建", c.getExternalKbId());
+                    resetExternalMapping(c);
+                } else {
+                    log.warn("检查/修复 WeKnora 知识库模型失败: {}", msg);
+                    return c;
+                }
             }
-            return c;
         }
         if (StrUtil.isBlank(embeddingId) || StrUtil.isBlank(summaryId)) {
             throw new BusinessException("WeKnora 未找到指定模型：LLM=" + preferredLlmModel
@@ -245,6 +255,32 @@ public class WeKnoraKnowledgeService {
         result.put("source", "LOCAL");
         result.put("results", hits);
         return result;
+    }
+
+    /** 外部 KB 被删除后，清掉旧 KB/旧 tag/旧文档 ID，避免继续更新已不存在的文档 */
+    private void resetExternalMapping(KnowledgeSyncConfig c) {
+        c.setExternalKbId(null);
+        c.setExternalKbName(null);
+        c.setUpdatedAt(LocalDateTime.now());
+        c.setUpdatedBy("system");
+        configMapper.updateById(c);
+        List<KnowledgeCategory> categories = categoryMapper.selectList(
+                new LambdaQueryWrapper<KnowledgeCategory>().isNull(KnowledgeCategory::getDeletedAt));
+        for (KnowledgeCategory category : categories) {
+            category.setExternalTagId(null);
+            categoryMapper.updateById(category);
+        }
+        List<KnowledgeEntry> entries = entryMapper.selectList(
+                new LambdaQueryWrapper<KnowledgeEntry>().isNull(KnowledgeEntry::getDeletedAt));
+        for (KnowledgeEntry entry : entries) {
+            entry.setExternalKbId(null);
+            entry.setExternalDocId(null);
+            entry.setSyncStatus("LOCAL_ONLY");
+            entry.setLastError(null);
+            entry.setLastSyncedAt(null);
+            entry.setUpdatedAt(LocalDateTime.now());
+            entryMapper.updateById(entry);
+        }
     }
 
     public Map<String, Object> status() {
