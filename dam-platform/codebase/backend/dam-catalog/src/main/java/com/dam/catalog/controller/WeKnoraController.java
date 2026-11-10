@@ -33,6 +33,11 @@ public class WeKnoraController {
         return Result.success(weKnoraKnowledgeService.migrate());
     }
 
+    @GetMapping("/entries/{entryId}/status")
+    public Result<Map<String, Object>> entryStatus(@PathVariable Long entryId) {
+        return Result.success(weKnoraKnowledgeService.refreshEntryStatus(entryId));
+    }
+
     @PostMapping("/refresh")
     public Result<Map<String, Object>> refresh(@RequestBody(required = false) Map<String, Object> body) {
         boolean reparseFailed = body != null && (Boolean.TRUE.equals(body.get("reparseFailed"))

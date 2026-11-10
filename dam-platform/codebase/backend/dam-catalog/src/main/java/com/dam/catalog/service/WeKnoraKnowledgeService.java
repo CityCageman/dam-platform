@@ -320,6 +320,36 @@ public class WeKnoraKnowledgeService {
         }
     }
 
+    /** 查询单条知识的 WeKnora 解析/索引状态并回写 */
+    public Map<String, Object> refreshEntryStatus(Long entryId) {
+        KnowledgeEntry entry = entryMapper.selectById(entryId);
+        if (entry == null || entry.getDeletedAt() != null) throw new BusinessException("知识条目不存在");
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("entryId", entryId);
+        if (StrUtil.isBlank(entry.getExternalDocId())) {
+            result.put("syncStatus", "LOCAL_ONLY");
+            result.put("embeddingStatus", entry.getEmbeddingStatus());
+            result.put("lastError", null);
+            return result;
+        }
+        try {
+            applyParseStatus(entry, client.getKnowledge(entry.getExternalDocId()));
+            entry.setUpdatedAt(LocalDateTime.now());
+            entryMapper.updateById(entry);
+        } catch (Exception e) {
+            entry.setSyncStatus("FAILED");
+            entry.setLastError(abbreviate(e.getMessage()));
+            entry.setUpdatedAt(LocalDateTime.now());
+            entryMapper.updateById(entry);
+        }
+        result.put("syncStatus", entry.getSyncStatus());
+        result.put("embeddingStatus", entry.getEmbeddingStatus());
+        result.put("externalDocId", entry.getExternalDocId());
+        result.put("lastError", entry.getLastError());
+        result.put("lastSyncedAt", entry.getLastSyncedAt());
+        return result;
+    }
+
     /** 主动刷新 WeKnora 解析状态；对失败的文档可重新解析 */
     public Map<String, Object> refreshStatuses(boolean reparseFailed) {
         List<KnowledgeEntry> entries = entryMapper.selectList(new LambdaQueryWrapper<KnowledgeEntry>()

@@ -44,20 +44,20 @@
             <el-option label="指标" value="METRIC" />
             <el-option label="标准" value="STANDARD" />
           </el-select>
-          <el-button type="primary" @click="openEntry()">新增知识</el-button>
-          <el-dropdown trigger="click" @command="handleMoreCommand">
-            <el-button :loading="moreBusy">
-              更多操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+          <el-dropdown trigger="click" @command="handleAddCommand">
+            <el-button type="primary">
+              新增知识<el-icon class="el-icon--right"><ArrowDown /></el-icon>
             </el-button>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="sync">从其他模块同步</el-dropdown-item>
-                <el-dropdown-item command="initialize" :disabled="!external.configured" divided>初始化 Agent 知识库</el-dropdown-item>
-                <el-dropdown-item command="refresh" :disabled="!external.configured">刷新 Agent 状态</el-dropdown-item>
-                <el-dropdown-item command="migrate" :disabled="!external.configured">迁移到 Agent 知识库</el-dropdown-item>
+                <el-dropdown-item command="manual">手工新增</el-dropdown-item>
+                <el-dropdown-item command="source">从其他模块同步</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
+          <el-button type="success" :loading="agentSyncing" :disabled="!external.configured" @click="agentSync">
+            Agent 同步
+          </el-button>
         </div>
       </div>
 
@@ -80,9 +80,10 @@
           </template>
         </el-table-column>
         <el-table-column label="更新时间" width="150"><template #default="{ row }">{{ formatTime(row.updatedAt) }}</template></el-table-column>
-        <el-table-column label="操作" width="190" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
             <el-button text size="small" type="primary" @click="openEntry(row)">编辑</el-button>
+            <el-button text size="small" @click="refreshEntryStatus(row)">状态</el-button>
             <el-button text size="small" @click="reindex(row)">重新索引</el-button>
             <el-button text size="small" type="danger" @click="removeEntry(row)">删除</el-button>
           </template>
@@ -157,9 +158,7 @@ const categories = ref<any[]>([])
 const entries = ref<any[]>([])
 const stats = ref<any>({})
 const external = ref<any>({ configured: false })
-const migrating = ref(false)
-const initializing = ref(false)
-const refreshingExternal = ref(false)
+const agentSyncing = ref(false)
 const selectedCategoryId = ref<number | undefined>(undefined)
 const keyword = ref('')
 const sourceFilter = ref('')
@@ -180,13 +179,9 @@ const syncing = ref(false)
 
 const currentCategory = computed(() => categories.value.find(c => c.id === selectedCategoryId.value))
 const categoryCount = (id: number) => Number(stats.value.byCategory?.[String(id)] || 0)
-const moreBusy = computed(() => migrating.value || initializing.value || refreshingExternal.value)
-
-function handleMoreCommand(command: string) {
-  if (command === 'sync') openSync()
-  else if (command === 'initialize') initializeExternal()
-  else if (command === 'refresh') refreshExternal()
-  else if (command === 'migrate') migrateExternal()
+function handleAddCommand(command: string) {
+  if (command === 'manual') openEntry()
+  else if (command === 'source') openSync()
 }
 const sourceLabel = (v: string) => ({ MANUAL: '手工', METADATA: '元数据', METRIC: '指标', STANDARD: '标准' } as any)[v] || v || '手工'
 const sourceTag = (v: string) => (v === 'METRIC' ? 'success' : v === 'METADATA' ? 'primary' : v === 'STANDARD' ? 'warning' : 'info')
@@ -339,41 +334,30 @@ async function doSync() {
   finally { syncing.value = false }
 }
 
-async function initializeExternal() {
-  if (!external.value.configured) { ElMessage.warning('请先配置 WeKnora API Key'); return }
-  initializing.value = true
-  try {
-    const res: any = await knowledgeApi.initializeExternal()
-    external.value = res.data || external.value
-    ElMessage.success('Agent 知识库模型绑定已初始化')
-  } catch (e: any) { ElMessage.error(e.message || '初始化失败') }
-  finally { initializing.value = false }
-}
-
-async function refreshExternal() {
-  refreshingExternal.value = true
-  try {
-    const res: any = await knowledgeApi.refreshExternal({ reparseFailed: true })
-    const d = res.data || {}
-    ElMessage.success(`状态已刷新：已同步 ${d.synced || 0}，解析中 ${d.pending || 0}，失败 ${d.failed || 0}，重新解析 ${d.reparsed || 0}`)
-    await Promise.all([loadEntries(), loadStats(), loadExternal()])
-  } catch (e: any) { ElMessage.error(e.message || '刷新失败') }
-  finally { refreshingExternal.value = false }
-}
-
-async function migrateExternal() {
+async function agentSync() {
   if (!external.value.configured) { ElMessage.warning('请先配置 WeKnora API Key'); return }
   try {
-    await ElMessageBox.confirm('将把全部分类和知识条目迁移到 Agent 知识库；已迁移条目会更新，是否继续？', '迁移知识库', { type: 'warning' })
+    await ElMessageBox.confirm('将同步全部分类和知识条目到 Agent 知识库，并刷新解析状态；是否继续？', 'Agent 同步', { type: 'warning' })
   } catch { return }
-  migrating.value = true
+  agentSyncing.value = true
   try {
     const res: any = await knowledgeApi.migrateExternal()
     const d = res.data || {}
-    ElMessage.success(`迁移完成：成功 ${d.synced || 0} 条，失败 ${d.failed || 0} 条`)
+    ElMessage.success(`Agent 同步完成：已同步 ${d.synced || 0} 条，解析中 ${d.pending || 0} 条，失败 ${d.failed || 0} 条`)
     await Promise.all([loadStats(), loadEntries(), loadExternal()])
-  } catch (e: any) { ElMessage.error(e.message || '迁移失败') }
-  finally { migrating.value = false }
+  } catch (e: any) { ElMessage.error(e.message || 'Agent 同步失败') }
+  finally { agentSyncing.value = false }
+}
+
+async function refreshEntryStatus(row: any) {
+  try {
+    const res: any = await knowledgeApi.externalEntryStatus(row.id)
+    const d = res.data || {}
+    row.syncStatus = d.syncStatus
+    row.embeddingStatus = d.embeddingStatus
+    row.lastError = d.lastError
+    ElMessage.success(`Agent 状态：${syncLabel(d.syncStatus)}`)
+  } catch (e: any) { ElMessage.error(e.message || '获取状态失败') }
 }
 
 onMounted(loadAll)
