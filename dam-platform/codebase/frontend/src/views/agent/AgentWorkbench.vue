@@ -50,6 +50,8 @@
                 </div>
                 <div class="detail-head-actions">
                   <el-tag :type="statusTag(selectedTask.status)">{{ statusLabel(selectedTask.status) }}</el-tag>
+                  <el-button v-if="selectedTask.status === 'RUNNING' || selectedTask.status === 'PENDING'"
+                             text type="warning" size="small" @click="cancelSelectedTask">停止任务</el-button>
                   <el-button text type="danger" size="small"
                              :disabled="selectedTask.status === 'RUNNING'"
                              @click="deleteSelectedTask">删除任务</el-button>
@@ -224,9 +226,9 @@ const COLORS: Record<string, string> = {
 const typeBg = (v: string) => (COLORS[v] || '#64748B') + '14'
 const typeColor = (v: string) => COLORS[v] || '#64748B'
 const typeLabel = (v: string) => ({ COMMENT: '中文注释', CLASSIFY: '业务分类', LINEAGE: '血缘解析', REPORT: '报表生成' } as any)[v] || v || '-'
-const statusLabel = (v: string) => ({ PENDING: '待生成', RUNNING: '执行中', REVIEW: '待复核', DONE: '已完成', FAILED: '失败' } as any)[v] || v || '-'
-const statusColor = (v: string) => v === 'DONE' ? getChartTheme().green : v === 'REVIEW' ? getChartTheme().gold : v === 'FAILED' ? getChartTheme().danger : v === 'RUNNING' ? getChartTheme().primary : getChartTheme().textLight
-const statusTag = (v: string) => v === 'DONE' ? 'success' : v === 'REVIEW' ? 'warning' : v === 'FAILED' ? 'danger' : 'info'
+const statusLabel = (v: string) => ({ PENDING: '待生成', RUNNING: '执行中', REVIEW: '待复核', DONE: '已完成', FAILED: '失败', CANCELLED: '已停止' } as any)[v] || v || '-'
+const statusColor = (v: string) => v === 'DONE' ? getChartTheme().green : v === 'REVIEW' ? getChartTheme().gold : v === 'FAILED' ? getChartTheme().danger : v === 'RUNNING' ? getChartTheme().primary : v === 'CANCELLED' ? getChartTheme().textLight : getChartTheme().textLight
+const statusTag = (v: string) => v === 'DONE' ? 'success' : v === 'REVIEW' ? 'warning' : v === 'FAILED' ? 'danger' : v === 'CANCELLED' ? 'info' : 'info'
 const formatTime = (v: string) => v ? String(v).replace('T', ' ').slice(0, 16) : '-'
 
 const selectedItem = computed(() => {
@@ -350,6 +352,20 @@ async function saveDraft() {
     await selectTask(selectedTask.value)
   } catch (e: any) { ElMessage.error(e.message || '保存失败') }
   finally { draftSaving.value = false }
+}
+
+async function cancelSelectedTask() {
+  if (!selectedTask.value) return
+  try {
+    await ElMessageBox.confirm(`确认停止任务「${selectedTask.value.title}」？当前 AI 调用返回后不会再继续下一批。`, '停止任务', { type: 'warning' })
+    await catalogApi.cancelAiTask(selectedTask.value.id)
+    ElMessage.success('任务已停止')
+    await selectTask(selectedTask.value)
+    await loadTasks()
+    await loadStats()
+  } catch (e: any) {
+    if (e !== 'cancel' && e !== 'close') ElMessage.error(e.message || '停止失败')
+  }
 }
 
 async function deleteSelectedTask() {

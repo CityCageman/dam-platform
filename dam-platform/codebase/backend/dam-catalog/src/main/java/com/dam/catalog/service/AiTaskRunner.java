@@ -64,7 +64,7 @@ public class AiTaskRunner {
     @Async("aiTaskExecutor")
     public void runReport(Long taskId, String requirement, Long dataSourceId, String token, String mode, Long baseReportId) {
         AiTask task = taskMapper.selectById(taskId);
-        if (task == null) return;
+        if (task == null || "CANCELLED".equals(task.getStatus())) return;
         try {
             task.setStatus("RUNNING");
             task.setTotalCount(1);
@@ -74,11 +74,14 @@ public class AiTaskRunner {
             taskMapper.updateById(task);
 
             Map<String, Object> generated = reportService.generate(requirement, dataSourceId, token);
+            if (isCancelled(taskId)) return;
             String sql = String.valueOf(generated.getOrDefault("sql", ""));
             if (sql.isBlank()) throw new IllegalStateException("AI 未生成有效 SQL");
 
+            if (isCancelled(taskId)) return;
             boolean modify = "MODIFY".equalsIgnoreCase(mode);
             String title = reportService.generateTitle(requirement, token);
+            if (isCancelled(taskId)) return;
             if (title == null || title.isBlank()) title = "AI报表 " + taskId;
             if (title.length() > 200) title = title.substring(0, 200);
 
@@ -133,8 +136,10 @@ public class AiTaskRunner {
         int batches = 0;
         try {
             while (batches < MAX_BATCHES) {
+                if (isCancelled(taskId)) return;
                 batches++;
                 Map<String, Object> res = call.execute(cursor);
+                if (isCancelled(taskId)) return;
                 int processed = intVal(res.get("processed"));
                 Object next = res.get("nextCursor");
                 cursor = next instanceof Number n ? n.longValue() : cursor;
@@ -154,7 +159,7 @@ public class AiTaskRunner {
 
     private void updateProgress(Long taskId) {
         AiTask task = taskMapper.selectById(taskId);
-        if (task == null) return;
+        if (task == null || "CANCELLED".equals(task.getStatus())) return;
         task.setStatus("RUNNING");
         task.setTotalCount((int) itemCount(taskId));
         task.setUpdatedAt(LocalDateTime.now());
@@ -163,7 +168,7 @@ public class AiTaskRunner {
 
     private void finish(Long taskId) {
         AiTask task = taskMapper.selectById(taskId);
-        if (task == null) return;
+        if (task == null || "CANCELLED".equals(task.getStatus())) return;
         long total = itemCount(taskId);
         task.setTotalCount((int) total);
         task.setStatus(total > 0 ? "REVIEW" : "DONE");
@@ -174,13 +179,18 @@ public class AiTaskRunner {
 
     private void fail(Long taskId, Exception e) {
         AiTask task = taskMapper.selectById(taskId);
-        if (task == null) return;
+        if (task == null || "CANCELLED".equals(task.getStatus())) return;
         task.setStatus("FAILED");
         task.setTotalCount((int) itemCount(taskId));
         String msg = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
         task.setErrorMessage(msg.length() > 500 ? msg.substring(0, 500) : msg);
         task.setUpdatedAt(LocalDateTime.now());
         taskMapper.updateById(task);
+    }
+
+    private boolean isCancelled(Long taskId) {
+        AiTask task = taskMapper.selectById(taskId);
+        return task == null || "CANCELLED".equals(task.getStatus());
     }
 
     private long itemCount(Long taskId) {

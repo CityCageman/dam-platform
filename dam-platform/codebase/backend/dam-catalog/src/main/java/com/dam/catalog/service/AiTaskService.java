@@ -45,7 +45,7 @@ public class AiTaskService {
     private static final int MAX_DRAFT_LEN = 20000;
     /** 合法任务类型/状态 */
     private static final java.util.Set<String> TASK_TYPES = java.util.Set.of("COMMENT", "CLASSIFY", "LINEAGE", "REPORT");
-    private static final java.util.Set<String> STATUSES = java.util.Set.of("PENDING", "RUNNING", "REVIEW", "DONE", "FAILED");
+    private static final java.util.Set<String> STATUSES = java.util.Set.of("PENDING", "RUNNING", "REVIEW", "DONE", "FAILED", "CANCELLED");
 
     private final AiTaskMapper taskMapper;
     private final AiTaskItemMapper itemMapper;
@@ -116,7 +116,8 @@ public class AiTaskService {
      */
     @Transactional
     public int reviewBatch(Long taskId, List<Long> itemIds, boolean accept, boolean all, String reviewer) {
-        ownedTask(taskId);
+        AiTask task = ownedTask(taskId);
+        if ("CANCELLED".equals(task.getStatus())) throw new BusinessException("任务已停止，不能再审核");
         String operator = requireUser();
         LambdaQueryWrapper<AiTaskItem> wrapper = new LambdaQueryWrapper<AiTaskItem>()
                 .eq(AiTaskItem::getTaskId, taskId);
@@ -242,7 +243,8 @@ public class AiTaskService {
      */
     @Transactional
     public void review(Long taskId, Long itemId, boolean accept, String reviewer) {
-        ownedTask(taskId);
+        AiTask task = ownedTask(taskId);
+        if ("CANCELLED".equals(task.getStatus())) throw new BusinessException("任务已停止，不能再审核");
         AiTaskItem item = itemMapper.selectById(itemId);
         if (item == null || !taskId.equals(item.getTaskId())) {
             throw new IllegalArgumentException("任务明细不存在或不属于该任务");
@@ -389,7 +391,19 @@ public class AiTaskService {
     }
 
     /**
-     * 删除任务及其草稿明细    /**
+     * 删除任务及其草稿明细    /** 停止运行中的任务：协作式取消，当前 AI 调用返回后不再继续下一批 */
+    public void cancelTask(Long id) {
+        AiTask task = ownedTask(id);
+        if (!"RUNNING".equals(task.getStatus()) && !"PENDING".equals(task.getStatus())) {
+            throw new BusinessException("只有待执行/执行中的任务可以停止");
+        }
+        task.setStatus("CANCELLED");
+        task.setUpdatedAt(LocalDateTime.now());
+        task.setErrorMessage("用户已停止任务");
+        taskMapper.updateById(task);
+    }
+
+    /**
      * 删除任务及其草稿明细（仅允许删除自己创建、且不在执行中的任务）
      */
     @Transactional
@@ -441,7 +455,7 @@ public class AiTaskService {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("total", taskMapper.selectCount(new LambdaQueryWrapper<AiTask>()
                 .eq(AiTask::getCreatedBy, user)));
-        for (String status : List.of("PENDING", "RUNNING", "REVIEW", "DONE", "FAILED")) {
+        for (String status : List.of("PENDING", "RUNNING", "REVIEW", "DONE", "FAILED", "CANCELLED")) {
             result.put(status, taskMapper.selectCount(new LambdaQueryWrapper<AiTask>()
                     .eq(AiTask::getCreatedBy, user)
                     .eq(AiTask::getStatus, status)));

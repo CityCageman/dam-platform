@@ -83,6 +83,7 @@ export const catalogApi = {
   getAiTask(id: number) { return request.get(`/catalog/ai/tasks/${id}`) },
   createAiTask(data: any) { return request.post('/catalog/ai/tasks', data) },
   deleteAiTask(id: number) { return request.delete(`/catalog/ai/tasks/${id}`) },
+  cancelAiTask(id: number) { return request.post(`/catalog/ai/tasks/${id}/cancel`) },
   updateAiTaskItem(taskId: number, itemId: number, draftContent: string) { return request.put(`/catalog/ai/tasks/${taskId}/items/${itemId}`, { draftContent }) },
   updateAiTaskStatus(id: number, data: any) { return request.post(`/catalog/ai/tasks/${id}/status`, data) },
   getAiTaskItems(id: number, params: any) { return request.get(`/catalog/ai/tasks/${id}/items`, { params }) },

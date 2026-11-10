@@ -82,6 +82,12 @@ public class AiTaskController {
         return Result.success(null);
     }
 
+    @PostMapping("/{id}/cancel")
+    public Result<Void> cancel(@PathVariable Long id) {
+        taskService.cancelTask(id);
+        return Result.success(null);
+    }
+
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         taskService.deleteTask(id);
