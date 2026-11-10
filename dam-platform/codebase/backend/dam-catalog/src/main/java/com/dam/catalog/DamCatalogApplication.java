@@ -3,6 +3,7 @@ package com.dam.catalog;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * 数据目录（Catalog）服务启动类
@@ -14,6 +15,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  */
 @SpringBootApplication(scanBasePackages = {"com.dam.catalog", "com.dam.common"})
 @MapperScan("com.dam.catalog.repository")
+@EnableScheduling
 public class DamCatalogApplication {
     /**
      * 服务入口

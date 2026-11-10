@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -362,6 +363,29 @@ public class WeKnoraKnowledgeService {
             entry.setLastSyncedAt(null);
             entry.setUpdatedAt(LocalDateTime.now());
             entryMapper.updateById(entry);
+        }
+    }
+
+    /**
+     * 后台轮询解析中的文档，自动把 WeKnora parse_status 回写 DAM。
+     * 默认 30 秒一次；只处理 PENDING，避免反复请求失败/已完成文档。
+     */
+    @Scheduled(fixedDelayString = "${dam.weknora.status-poll-ms:30000}",
+            initialDelayString = "${dam.weknora.status-poll-initial-ms:60000}")
+    public void pollPendingStatuses() {
+        if (!client.isConfigured()) return;
+        List<KnowledgeEntry> pending = entryMapper.selectList(new LambdaQueryWrapper<KnowledgeEntry>()
+                .isNull(KnowledgeEntry::getDeletedAt)
+                .eq(KnowledgeEntry::getSyncStatus, "PENDING")
+                .isNotNull(KnowledgeEntry::getExternalDocId)
+                .orderByAsc(KnowledgeEntry::getId)
+                .last("LIMIT 50"));
+        for (KnowledgeEntry entry : pending) {
+            try {
+                refreshEntryStatus(entry.getId());
+            } catch (Exception e) {
+                log.warn("轮询 WeKnora 知识状态失败 [{}]: {}", entry.getId(), e.getMessage());
+            }
         }
     }
 

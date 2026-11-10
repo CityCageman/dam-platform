@@ -190,7 +190,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { knowledgeApi } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
@@ -219,6 +219,7 @@ const candidates = ref<any[]>([])
 const selectedSources = ref<any[]>([])
 const candidateLoading = ref(false)
 const syncing = ref(false)
+let statusTimer: ReturnType<typeof setTimeout> | null = null
 
 const currentCategory = computed(() => categories.value.find(c => c.id === selectedCategoryId.value))
 const categoryCount = (id: number) => Number(stats.value.byCategory?.[String(id)] || 0)
@@ -274,8 +275,19 @@ async function loadEntries() {
       limit: 300
     })
     entries.value = res.data || []
+    scheduleStatusPoll()
   } catch (e: any) { ElMessage.error(e.message || '加载知识条目失败'); entries.value = [] }
   finally { loading.value = false }
+}
+
+/** 有解析中的条目时自动刷新列表，避免页面一直停在“解析中” */
+function scheduleStatusPoll() {
+  if (statusTimer) clearTimeout(statusTimer)
+  statusTimer = null
+  if (!entries.value.some(e => e.syncStatus === 'PENDING')) return
+  statusTimer = setTimeout(async () => {
+    await Promise.all([loadEntries(), loadStats()])
+  }, 15000)
 }
 
 function selectCategory(id: number) { selectedCategoryId.value = id; loadEntries() }
@@ -424,6 +436,8 @@ async function refreshEntryStatus(row: any) {
     ElMessage.success(`Agent 状态：${syncLabel(d.syncStatus)}`)
   } catch (e: any) { ElMessage.error(e.message || '获取状态失败') }
 }
+
+onBeforeUnmount(() => { if (statusTimer) clearTimeout(statusTimer) })
 
 onMounted(loadAll)
 </script>
