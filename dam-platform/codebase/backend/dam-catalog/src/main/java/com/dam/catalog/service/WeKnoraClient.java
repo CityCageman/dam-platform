@@ -40,13 +40,34 @@ public class WeKnoraClient {
 
     public String getBaseUrl() { return baseUrl; }
 
-    public JsonNode createKnowledgeBase(String name, String description) {
+    public JsonNode createKnowledgeBase(String name, String description,
+                                        String embeddingModelId, String summaryModelId) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", name);
         body.put("type", "document");
         if (StrUtil.isNotBlank(description)) body.put("description", description);
-        JsonNode data = call(HttpMethod.POST, "/knowledge-bases", body);
-        return data;
+        if (StrUtil.isNotBlank(embeddingModelId)) body.put("embedding_model_id", embeddingModelId);
+        if (StrUtil.isNotBlank(summaryModelId)) body.put("summary_model_id", summaryModelId);
+        return call(HttpMethod.POST, "/knowledge-bases", body);
+    }
+
+    public JsonNode getKnowledgeBase(String kbId) {
+        return call(HttpMethod.GET, "/knowledge-bases/" + enc(kbId), null);
+    }
+
+    /** 给已有 KB 补默认模型；PATCH 只改传入字段 */
+    public JsonNode bindDefaultModels(String kbId, String embeddingModelId, String summaryModelId) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        if (StrUtil.isNotBlank(embeddingModelId)) body.put("embedding_model_id", embeddingModelId);
+        if (StrUtil.isNotBlank(summaryModelId)) body.put("summary_model_id", summaryModelId);
+        return call(HttpMethod.PATCH, "/knowledge-bases/" + enc(kbId), body);
+    }
+
+    public List<JsonNode> listModels() {
+        JsonNode data = call(HttpMethod.GET, "/models", null);
+        List<JsonNode> result = new ArrayList<>();
+        if (data != null && data.isArray()) data.forEach(result::add);
+        return result;
     }
 
     public List<JsonNode> listKnowledgeBases() {

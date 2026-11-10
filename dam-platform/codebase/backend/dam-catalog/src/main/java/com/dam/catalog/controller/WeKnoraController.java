@@ -20,6 +20,13 @@ public class WeKnoraController {
         return Result.success(weKnoraKnowledgeService.status());
     }
 
+    /** 初始化/修复 WeKnora 知识库的默认模型绑定 */
+    @PostMapping("/initialize")
+    public Result<Map<String, Object>> initialize() {
+        weKnoraKnowledgeService.ensureKnowledgeBase();
+        return Result.success(weKnoraKnowledgeService.status());
+    }
+
     /** 全量迁移；可重复执行，已迁移条目走更新 */
     @PostMapping("/migrate")
     public Result<Map<String, Object>> migrate() {

@@ -51,8 +51,30 @@ public class WeKnoraKnowledgeService {
     public KnowledgeSyncConfig ensureKnowledgeBase() {
         if (!client.isConfigured()) throw new BusinessException("未配置 DAM_WEKNORA_API_KEY");
         KnowledgeSyncConfig c = config();
-        if (StrUtil.isNotBlank(c.getExternalKbId())) return c;
-        JsonNode data = client.createKnowledgeBase("DAM 数据资产知识库", "由 DAM 数据资产管理平台同步的知识条目");
+        String embeddingId = defaultModelId("Embedding");
+        String summaryId = defaultModelId("KnowledgeQA");
+        if (StrUtil.isNotBlank(c.getExternalKbId())) {
+            // 修复 DAM 之前自动创建、但没有绑定模型的 KB
+            try {
+                JsonNode kb = client.getKnowledgeBase(c.getExternalKbId());
+                String currentEmbedding = text(kb, "embedding_model_id");
+                String currentSummary = text(kb, "summary_model_id");
+                if (StrUtil.isBlank(currentEmbedding) || StrUtil.isBlank(currentSummary)) {
+                    client.bindDefaultModels(c.getExternalKbId(),
+                            StrUtil.isBlank(currentEmbedding) ? embeddingId : null,
+                            StrUtil.isBlank(currentSummary) ? summaryId : null);
+                    log.info("已为 WeKnora 知识库 {} 补齐默认模型", c.getExternalKbId());
+                }
+            } catch (Exception e) {
+                log.warn("检查/修复 WeKnora 知识库模型失败: {}", e.getMessage());
+            }
+            return c;
+        }
+        if (StrUtil.isBlank(embeddingId) || StrUtil.isBlank(summaryId)) {
+            throw new BusinessException("WeKnora 未找到默认 Embedding/KnowledgeQA 模型，请先在 WeKnora 设置中配置默认模型");
+        }
+        JsonNode data = client.createKnowledgeBase("DAM 数据资产知识库",
+                "由 DAM 数据资产管理平台同步的知识条目", embeddingId, summaryId);
         String id = text(data, "id");
         if (StrUtil.isBlank(id)) throw new BusinessException("WeKnora 创建知识库未返回 id");
         c.setExternalKbId(id);
@@ -230,6 +252,19 @@ public class WeKnoraKnowledgeService {
         result.put("failed", failed);
         result.put("pending", entries.size() - synced - failed);
         return result;
+    }
+
+    /** 取 WeKnora 默认模型；优先 is_default，其次第一个匹配类型 */
+    private String defaultModelId(String type) {
+        String fallback = null;
+        for (JsonNode m : client.listModels()) {
+            if (!type.equalsIgnoreCase(text(m, "type"))) continue;
+            String id = text(m, "id");
+            if (StrUtil.isBlank(id)) continue;
+            if (fallback == null) fallback = id;
+            if (m.path("is_default").asBoolean(false)) return id;
+        }
+        return fallback;
     }
 
     private String text(JsonNode node, String field) {

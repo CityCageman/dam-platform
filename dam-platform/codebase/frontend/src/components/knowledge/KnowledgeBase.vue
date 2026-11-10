@@ -46,6 +46,9 @@
           </el-select>
           <el-button type="primary" @click="openEntry()">新增知识</el-button>
           <el-button @click="openSync">从其他模块同步</el-button>
+          <el-button v-if="external.configured" plain :loading="initializing" @click="initializeExternal">
+            初始化 Agent 知识库
+          </el-button>
           <el-button type="success" plain :loading="migrating" :disabled="!external.configured" @click="migrateExternal">
             迁移到 Agent 知识库
           </el-button>
@@ -148,6 +151,7 @@ const entries = ref<any[]>([])
 const stats = ref<any>({})
 const external = ref<any>({ configured: false })
 const migrating = ref(false)
+const initializing = ref(false)
 const selectedCategoryId = ref<number | undefined>(undefined)
 const keyword = ref('')
 const sourceFilter = ref('')
@@ -317,6 +321,17 @@ async function doSync() {
     await Promise.all([loadEntries(), loadStats()])
   } catch (e: any) { ElMessage.error(e.message || '同步失败') }
   finally { syncing.value = false }
+}
+
+async function initializeExternal() {
+  if (!external.value.configured) { ElMessage.warning('请先配置 WeKnora API Key'); return }
+  initializing.value = true
+  try {
+    const res: any = await knowledgeApi.initializeExternal()
+    external.value = res.data || external.value
+    ElMessage.success('Agent 知识库模型绑定已初始化')
+  } catch (e: any) { ElMessage.error(e.message || '初始化失败') }
+  finally { initializing.value = false }
 }
 
 async function migrateExternal() {
