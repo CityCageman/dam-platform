@@ -199,6 +199,7 @@ import { Refresh, ChatDotRound, MagicStick, Check, CircleCheck, Collection, Tren
 import * as echarts from 'echarts'
 import { getChartTheme } from '@/utils/chartTheme'
 import AgentChat from './AgentChat.vue'
+import KnowledgeBase from '@/components/knowledge/KnowledgeBase.vue'
 
 const tab = ref('tasks')
 const chatOpen = ref(false)
