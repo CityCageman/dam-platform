@@ -78,9 +78,15 @@ public class WeKnoraClient {
     }
 
     public List<JsonNode> listTags(String kbId) {
-        JsonNode data = call(HttpMethod.GET, "/knowledge-bases/" + enc(kbId) + "/tags?page=1&page_size=100", null);
         List<JsonNode> result = new ArrayList<>();
-        if (data != null && data.isArray()) data.forEach(result::add);
+        // WeKnora 标签接口分页上限 100，必须翻页找全，否则会误判“标签不存在”并重复创建
+        for (int page = 1; page <= 50; page++) {
+            JsonNode data = call(HttpMethod.GET,
+                    "/knowledge-bases/" + enc(kbId) + "/tags?page=" + page + "&page_size=100", null);
+            if (data == null || !data.isArray() || data.isEmpty()) break;
+            data.forEach(result::add);
+            if (data.size() < 100) break;
+        }
         return result;
     }
 

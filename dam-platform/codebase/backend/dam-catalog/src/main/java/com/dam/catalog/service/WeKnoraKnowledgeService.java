@@ -130,19 +130,39 @@ public class WeKnoraKnowledgeService {
             if (StrUtil.isNotBlank(savedId) && savedId.equals(id)) return id;
         }
         for (JsonNode tag : tags) {
-            if (category.getCategoryName().equals(text(tag, "name"))) {
+            if (sameTagName(category.getCategoryName(), text(tag, "name"))) {
                 String id = text(tag, "id");
                 category.setExternalTagId(id);
                 categoryMapper.updateById(category);
                 return id;
             }
         }
-        JsonNode created = client.createTag(kbId, category.getCategoryName());
-        String id = text(created, "id");
-        if (StrUtil.isBlank(id)) throw new BusinessException("WeKnora 创建标签未返回 id: " + category.getCategoryName());
-        category.setExternalTagId(id);
-        categoryMapper.updateById(category);
-        return id;
+        try {
+            JsonNode created = client.createTag(kbId, category.getCategoryName());
+            String id = text(created, "id");
+            if (StrUtil.isBlank(id)) throw new BusinessException("WeKnora 创建标签未返回 id: " + category.getCategoryName());
+            category.setExternalTagId(id);
+            categoryMapper.updateById(category);
+            return id;
+        } catch (Exception e) {
+            // 并发/列表延迟导致“名称已存在”：回查一次并复用
+            String msg = String.valueOf(e.getMessage());
+            if (msg.contains("已存在") || msg.contains("409") || msg.contains("exist") || msg.contains("conflict")) {
+                for (JsonNode tag : client.listTags(kbId)) {
+                    if (sameTagName(category.getCategoryName(), text(tag, "name"))) {
+                        String id = text(tag, "id");
+                        category.setExternalTagId(id);
+                        categoryMapper.updateById(category);
+                        return id;
+                    }
+                }
+            }
+            throw e;
+        }
+    }
+
+    private boolean sameTagName(String a, String b) {
+        return a != null && b != null && a.trim().equalsIgnoreCase(b.trim());
     }
 
     /** 迁移全部本地分类/条目；可重复执行，已有 externalDocId 走更新 */
