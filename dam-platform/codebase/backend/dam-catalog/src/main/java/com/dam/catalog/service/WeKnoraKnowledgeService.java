@@ -145,7 +145,8 @@ public class WeKnoraKnowledgeService {
             categoryMapper.updateById(category);
             return id;
         } catch (Exception e) {
-            // 并发/列表延迟导致“名称已存在”：回查一次并复用
+            // 并发/列表延迟/跨库同名导致“名称已存在”：回查一次复用；仍找不到则跳过标签，
+            // 不能因为标签冲突阻断知识文档迁移
             String msg = String.valueOf(e.getMessage());
             if (msg.contains("已存在") || msg.contains("409") || msg.contains("exist") || msg.contains("conflict")) {
                 for (JsonNode tag : client.listTags(kbId)) {
@@ -156,9 +157,16 @@ public class WeKnoraKnowledgeService {
                         return id;
                     }
                 }
+                log.warn("WeKnora 标签名称冲突但当前 KB 找不到，跳过标签: {}", category.getCategoryName());
+                return null;
             }
             throw e;
         }
+    }
+
+    private boolean isTagConflict(String msg) {
+        return msg != null && (msg.contains("标签名称已存在") || msg.contains("标签") && msg.contains("409")
+                || msg.contains("tag") && msg.contains("exist"));
     }
 
     private boolean sameTagName(String a, String b) {
@@ -215,7 +223,17 @@ public class WeKnoraKnowledgeService {
         String content = StrUtil.blankToDefault(entry.getContent(), entry.getTitle());
         JsonNode data;
         if (StrUtil.isBlank(entry.getExternalDocId())) {
-            data = client.createManual(c.getExternalKbId(), entry.getTitle(), content, tagIds);
+            try {
+                data = client.createManual(c.getExternalKbId(), entry.getTitle(), content, tagIds);
+            } catch (Exception e) {
+                String msg = String.valueOf(e.getMessage());
+                if (isTagConflict(msg)) {
+                    log.warn("WeKnora 标签冲突，改为不带标签写入知识: {}", entry.getTitle());
+                    data = client.createManual(c.getExternalKbId(), entry.getTitle(), content, List.of());
+                } else {
+                    throw e;
+                }
+            }
             entry.setExternalDocId(text(data, "id"));
         } else {
             data = client.updateManual(entry.getExternalDocId(), entry.getTitle(), content);
