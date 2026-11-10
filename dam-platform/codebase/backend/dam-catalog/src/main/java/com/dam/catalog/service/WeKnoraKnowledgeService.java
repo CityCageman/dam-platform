@@ -122,12 +122,27 @@ public class WeKnoraKnowledgeService {
     }
 
     private String ensureTag(String kbId, KnowledgeCategory category) {
-        if (StrUtil.isNotBlank(category.getExternalTagId())) return category.getExternalTagId();
-        for (JsonNode tag : client.listTags(kbId)) {
-            if (category.getCategoryName().equals(text(tag, "name"))) return text(tag, "id");
+        // 必须校验标签是否属于当前 KB；KB 被删除重建后旧 tag_id 会失效
+        List<JsonNode> tags = client.listTags(kbId);
+        String savedId = category.getExternalTagId();
+        for (JsonNode tag : tags) {
+            String id = text(tag, "id");
+            if (StrUtil.isNotBlank(savedId) && savedId.equals(id)) return id;
+        }
+        for (JsonNode tag : tags) {
+            if (category.getCategoryName().equals(text(tag, "name"))) {
+                String id = text(tag, "id");
+                category.setExternalTagId(id);
+                categoryMapper.updateById(category);
+                return id;
+            }
         }
         JsonNode created = client.createTag(kbId, category.getCategoryName());
-        return text(created, "id");
+        String id = text(created, "id");
+        if (StrUtil.isBlank(id)) throw new BusinessException("WeKnora 创建标签未返回 id: " + category.getCategoryName());
+        category.setExternalTagId(id);
+        categoryMapper.updateById(category);
+        return id;
     }
 
     /** 迁移全部本地分类/条目；可重复执行，已有 externalDocId 走更新 */
