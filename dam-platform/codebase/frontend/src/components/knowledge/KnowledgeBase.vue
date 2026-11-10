@@ -6,13 +6,17 @@
         <el-button text type="primary" size="small" @click="openCategory()">+ 新增</el-button>
       </div>
       <div class="kb-cat-list">
-        <div v-for="c in categories" :key="c.id" class="kb-cat" :class="{ active: selectedCategoryId === c.id }" @click="selectCategory(c.id)">
+        <div v-for="c in categories" :key="c.id" class="kb-cat"
+             :class="{ active: selectedCategoryId === c.id }"
+             :style="{ marginLeft: ((c.categoryLevel || 1) - 1) * 14 + 'px' }"
+             @click="selectCategory(c.id)">
           <div class="kb-cat-main">
             <b>{{ c.categoryName }} <em class="kb-cat-count">{{ categoryCount(c.id) }}</em></b>
-            <span>{{ c.description || c.categoryCode }}</span>
+            <span>{{ c.categoryPath || c.categoryCode }}</span>
           </div>
           <div class="kb-cat-actions" @click.stop>
             <el-button text size="small" @click="openCategory(c)">编辑</el-button>
+            <el-button text size="small" @click="openCategory(null, c.id)">子分类</el-button>
             <el-button text size="small" type="danger" @click="removeCategory(c)">删除</el-button>
           </div>
         </div>
@@ -101,6 +105,12 @@
       <el-form :model="categoryForm" label-width="90px">
         <el-form-item label="分类编码" required><el-input v-model="categoryForm.categoryCode" placeholder="如 DOMAIN_GLOSSARY" /></el-form-item>
         <el-form-item label="分类名称" required><el-input v-model="categoryForm.categoryName" /></el-form-item>
+        <el-form-item label="父分类">
+          <el-select v-model="categoryForm.parentId" clearable placeholder="不选则为一级分类" style="width: 100%;">
+            <el-option v-for="c in parentOptions" :key="c.id" :label="c.categoryPath || c.categoryName" :value="c.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="分类路径"><el-input :model-value="categoryForm.categoryPath" disabled placeholder="保存后自动生成" /></el-form-item>
         <el-form-item label="说明"><el-input v-model="categoryForm.description" type="textarea" :rows="2" /></el-form-item>
         <el-form-item label="排序"><el-input-number v-model="categoryForm.sortOrder" :min="0" /></el-form-item>
         <el-form-item label="状态"><el-switch v-model="categoryForm.status" :active-value="1" :inactive-value="0" active-text="启用" inactive-text="停用" /></el-form-item>
@@ -212,6 +222,9 @@ const syncing = ref(false)
 
 const currentCategory = computed(() => categories.value.find(c => c.id === selectedCategoryId.value))
 const categoryCount = (id: number) => Number(stats.value.byCategory?.[String(id)] || 0)
+const parentOptions = computed(() => categories.value.filter(c =>
+  !categoryForm.value.id || (c.id !== categoryForm.value.id && !String(c.categoryPath || '').startsWith(String(categoryForm.value.categoryPath || '') + '/'))
+))
 function handleAddCommand(command: string) {
   if (command === 'manual') openEntry()
   else if (command === 'source') openSync()
@@ -267,8 +280,10 @@ async function loadEntries() {
 
 function selectCategory(id: number) { selectedCategoryId.value = id; loadEntries() }
 
-function openCategory(c?: any) {
-  categoryForm.value = c ? { ...c } : { status: 1, sortOrder: 0 }
+function openCategory(c?: any, parentId?: number) {
+  categoryForm.value = c
+    ? { ...c }
+    : { status: 1, sortOrder: 0, parentId: parentId ?? null }
   showCategory.value = true
 }
 async function saveCategory() {

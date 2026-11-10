@@ -122,41 +122,74 @@ public class WeKnoraKnowledgeService {
     }
 
     private String ensureTag(String kbId, KnowledgeCategory category) {
-        // 先取当前 KB 的全部标签，校验旧 ID 是否仍属于当前 KB
+        String path = StrUtil.blankToDefault(category.getCategoryPath(), category.getCategoryName());
+        int sortOrder = tagSortOrder(category);
         List<JsonNode> tags = client.listTags(kbId);
         String savedId = category.getExternalTagId();
         for (JsonNode tag : tags) {
             if (StrUtil.isNotBlank(savedId) && savedId.equals(text(tag, "id"))) {
+                if (!path.equals(text(tag, "name")) || tag.path("sort_order").asInt(-1) != sortOrder) {
+                    client.updateTag(kbId, savedId, path, text(tag, "color"), sortOrder);
+                }
                 bindTag(category, tag);
                 return savedId;
             }
         }
         for (JsonNode tag : tags) {
-            if (sameTagName(category.getCategoryName(), text(tag, "name"))) {
+            if (sameTagName(path, text(tag, "name"))) {
+                String id = text(tag, "id");
+                client.updateTag(kbId, id, path, text(tag, "color"), sortOrder);
                 bindTag(category, tag);
-                return text(tag, "id");
+                return id;
             }
         }
         try {
-            JsonNode created = client.createTag(kbId, category.getCategoryName());
+            JsonNode created = client.createTag(kbId, path, null, sortOrder);
             bindTag(category, created);
             String id = text(created, "id");
-            if (StrUtil.isBlank(id)) throw new BusinessException("WeKnora 创建标签未返回 id: " + category.getCategoryName());
+            if (StrUtil.isBlank(id)) throw new BusinessException("WeKnora 创建标签未返回 id: " + path);
             return id;
         } catch (Exception e) {
             String msg = String.valueOf(e.getMessage());
             if (msg.contains("已存在") || msg.contains("409") || msg.contains("exist") || msg.contains("conflict")) {
-                // 冲突时用 keyword 精确回查，不跳过标签
-                JsonNode existing = client.findTag(kbId, category.getCategoryName());
+                JsonNode existing = client.findTag(kbId, path);
                 if (existing != null) {
                     bindTag(category, existing);
                     return text(existing, "id");
                 }
                 throw new BusinessException("WeKnora 标签名称已存在，但当前知识库无法匹配到该标签："
-                        + category.getCategoryName() + "，请检查该标签是否属于其他知识库");
+                        + path + "，请检查该标签是否属于其他知识库");
             }
             throw e;
         }
+    }
+
+    /** 按分类树 DFS 生成 WeKnora 标签排序，保证父分类、子分类顺序一致 */
+    private int tagSortOrder(KnowledgeCategory target) {
+        List<KnowledgeCategory> all = categoryMapper.selectList(
+                new LambdaQueryWrapper<KnowledgeCategory>().isNull(KnowledgeCategory::getDeletedAt));
+        Map<Long, List<KnowledgeCategory>> children = new HashMap<>();
+        for (KnowledgeCategory c : all) {
+            children.computeIfAbsent(c.getParentId() == null ? 0L : c.getParentId(), k -> new ArrayList<>()).add(c);
+        }
+        for (List<KnowledgeCategory> list : children.values()) {
+            list.sort(Comparator.comparing((KnowledgeCategory c) -> c.getSortOrder() == null ? 0 : c.getSortOrder())
+                    .thenComparing(KnowledgeCategory::getId));
+        }
+        int[] index = {0};
+        Integer found = dfsOrder(children, 0L, target.getId(), index);
+        return found == null ? 0 : found * 10;
+    }
+
+    private Integer dfsOrder(Map<Long, List<KnowledgeCategory>> children, Long parentId,
+                             Long targetId, int[] index) {
+        for (KnowledgeCategory c : children.getOrDefault(parentId, List.of())) {
+            index[0]++;
+            if (c.getId().equals(targetId)) return index[0];
+            Integer found = dfsOrder(children, c.getId(), targetId, index);
+            if (found != null) return found;
+        }
+        return null;
     }
 
     private void bindTag(KnowledgeCategory category, JsonNode tag) {

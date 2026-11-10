@@ -11,6 +11,9 @@ public class KnowledgeCategory {
     private Long id;
     private String categoryCode;
     private String categoryName;
+    private Long parentId;
+    private String categoryPath;
+    private Integer categoryLevel;
     private String description;
     private Integer sortOrder;
     private Integer status;

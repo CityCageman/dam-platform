@@ -110,10 +110,20 @@ public class WeKnoraClient {
         return null;
     }
 
-    public JsonNode createTag(String kbId, String name) {
+    public JsonNode createTag(String kbId, String name, String color, int sortOrder) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", name);
+        if (StrUtil.isNotBlank(color)) body.put("color", color);
+        body.put("sort_order", sortOrder);
         return call(HttpMethod.POST, "/knowledge-bases/" + enc(kbId) + "/tags", body);
+    }
+
+    public JsonNode updateTag(String kbId, String tagId, String name, String color, int sortOrder) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", name);
+        if (StrUtil.isNotBlank(color)) body.put("color", color);
+        body.put("sort_order", sortOrder);
+        return call(HttpMethod.PUT, "/knowledge-bases/" + enc(kbId) + "/tags/" + enc(tagId), body);
     }
 
     public JsonNode createManual(String kbId, String title, String content, List<String> tagIds) {

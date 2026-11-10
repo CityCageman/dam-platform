@@ -33,10 +33,12 @@ public class KnowledgeService {
     public List<KnowledgeCategory> categories() {
         return categoryMapper.selectList(new LambdaQueryWrapper<KnowledgeCategory>()
                 .isNull(KnowledgeCategory::getDeletedAt)
+                .orderByAsc(KnowledgeCategory::getCategoryPath)
                 .orderByAsc(KnowledgeCategory::getSortOrder)
                 .orderByAsc(KnowledgeCategory::getId));
     }
 
+    @Transactional
     public KnowledgeCategory saveCategory(Map<String, Object> body) {
         Long id = toLong(body.get("id"));
         String code = StrUtil.trimToEmpty(str(body.get("categoryCode")));
@@ -49,24 +51,81 @@ public class KnowledgeService {
                 .isNull(KnowledgeCategory::getDeletedAt)
                 .ne(id != null, KnowledgeCategory::getId, id));
         if (dup > 0) throw new BusinessException("分类编码已存在");
+
+        Long parentId = toLong(body.get("parentId"));
+        if (parentId != null && parentId == 0) parentId = null;
+        if (parentId != null && id != null && parentId.equals(id)) throw new BusinessException("分类不能作为自己的父分类");
+        KnowledgeCategory parent = parentId == null ? null : requireCategory(parentId);
+        if (parent != null && id != null && isDescendant(parentId, id)) {
+            throw new BusinessException("不能移动到自己的子分类下");
+        }
+        String oldPath = StrUtil.blankToDefault(c.getCategoryPath(), c.getCategoryName());
+        int oldLevel = c.getCategoryLevel() == null ? 1 : c.getCategoryLevel();
+        String parentPath = parent == null ? "" : StrUtil.blankToDefault(parent.getCategoryPath(), parent.getCategoryName());
+        String newPath = StrUtil.isBlank(parentPath) ? name : parentPath + "/" + name;
+        int newLevel = parent == null ? 1 : (parent.getCategoryLevel() == null ? 1 : parent.getCategoryLevel()) + 1;
+        long pathDup = categoryMapper.selectCount(new LambdaQueryWrapper<KnowledgeCategory>()
+                .eq(KnowledgeCategory::getCategoryPath, newPath)
+                .isNull(KnowledgeCategory::getDeletedAt)
+                .ne(id != null, KnowledgeCategory::getId, id));
+        if (pathDup > 0) throw new BusinessException("分类路径已存在: " + newPath);
+
         String user = currentUser();
         LocalDateTime now = LocalDateTime.now();
         if (id == null) { c.setCreatedAt(now); c.setCreatedBy(user); }
         c.setCategoryCode(cut(code, 100));
         c.setCategoryName(cut(name, 200));
         c.setDescription(cut(str(body.get("description")), 500));
+        c.setParentId(parentId);
+        c.setCategoryPath(cut(newPath, 500));
+        c.setCategoryLevel(newLevel);
         c.setSortOrder(body.get("sortOrder") instanceof Number n ? n.intValue() : 0);
         c.setStatus(body.get("status") instanceof Number n ? n.intValue() : 1);
         c.setUpdatedAt(now);
         c.setUpdatedBy(user);
         if (id == null) categoryMapper.insert(c); else categoryMapper.updateById(c);
+
+        // 分类改名/移动时同步更新所有子孙路径
+        if (id != null && StrUtil.isNotBlank(oldPath) && !oldPath.equals(newPath)) {
+            List<KnowledgeCategory> descendants = categoryMapper.selectList(
+                    new LambdaQueryWrapper<KnowledgeCategory>()
+                            .likeRight(KnowledgeCategory::getCategoryPath, oldPath + "/")
+                            .isNull(KnowledgeCategory::getDeletedAt));
+            for (KnowledgeCategory child : descendants) {
+                String childPath = child.getCategoryPath();
+                if (childPath != null && childPath.startsWith(oldPath + "/")) {
+                    child.setCategoryPath(newPath + childPath.substring(oldPath.length()));
+                    child.setCategoryLevel((child.getCategoryLevel() == null ? 1 : child.getCategoryLevel())
+                            + (newLevel - oldLevel));
+                    child.setUpdatedAt(now);
+                    child.setUpdatedBy(user);
+                    categoryMapper.updateById(child);
+                    weKnoraKnowledgeService.syncCategory(child);
+                }
+            }
+        }
         weKnoraKnowledgeService.syncCategory(c);
         return c;
+    }
+
+    private boolean isDescendant(Long childId, Long ancestorId) {
+        Long cursor = childId;
+        int guard = 0;
+        while (cursor != null && guard++ < 50) {
+            KnowledgeCategory node = categoryMapper.selectById(cursor);
+            if (node == null || node.getDeletedAt() != null) return false;
+            if (ancestorId.equals(node.getParentId())) return true;
+            cursor = node.getParentId();
+        }
+        return false;
     }
 
     @Transactional
     public void deleteCategory(Long id) {
         KnowledgeCategory c = requireCategory(id);
+        long children = categoryMapper.selectCount(new LambdaQueryWrapper<KnowledgeCategory>()
+                .eq(KnowledgeCategory::getParentId, id).isNull(KnowledgeCategory::getDeletedAt));
+        if (children > 0) throw new BusinessException("该分类下还有子分类，请先删除或移动子分类");
         long entries = entryMapper.selectCount(new LambdaQueryWrapper<KnowledgeEntry>()
                 .eq(KnowledgeEntry::getCategoryId, id).isNull(KnowledgeEntry::getDeletedAt));
         if (entries > 0) throw new BusinessException("该分类下还有 " + entries + " 条知识，请先删除或迁移");
