@@ -16,6 +16,8 @@ public class KnowledgeCategory {
     private Integer status;
     /** WeKnora 分类标签 ID */
     private String externalTagId;
+    private String externalTagName;
+    private String externalTagColor;
     private LocalDateTime createdAt;
     private String createdBy;
     private LocalDateTime updatedAt;

@@ -122,51 +122,54 @@ public class WeKnoraKnowledgeService {
     }
 
     private String ensureTag(String kbId, KnowledgeCategory category) {
-        // 必须校验标签是否属于当前 KB；KB 被删除重建后旧 tag_id 会失效
+        // 先取当前 KB 的全部标签，校验旧 ID 是否仍属于当前 KB
         List<JsonNode> tags = client.listTags(kbId);
         String savedId = category.getExternalTagId();
         for (JsonNode tag : tags) {
-            String id = text(tag, "id");
-            if (StrUtil.isNotBlank(savedId) && savedId.equals(id)) return id;
+            if (StrUtil.isNotBlank(savedId) && savedId.equals(text(tag, "id"))) {
+                bindTag(category, tag);
+                return savedId;
+            }
         }
         for (JsonNode tag : tags) {
             if (sameTagName(category.getCategoryName(), text(tag, "name"))) {
-                String id = text(tag, "id");
-                category.setExternalTagId(id);
-                categoryMapper.updateById(category);
-                return id;
+                bindTag(category, tag);
+                return text(tag, "id");
             }
         }
         try {
             JsonNode created = client.createTag(kbId, category.getCategoryName());
+            bindTag(category, created);
             String id = text(created, "id");
             if (StrUtil.isBlank(id)) throw new BusinessException("WeKnora 创建标签未返回 id: " + category.getCategoryName());
-            category.setExternalTagId(id);
-            categoryMapper.updateById(category);
             return id;
         } catch (Exception e) {
-            // 并发/列表延迟/跨库同名导致“名称已存在”：回查一次复用；仍找不到则跳过标签，
-            // 不能因为标签冲突阻断知识文档迁移
             String msg = String.valueOf(e.getMessage());
             if (msg.contains("已存在") || msg.contains("409") || msg.contains("exist") || msg.contains("conflict")) {
-                for (JsonNode tag : client.listTags(kbId)) {
-                    if (sameTagName(category.getCategoryName(), text(tag, "name"))) {
-                        String id = text(tag, "id");
-                        category.setExternalTagId(id);
-                        categoryMapper.updateById(category);
-                        return id;
-                    }
+                // 冲突时用 keyword 精确回查，不跳过标签
+                JsonNode existing = client.findTag(kbId, category.getCategoryName());
+                if (existing != null) {
+                    bindTag(category, existing);
+                    return text(existing, "id");
                 }
-                log.warn("WeKnora 标签名称冲突但当前 KB 找不到，跳过标签: {}", category.getCategoryName());
-                return null;
+                throw new BusinessException("WeKnora 标签名称已存在，但当前知识库无法匹配到该标签："
+                        + category.getCategoryName() + "，请检查该标签是否属于其他知识库");
             }
             throw e;
         }
     }
 
-    private boolean isTagConflict(String msg) {
-        return msg != null && (msg.contains("标签名称已存在") || msg.contains("标签") && msg.contains("409")
-                || msg.contains("tag") && msg.contains("exist"));
+    private void bindTag(KnowledgeCategory category, JsonNode tag) {
+        String id = text(tag, "id");
+        String name = text(tag, "name");
+        String color = text(tag, "color");
+        boolean changed = !Objects.equals(id, category.getExternalTagId())
+                || !Objects.equals(name, category.getExternalTagName())
+                || !Objects.equals(color, category.getExternalTagColor());
+        category.setExternalTagId(id);
+        category.setExternalTagName(name);
+        category.setExternalTagColor(color);
+        if (changed) categoryMapper.updateById(category);
     }
 
     private boolean sameTagName(String a, String b) {
@@ -223,17 +226,7 @@ public class WeKnoraKnowledgeService {
         String content = StrUtil.blankToDefault(entry.getContent(), entry.getTitle());
         JsonNode data;
         if (StrUtil.isBlank(entry.getExternalDocId())) {
-            try {
-                data = client.createManual(c.getExternalKbId(), entry.getTitle(), content, tagIds);
-            } catch (Exception e) {
-                String msg = String.valueOf(e.getMessage());
-                if (isTagConflict(msg)) {
-                    log.warn("WeKnora 标签冲突，改为不带标签写入知识: {}", entry.getTitle());
-                    data = client.createManual(c.getExternalKbId(), entry.getTitle(), content, List.of());
-                } else {
-                    throw e;
-                }
-            }
+            data = client.createManual(c.getExternalKbId(), entry.getTitle(), content, tagIds);
             entry.setExternalDocId(text(data, "id"));
         } else {
             data = client.updateManual(entry.getExternalDocId(), entry.getTitle(), content);
@@ -252,8 +245,9 @@ public class WeKnoraKnowledgeService {
         entry.setExternalKbId(c.getExternalKbId());
         entry.setLastSyncedAt(LocalDateTime.now());
         entry.setUpdatedAt(LocalDateTime.now());
-        // 写入成功只代表 WeKnora 已接收；解析/向量化仍异步
-        applyParseStatus(entry, client.getKnowledge(entry.getExternalDocId()));
+        // 写入成功只代表 WeKnora 已接收；同步摘要/元数据/标签并刷新解析状态
+        JsonNode remote = client.getKnowledge(entry.getExternalDocId());
+        applyRemoteKnowledge(entry, remote);
         entryMapper.updateById(entry);
     }
 
@@ -405,8 +399,23 @@ public class WeKnoraKnowledgeService {
         return result;
     }
 
+    /** 把 WeKnora 文档的摘要、custom_metadata、tags、parse_status 同步回 DAM */
+    private void applyRemoteKnowledge(KnowledgeEntry entry, JsonNode doc) {
+        if (doc == null) return;
+        entry.setExternalSummary(cut(text(doc, "description"), 20000));
+        JsonNode custom = doc.get("custom_metadata");
+        if (custom != null && !custom.isNull()) entry.setExternalMetadata(custom.toString());
+        JsonNode tags = doc.get("tags");
+        if (tags != null && !tags.isNull()) entry.setExternalTags(tags.toString());
+        entry.setExternalParseStatus(text(doc, "parse_status"));
+        entry.setExternalUpdatedAt(LocalDateTime.now());
+        applyParseStatus(entry, doc);
+    }
+
     private void applyParseStatus(KnowledgeEntry entry, JsonNode doc) {
         String parseStatus = doc == null ? null : text(doc, "parse_status");
+        entry.setExternalParseStatus(parseStatus);
+        entry.setExternalUpdatedAt(LocalDateTime.now());
         String status = StrUtil.blankToDefault(parseStatus, "pending").toLowerCase();
         if ("completed".equals(status) || "success".equals(status)) {
             entry.setSyncStatus("SYNCED");
@@ -464,6 +473,10 @@ public class WeKnoraKnowledgeService {
     private String text(JsonNode node, String field) {
         if (node == null || !node.has(field) || node.get(field).isNull()) return null;
         return node.get(field).asText();
+    }
+
+    private String cut(String value, int max) {
+        return value == null || value.length() <= max ? value : value.substring(0, max);
     }
 
     private String abbreviate(String value) {

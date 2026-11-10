@@ -62,7 +62,11 @@
       </div>
 
       <el-table :data="entries" stripe v-loading="loading">
-        <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
+        <el-table-column label="标题" min-width="180" show-overflow-tooltip>
+          <template #default="{ row }">
+            <el-link type="primary" :underline="false" @click="openEntryDetail(row)">{{ row.title }}</el-link>
+          </template>
+        </el-table-column>
         <el-table-column prop="content" label="内容" min-width="260" show-overflow-tooltip />
         <el-table-column label="来源" width="100">
           <template #default="{ row }">
@@ -145,6 +149,33 @@
         <el-button type="primary" :loading="syncing" @click="doSync">同步到知识库</el-button>
       </template>
     </el-dialog>
+
+    <el-drawer v-model="entryDetailVisible" title="知识详情" size="540px">
+      <template v-if="entryDetail">
+        <el-descriptions :column="1" border size="small">
+          <el-descriptions-item label="标题">{{ entryDetail.title }}</el-descriptions-item>
+          <el-descriptions-item label="分类">{{ categoryName(entryDetail.categoryId) }}</el-descriptions-item>
+          <el-descriptions-item label="DAM 内容">
+            <div class="detail-pre">{{ entryDetail.content || '-' }}</div>
+          </el-descriptions-item>
+          <el-descriptions-item label="WeKnora 摘要">{{ entryDetail.externalSummary || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="WeKnora 标签">
+            <pre class="detail-json">{{ prettyJson(entryDetail.externalTags) }}</pre>
+          </el-descriptions-item>
+          <el-descriptions-item label="WeKnora 元数据">
+            <pre class="detail-json">{{ prettyJson(entryDetail.externalMetadata) }}</pre>
+          </el-descriptions-item>
+          <el-descriptions-item label="解析状态">
+            <el-tag size="small" :type="syncTag(entryDetail.syncStatus)">{{ syncLabel(entryDetail.syncStatus) }}</el-tag>
+            <span v-if="entryDetail.externalParseStatus" class="detail-muted">（{{ entryDetail.externalParseStatus }}）</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="最近错误">{{ entryDetail.lastError || '-' }}</el-descriptions-item>
+        </el-descriptions>
+        <div class="detail-actions">
+          <el-button size="small" @click="refreshEntryStatus(entryDetail)">刷新 Agent 状态</el-button>
+        </div>
+      </template>
+    </el-drawer>
   </div>
 </template>
 
@@ -159,6 +190,8 @@ const entries = ref<any[]>([])
 const stats = ref<any>({})
 const external = ref<any>({ configured: false })
 const agentSyncing = ref(false)
+const entryDetailVisible = ref(false)
+const entryDetail = ref<any>(null)
 const selectedCategoryId = ref<number | undefined>(undefined)
 const keyword = ref('')
 const sourceFilter = ref('')
@@ -349,6 +382,20 @@ async function agentSync() {
   finally { agentSyncing.value = false }
 }
 
+function openEntryDetail(row: any) {
+  entryDetail.value = { ...row }
+  entryDetailVisible.value = true
+}
+
+function categoryName(id: number) {
+  return categories.value.find(c => c.id === id)?.categoryName || '-'
+}
+
+function prettyJson(value: any) {
+  if (!value) return '-'
+  try { return JSON.stringify(JSON.parse(value), null, 2) } catch { return String(value) }
+}
+
 async function refreshEntryStatus(row: any) {
   try {
     const res: any = await knowledgeApi.externalEntryStatus(row.id)
@@ -356,6 +403,9 @@ async function refreshEntryStatus(row: any) {
     row.syncStatus = d.syncStatus
     row.embeddingStatus = d.embeddingStatus
     row.lastError = d.lastError
+    if (entryDetail.value?.id === row.id) {
+      entryDetail.value = { ...row, externalParseStatus: d.externalParseStatus }
+    }
     ElMessage.success(`Agent 状态：${syncLabel(d.syncStatus)}`)
   } catch (e: any) { ElMessage.error(e.message || '获取状态失败') }
 }
@@ -391,4 +441,8 @@ onMounted(loadAll)
 .sync-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
 .sync-tip { margin-top: 8px; font-size: 11px; color: #94A3B8; }
 .sync-count { float: left; font-size: 11px; color: #64748B; line-height: 32px; }
+.detail-pre { white-space: pre-wrap; line-height: 1.7; font-size: 12px; }
+.detail-json { margin: 0; white-space: pre-wrap; word-break: break-all; font-size: 11px; color: var(--med-text-secondary); max-height: 180px; overflow: auto; }
+.detail-muted { font-size: 11px; color: var(--med-text-light); margin-left: 4px; }
+.detail-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
 </style>

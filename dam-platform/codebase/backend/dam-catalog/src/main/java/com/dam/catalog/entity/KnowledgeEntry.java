@@ -25,6 +25,16 @@ public class KnowledgeEntry {
     /** WeKnora 外部知识库/文档 ID */
     private String externalKbId;
     private String externalDocId;
+    private String externalSummary;
+
+    @TableField(typeHandler = JsonbTypeHandler.class)
+    private String externalMetadata;
+
+    @TableField(typeHandler = JsonbTypeHandler.class)
+    private String externalTags;
+
+    private String externalParseStatus;
+    private LocalDateTime externalUpdatedAt;
     /** LOCAL_ONLY / SYNCED / FAILED */
     private String syncStatus;
     private LocalDateTime lastSyncedAt;

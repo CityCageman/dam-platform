@@ -90,6 +90,22 @@ public class WeKnoraClient {
         return result;
     }
 
+    /** 按名称/关键字查找当前 KB 的已有标签 */
+    public JsonNode findTag(String kbId, String name) {
+        if (StrUtil.isBlank(name)) return null;
+        for (int page = 1; page <= 20; page++) {
+            String q = java.net.URLEncoder.encode(name, java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
+            JsonNode data = call(HttpMethod.GET,
+                    "/knowledge-bases/" + enc(kbId) + "/tags?page=" + page + "&page_size=100&keyword=" + q, null);
+            if (data == null || !data.isArray() || data.isEmpty()) break;
+            for (JsonNode tag : data) {
+                if (name.trim().equalsIgnoreCase(text(tag, "name"))) return tag;
+            }
+            if (data.size() < 100) break;
+        }
+        return null;
+    }
+
     public JsonNode createTag(String kbId, String name) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", name);
@@ -169,6 +185,11 @@ public class WeKnoraClient {
             log.warn("WeKnora {} {} 异常: {}", method, path, e.getMessage());
             throw new BusinessException("WeKnora 调用失败: " + e.getMessage());
         }
+    }
+
+    private String text(JsonNode node, String field) {
+        if (node == null || !node.has(field) || node.get(field).isNull()) return null;
+        return node.get(field).asText();
     }
 
     private String enc(String value) {
