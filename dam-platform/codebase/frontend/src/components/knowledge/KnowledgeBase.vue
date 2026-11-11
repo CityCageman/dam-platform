@@ -184,7 +184,11 @@
         <el-form-item label="标签"><el-input v-model="entryForm.tagsText" placeholder="逗号分隔" /></el-form-item>
         <el-form-item label="补充说明"><el-input v-model="entryForm.content" type="textarea" :rows="3" placeholder="案例、注意事项等补充内容" /></el-form-item>
       </el-form>
-      <template #footer><el-button @click="showEntry = false">取消</el-button><el-button type="primary" :loading="saving" @click="saveEntry">保存</el-button></template>
+      <template #footer>
+        <el-button v-if="entryForm.title" :loading="aiClassifying" @click="aiClassifyEntry">AI 归类</el-button>
+        <el-button @click="showEntry = false">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="saveEntry">保存</el-button>
+      </template>
     </el-dialog>
 
     <!-- 同步 -->
@@ -254,7 +258,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { knowledgeApi } from '@/api'
+import { knowledgeApi, agentApi } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
 
@@ -263,6 +267,7 @@ const entries = ref<any[]>([])
 const stats = ref<any>({})
 const external = ref<any>({ configured: false })
 const agentSyncing = ref(false)
+const aiClassifying = ref(false)
 const entryDetailVisible = ref(false)
 const entryDetail = ref<any>(null)
 const selectedCategoryId = ref<number | undefined>(undefined)
@@ -402,6 +407,53 @@ function parseTags(v: any): string {
   if (!v) return ''
   try { const a = JSON.parse(v); return Array.isArray(a) ? a.join(', ') : String(v) } catch { return String(v) }
 }
+async function aiClassifyEntry() {
+  if (!entryForm.value.title?.trim()) { ElMessage.warning('请先填写标题'); return }
+  if (!categories.value.length) { ElMessage.warning('请先维护知识分类'); return }
+  aiClassifying.value = true
+  try {
+    const categoryLines = categories.value.map(c =>
+      `- id=${c.id}；路径=${c.categoryPath || c.categoryName}；说明=${c.description || '无'}`
+    ).join('\n')
+    const prompt = `你是医院数据治理知识库分类专家。请根据知识条目内容，从下面已有分类中选择最合适的一个，并提取结构化字段。
+
+【已有分类】
+${categoryLines}
+
+【知识条目】
+标题：${entryForm.value.title}
+当前内容：${entryForm.value.definition || entryForm.value.content || ''}
+字段映射：${entryForm.value.fieldMappingsText || ''}
+
+请只输出 JSON，不要解释，不要 Markdown 代码块：
+{
+  "categoryId": 数字，必须是上面已有分类的 id，不确定填 null,
+  "entryType": "TERM|METRIC|STANDARD|CASE",
+  "aliases": ["别名1"],
+  "fieldMappings": ["PA_PatMas.PAPMI_No → 病人号"],
+  "relatedMetrics": ["门诊量"],
+  "usageNote": "使用说明",
+  "reason": "推荐理由"
+}
+业务术语选 TERM，指标解释选 METRIC，标准/码表选 STANDARD，案例/变更选 CASE。`
+    const res: any = await agentApi.complete([{ role: 'user', content: prompt }], { agentType: 'code' })
+    const raw = String(res?.data?.content || '').replace(/```json/gi, '').replace(/```/g, '').trim()
+    const json = JSON.parse(raw)
+    const categoryId = Number(json.categoryId)
+    const matched = categories.value.find(c => c.id === categoryId)
+    if (!matched) throw new Error('AI 没有返回有效分类，请重试或手工选择')
+    entryForm.value.categoryId = matched.id
+    entryForm.value.entryType = ['TERM', 'METRIC', 'STANDARD', 'CASE'].includes(json.entryType) ? json.entryType : entryForm.value.entryType
+    if (Array.isArray(json.aliases)) entryForm.value.aliasesText = json.aliases.join('、')
+    if (Array.isArray(json.fieldMappings)) entryForm.value.fieldMappingsText = json.fieldMappings.join('\n')
+    if (Array.isArray(json.relatedMetrics)) entryForm.value.relatedMetricsText = json.relatedMetrics.join('、')
+    if (json.usageNote && !entryForm.value.usageNote) entryForm.value.usageNote = json.usageNote
+    ElMessage.success(`AI 推荐：${matched.categoryPath || matched.categoryName}${json.reason ? '（' + json.reason + '）' : ''}`)
+  } catch (e: any) {
+    ElMessage.error(e.message || 'AI 归类失败')
+  } finally { aiClassifying.value = false }
+}
+
 async function saveEntry() {
   if (!entryForm.value.title?.trim()) { ElMessage.warning('标题不能为空'); return }
   saving.value = true
