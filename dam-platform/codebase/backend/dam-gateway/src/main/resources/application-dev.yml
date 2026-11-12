@@ -37,7 +37,12 @@ spring:
               uri: http://localhost:8088
               predicates:
                 - Path=/api/operations/**
-            - id: dam-agent
+            - id: dam-model-gateway
               uri: http://localhost:8089
               predicates:
+                - Path=/api/model-gateway/**
                 - Path=/api/agent/**
+            - id: dam-ai-workbench
+              uri: ${DAM_ROUTE_AI_WORKBENCH:http://localhost:8090}
+              predicates:
+                - Path=/api/ai-workbench/**

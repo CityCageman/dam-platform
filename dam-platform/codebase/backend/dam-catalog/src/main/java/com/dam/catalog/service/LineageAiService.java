@@ -49,9 +49,9 @@ public class LineageAiService {
     private final MetadataColumnMapper columnMapper;
     private final MetadataSchemaMapper schemaMapper;
 
-    /** dam-agent 服务地址（血缘识别调用编码智能体） */
-    @Value("${dam.agent-url:http://localhost:8089}")
-    private String agentUrl;
+    /** dam-model-gateway 服务地址（血缘识别调用编码智能体） */
+    @Value("${dam.model-gateway-url:${dam.agent-url:http://localhost:8089}}")
+    private String modelGatewayUrl;
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -65,7 +65,7 @@ public class LineageAiService {
      *
      * @param sql          SQL 语句
      * @param dataSourceId 数据源ID（可选，提供则只检索该数据源的表结构）
-     * @param token        当前登录 token（透传给 dam-agent 鉴权）
+     * @param token        当前登录 token（透传给 dam-model-gateway 鉴权）
      * @return {tableLineages, columnLineages, sql}
      */
     public Map<String, Object> recognize(String sql, Long dataSourceId, String token) {
@@ -96,7 +96,7 @@ public class LineageAiService {
      * 用于「数据源同步表后自动识别表间关联」：业务语义优先于外键字典。
      *
      * @param dataSourceId 数据源ID
-     * @param token        当前登录 token（透传给 dam-agent 鉴权）
+     * @param token        当前登录 token（透传给 dam-model-gateway 鉴权）
      * @return {tableLineages, columnLineages, dataSourceId}
      */
     public Map<String, Object> recognizeTableRelations(Long dataSourceId, String token) {
@@ -267,7 +267,7 @@ public class LineageAiService {
                 + "14. 表名、字段名必须严格使用上面给出的真实名称，不要编造";
     }
 
-    /** 调用 dam-agent 编码智能体，返回其 content */
+    /** 调用 dam-model-gateway 模型网关，返回其 content */
     private String callAgent(String prompt, String token) {
         try {
             Map<String, Object> body = new LinkedHashMap<>();
@@ -276,7 +276,7 @@ public class LineageAiService {
             String json = MAPPER.writeValueAsString(body);
 
             HttpRequest.Builder builder = HttpRequest.newBuilder()
-                    .uri(URI.create(agentUrl + "/api/agent/complete"))
+                    .uri(URI.create(modelGatewayUrl + "/api/model-gateway/complete"))
                     .timeout(Duration.ofSeconds(150))
                     .header("Content-Type", "application/json");
             if (StrUtil.isNotBlank(token)) builder.header("token", token);

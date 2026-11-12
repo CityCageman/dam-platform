@@ -25,7 +25,7 @@ public class LineageAiController {
      * AI 识别 SQL 的数据血缘（表级 + 字段级分开返回）
      *
      * @param params 请求体：sql-SQL语句、dataSourceId-数据源ID（可选，限定表结构检索范围）
-     * @param token  当前登录 token（透传给 dam-agent 鉴权）
+     * @param token  当前登录 token（透传给 dam-model-gateway 鉴权）
      */
     @PostMapping("/ai-recognize")
     public Result<Map<String, Object>> recognize(@RequestBody Map<String, Object> params,
@@ -40,7 +40,7 @@ public class LineageAiController {
      * AI 识别数据源内各表之间的关联关系（无需 SQL，依据 _DR 指针命名约定 + 业务语义）
      *
      * @param params 请求体：dataSourceId-数据源ID
-     * @param token  当前登录 token（透传给 dam-agent 鉴权）
+     * @param token  当前登录 token（透传给 dam-model-gateway 鉴权）
      */
     @PostMapping("/ai-recognize-tables")
     public Result<Map<String, Object>> recognizeTableRelations(@RequestBody Map<String, Object> params,

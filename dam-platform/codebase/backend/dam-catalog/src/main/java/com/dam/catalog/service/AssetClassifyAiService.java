@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 /**
  * 资产分类 AI 智能识别服务
  * <p>
- * 扫描表同步到资产目录后，调用 dam-agent 编码智能体，根据表名、表注释、主题域与字段结构，
+ * 扫描表同步到资产目录后，调用 dam-model-gateway 模型网关，根据表名、表注释、主题域与字段结构，
  * 从平台已有资产分类（asset_category，排除“未分类”）中选择最匹配的分类并写回
  * {@code asset_info.category_id}。
  * <p>
@@ -77,9 +77,9 @@ public class AssetClassifyAiService {
     private final AiTaskItemMapper aiTaskItemMapper;
     private final AiTaskMapper aiTaskMapper;
 
-    /** dam-agent 服务地址 */
-    @Value("${dam.agent-url:http://localhost:8089}")
-    private String agentUrl;
+    /** dam-model-gateway 服务地址 */
+    @Value("${dam.model-gateway-url:${dam.agent-url:http://localhost:8089}}")
+    private String modelGatewayUrl;
 
     /**
      * 对数据源下的表资产执行 AI 分类识别
@@ -88,7 +88,7 @@ public class AssetClassifyAiService {
      * @param pendingOnly  true 时只处理“未分类”的资产
      * @param afterId      游标：上一批最后一个资产ID
      * @param batchSize    本批处理资产数（默认 40，上限 80）
-     * @param token        当前登录 token（透传给 dam-agent 鉴权）
+     * @param token        当前登录 token（透传给 dam-model-gateway 鉴权）
      * @return 统计结果 {total, processed, classified, remaining, nextCursor, hasMore, batchSize}
      */
     @Transactional
@@ -413,7 +413,7 @@ public class AssetClassifyAiService {
         return sb.toString();
     }
 
-    /** 调用 dam-agent 编码智能体，返回其 content */
+    /** 调用 dam-model-gateway 模型网关，返回其 content */
     private String callAgent(String prompt, String token) {
         try {
             Map<String, Object> body = new LinkedHashMap<>();
@@ -422,7 +422,7 @@ public class AssetClassifyAiService {
             String json = MAPPER.writeValueAsString(body);
 
             HttpRequest.Builder builder = HttpRequest.newBuilder()
-                    .uri(URI.create(agentUrl + "/api/agent/complete"))
+                    .uri(URI.create(modelGatewayUrl + "/api/model-gateway/complete"))
                     .timeout(Duration.ofSeconds(150))
                     .header("Content-Type", "application/json");
             if (StrUtil.isNotBlank(token)) builder.header("token", token);

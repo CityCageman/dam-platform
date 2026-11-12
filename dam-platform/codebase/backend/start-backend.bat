@@ -21,7 +21,8 @@ start "dam-lifecycle" /min java %JVM% -jar "%B%\dam-lifecycle\target\dam-lifecyc
 timeout /t 2 /nobreak >nul
 start "dam-operations" /min java %JVM% -jar "%B%\dam-operations\target\dam-operations-1.0.0-exec.jar" %PROF% %NA%
 timeout /t 2 /nobreak >nul
-start "dam-agent" /min java %JVM% -jar "%B%\dam-agent\target\dam-agent-1.0.0-exec.jar" %PROF% %NA%
+start "dam-model-gateway" /min java %JVM% -jar "%B%\dam-model-gateway\target\dam-model-gateway-1.0.0-exec.jar" %PROF% %NA%
+start "dam-ai-workbench" /min java %JVM% -jar "%B%\dam-ai-workbench\target\dam-ai-workbench-1.0.0-exec.jar" %PROF% %NA%
 timeout /t 2 /nobreak >nul
 start "dam-gateway" /min java %JVM% -jar "%B%\dam-gateway\target\dam-gateway-1.0.0-exec.jar" %PROF% %NA%
 echo ALL STARTED

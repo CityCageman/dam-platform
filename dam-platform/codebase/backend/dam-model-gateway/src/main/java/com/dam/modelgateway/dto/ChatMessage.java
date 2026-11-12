@@ -1,4 +1,4 @@
-package com.dam.agent.dto;
+package com.dam.modelgateway.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;

@@ -2,7 +2,7 @@ $backend = 'D:\Project Management\dam-platform\dam-platform\codebase\backend'
 $logDir = Join-Path $backend 'logs'
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
-$services = 'dam-auth','dam-catalog','dam-lineage','dam-standard','dam-quality','dam-security','dam-lifecycle','dam-operations','dam-agent','dam-gateway'
+$services = 'dam-auth','dam-catalog','dam-lineage','dam-standard','dam-quality','dam-security','dam-lifecycle','dam-operations','dam-model-gateway','dam-ai-workbench','dam-gateway'
 foreach ($s in $services) {
   $jar = Join-Path $backend "$s\target\$s-1.0.0-exec.jar"
   if (-not (Test-Path $jar)) { Write-Output ("SKIP " + $s); continue }

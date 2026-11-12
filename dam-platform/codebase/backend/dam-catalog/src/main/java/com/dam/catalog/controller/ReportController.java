@@ -33,7 +33,7 @@ public class ReportController {
      * 根据自然语言需求生成报表 SQL（调用编码智能体，结合数据源已同步表结构）
      *
      * @param params 请求体：requirement-报表需求、dataSourceId-数据源ID
-     * @param token  当前登录 token（透传给 dam-agent 鉴权）
+     * @param token  当前登录 token（透传给 dam-model-gateway 鉴权）
      */
     @PostMapping("/generate")
     public Result<Map<String, Object>> generate(@RequestBody Map<String, Object> params,

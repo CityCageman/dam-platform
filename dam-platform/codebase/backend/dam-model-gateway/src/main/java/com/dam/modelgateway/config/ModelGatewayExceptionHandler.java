@@ -1,4 +1,4 @@
-package com.dam.agent.config;
+package com.dam.modelgateway.config;
 
 import cn.dev33.satoken.exception.NotLoginException;
 import com.dam.common.vo.Result;
@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  */
 @Slf4j
 @RestControllerAdvice
-public class AgentExceptionHandler {
+public class ModelGatewayExceptionHandler {
 
     @ExceptionHandler(NotLoginException.class)
     public Result<Void> handleNotLogin(NotLoginException e) {

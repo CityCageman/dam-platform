@@ -1,4 +1,4 @@
-package com.dam.agent.config;
+package com.dam.modelgateway.config;
 
 import lombok.Data;
 
@@ -8,7 +8,7 @@ import lombok.Data;
  * 密钥仅在服务端使用，绝不下发前端。
  */
 @Data
-public class AgentConfigProperties {
+public class ModelConfigProperties {
 
     /** 智能体服务地址（完整到 /v1/chat/completions） */
     private String baseUrl;

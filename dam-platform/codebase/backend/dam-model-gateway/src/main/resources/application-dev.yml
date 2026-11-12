@@ -1,15 +1,15 @@
 # 智能体连接配置（开发环境）
 # 平台只使用 code 模型：对话、SQL、注释、分类、报表全部共用
-# 生产环境通过 DAM_AGENT_CODE_* 环境变量注入，密钥不要提交到 git
+# 生产环境通过 DAM_MODEL_GATEWAY_CODE_* 环境变量注入，密钥不要提交到 git
 dam:
-  agent:
+  model-gateway:
     code:
       # 智能体服务地址（完整到 /v1/chat/completions）
-      base-url: https://coder.cuhkszmc.cn/v1/chat/completions
+      base-url: ${DAM_MODEL_GATEWAY_CODE_BASE_URL:${DAM_AGENT_CODE_BASE_URL:https://coder.cuhkszmc.cn/v1/chat/completions}}
       # 认证密钥（发送为 Authorization: Bearer <api-key>）
-      api-key: ${DAM_AGENT_CODE_API_KEY:}
+      api-key: ${DAM_MODEL_GATEWAY_CODE_API_KEY:${DAM_AGENT_CODE_API_KEY:}}
       # 默认模型（编码模型）
-      model: qwen3-coder-30b-a3b
+      model: ${DAM_MODEL_GATEWAY_CODE_MODEL:${DAM_AGENT_CODE_MODEL:qwen3-coder-30b-a3b}}
       # 总体超时（秒）
       timeout-seconds: 240
       # 连接超时（秒）

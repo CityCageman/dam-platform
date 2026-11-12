@@ -48,10 +48,15 @@ spring:
               uri: ${DAM_ROUTE_OPERATIONS:lb://dam-operations}
               predicates:
                 - Path=/api/operations/**
-            - id: dam-agent
-              uri: ${DAM_ROUTE_AGENT:lb://dam-agent}
+            - id: dam-model-gateway
+              uri: ${DAM_ROUTE_MODEL_GATEWAY:${DAM_ROUTE_AGENT:lb://dam-model-gateway}}
               predicates:
+                - Path=/api/model-gateway/**
                 - Path=/api/agent/**
+            - id: dam-ai-workbench
+              uri: ${DAM_ROUTE_AI_WORKBENCH:http://localhost:8090}
+              predicates:
+                - Path=/api/ai-workbench/**
           globalcors:
             cors-configurations:
               '[/**]':

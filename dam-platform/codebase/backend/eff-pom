@@ -51,7 +51,8 @@
       <module>dam-security</module>
       <module>dam-lifecycle</module>
       <module>dam-operations</module>
-      <module>dam-agent</module>
+      <module>dam-model-gateway</module>
+      <module>dam-ai-workbench</module>
     </modules>
     <scm>
       <url>https://github.com/spring-projects/spring-boot/dam-platform</url>

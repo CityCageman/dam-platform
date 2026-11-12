@@ -21,6 +21,7 @@ sa-token:
   jwt-secret-key: ${SA_TOKEN_JWT_SECRET_KEY}
 
 dam:
+  model-gateway-url: ${DAM_MODEL_GATEWAY_URL:${DAM_AGENT_URL:http://127.0.0.1:8089}}
   weknora:
     base-url: ${DAM_WEKNORA_BASE_URL:https://wiki-medical.cuhkszmc.cn/api/v1}
     api-key: ${DAM_WEKNORA_API_KEY:}

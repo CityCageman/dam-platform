@@ -36,13 +36,13 @@ import java.util.stream.Collectors;
 /**
  * 元数据 AI 智能标注服务
  * <p>
- * 同步表后，调用 dam-agent 编码智能体，为表自动生成：
+ * 同步表后，调用 dam-model-gateway 模型网关，为表自动生成：
  * <ul>
  *   <li>中文表注释（table_comment）</li>
  *   <li>业务主题域分类（subject_domain）</li>
  *   <li>数据安全分级（metadata_management.security_classification）</li>
  * </ul>
- * 由配置项 {@code dam.agent-url} 指定 dam-agent 服务地址。
+ * 由配置项 {@code dam.agent-url} 指定 dam-model-gateway 服务地址。
  *
  * @author DAM Platform
  */
@@ -78,9 +78,9 @@ public class MetadataAiService {
     /** asset_info.description 列长度上限（超长截断，避免写库报错） */
     private static final int ASSET_DESC_MAX_LEN = 500;
 
-    /** dam-agent 服务地址 */
-    @Value("${dam.agent-url:http://localhost:8089}")
-    private String agentUrl;
+    /** dam-model-gateway 服务地址 */
+    @Value("${dam.model-gateway-url:${dam.agent-url:http://localhost:8089}}")
+    private String modelGatewayUrl;
 
     /**
      * 对数据源下的表执行 AI 自动标注（表注释 / 主题域 / 安全分级）
@@ -89,7 +89,7 @@ public class MetadataAiService {
      * @param pendingOnly  仅标注缺注释/缺主题域/缺安全分级的表（补标注）
      * @param afterId      游标：上一批最后一张表的ID，null 或 0 表示从头开始
      * @param batchSize    本批处理表数（默认 40，上限 80）
-     * @param token        当前登录 token（透传给 dam-agent 鉴权）
+     * @param token        当前登录 token（透传给 dam-model-gateway 鉴权）
      * @return 统计结果 {total, processed, annotated, domainAnnotated, levelAnnotated, nextCursor, hasMore, remaining}
      */
     @Transactional
@@ -440,7 +440,7 @@ public class MetadataAiService {
                 + "表名必须严格使用上面给出的真实名称，不要编造。";
     }
 
-    /** 调用 dam-agent 编码智能体，返回其 content */
+    /** 调用 dam-model-gateway 模型网关，返回其 content */
     private String callAgent(String prompt, String token) {
         try {
             Map<String, Object> body = new LinkedHashMap<>();
@@ -449,7 +449,7 @@ public class MetadataAiService {
             String json = MAPPER.writeValueAsString(body);
 
             HttpRequest.Builder builder = HttpRequest.newBuilder()
-                    .uri(URI.create(agentUrl + "/api/agent/complete"))
+                    .uri(URI.create(modelGatewayUrl + "/api/model-gateway/complete"))
                     .timeout(Duration.ofSeconds(150))
                     .header("Content-Type", "application/json");
             if (StrUtil.isNotBlank(token)) builder.header("token", token);

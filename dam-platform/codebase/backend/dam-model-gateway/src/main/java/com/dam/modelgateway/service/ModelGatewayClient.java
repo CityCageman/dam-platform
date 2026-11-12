@@ -1,8 +1,8 @@
-package com.dam.agent.service;
+package com.dam.modelgateway.service;
 
-import com.dam.agent.config.AgentConfigProperties;
-import com.dam.agent.dto.ChatCompletionResponse;
-import com.dam.agent.dto.ChatMessage;
+import com.dam.modelgateway.config.ModelConfigProperties;
+import com.dam.modelgateway.dto.ChatCompletionResponse;
+import com.dam.modelgateway.dto.ChatMessage;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +30,7 @@ import java.util.stream.Stream;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class AgentClient {
+public class ModelGatewayClient {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -45,7 +45,7 @@ public class AgentClient {
      * @param onDelta     收到最终结论增量（content）时回调
      * @param onError     上游返回异常（非 200）时回调
      */
-    public void streamChat(AgentConfigProperties config, List<ChatMessage> messages, String model, Double temperature, Integer maxTokens,
+    public void streamChat(ModelConfigProperties config, List<ChatMessage> messages, String model, Double temperature, Integer maxTokens,
                            Consumer<String> onReasoning, Consumer<String> onDelta, Consumer<String> onError) throws Exception {
         Map<String, Object> body = buildBody(config, messages, model, temperature, maxTokens);
         body.put("stream", true);
@@ -95,7 +95,7 @@ public class AgentClient {
     /**
      * 一次性完成（业务嵌入场景）
      */
-    public ChatCompletionResponse complete(AgentConfigProperties config, List<ChatMessage> messages, String model, Double temperature, Integer maxTokens) throws Exception {
+    public ChatCompletionResponse complete(ModelConfigProperties config, List<ChatMessage> messages, String model, Double temperature, Integer maxTokens) throws Exception {
         Map<String, Object> body = buildBody(config, messages, model, temperature, maxTokens);
         body.put("stream", false);
 
@@ -126,7 +126,7 @@ public class AgentClient {
     }
 
     /** 组装请求体 */
-    private Map<String, Object> buildBody(AgentConfigProperties config, List<ChatMessage> messages, String model, Double temperature, Integer maxTokens) {
+    private Map<String, Object> buildBody(ModelConfigProperties config, List<ChatMessage> messages, String model, Double temperature, Integer maxTokens) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("model", (model != null && !model.isBlank()) ? model : config.getModel());
         List<Map<String, Object>> msgs = messages.stream().map(m -> {
@@ -142,7 +142,7 @@ public class AgentClient {
     }
 
     /** 组装 HTTP 请求（认证头：Authorization: Bearer <apiKey>） */
-    private HttpRequest buildRequest(AgentConfigProperties config, Map<String, Object> body) throws Exception {
+    private HttpRequest buildRequest(ModelConfigProperties config, Map<String, Object> body) throws Exception {
         String json = MAPPER.writeValueAsString(body);
         return HttpRequest.newBuilder()
                 .uri(URI.create(config.getBaseUrl()))

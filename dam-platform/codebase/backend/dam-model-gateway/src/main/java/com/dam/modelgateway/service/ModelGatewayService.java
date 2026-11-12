@@ -1,9 +1,9 @@
-package com.dam.agent.service;
+package com.dam.modelgateway.service;
 
-import com.dam.agent.config.AgentConfigProperties;
-import com.dam.agent.config.AgentProperties;
-import com.dam.agent.dto.ChatCompletionResponse;
-import com.dam.agent.dto.ChatRequest;
+import com.dam.modelgateway.config.ModelConfigProperties;
+import com.dam.modelgateway.config.ModelGatewayProperties;
+import com.dam.modelgateway.dto.ChatCompletionResponse;
+import com.dam.modelgateway.dto.ChatRequest;
 import com.dam.common.exception.BusinessException;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
@@ -23,10 +23,10 @@ import java.util.concurrent.Executors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AgentService {
+public class ModelGatewayService {
 
-    private final AgentClient agentClient;
-    private final AgentProperties properties;
+    private final ModelGatewayClient agentClient;
+    private final ModelGatewayProperties properties;
 
     /** 流式转发线程池（阻塞式 HTTP 调用在独立线程执行，避免占用 Servlet 线程） */
     private final ExecutorService streamExecutor = Executors.newCachedThreadPool();
@@ -41,7 +41,7 @@ public class AgentService {
      * </ul>
      */
     public SseEmitter streamChat(ChatRequest request) {
-        AgentConfigProperties config = properties.of(request.getAgentType());
+        ModelConfigProperties config = properties.of(request.getAgentType());
         long timeoutMs = config.getTimeoutSeconds() * 1000L + 10_000L;
         SseEmitter emitter = new SseEmitter(timeoutMs);
 
@@ -71,7 +71,7 @@ public class AgentService {
      * 一次性完成（业务嵌入：生成资产描述、工单摘要等）
      */
     public ChatCompletionResponse complete(ChatRequest request) {
-        AgentConfigProperties config = properties.of(request.getAgentType());
+        ModelConfigProperties config = properties.of(request.getAgentType());
         try {
             return agentClient.complete(config, request.getMessages(), request.getModel(), request.getTemperature(), request.getMaxTokens());
         } catch (Exception e) {

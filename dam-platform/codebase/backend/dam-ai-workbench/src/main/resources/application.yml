@@ -1,0 +1,28 @@
+server:
+  port: 8090
+spring:
+  application:
+    name: dam-ai-workbench
+  profiles:
+    active: dev
+  config:
+    import:
+      - optional:nacos:${spring.application.name}.yml
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+  autoconfigure:
+    # AI 编排服务不直接连接数据库，数据/执行仍由 catalog 提供
+    exclude:
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      - com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration
+
+dam:
+  ai-workbench:
+    # 模型网关地址；AI 编排服务不直接持有模型 API Key
+    model-gateway-url: ${DAM_MODEL_GATEWAY_URL:http://127.0.0.1:8089}
+    # 下游 catalog 工具服务
+    catalog-url: ${DAM_CATALOG_URL:http://127.0.0.1:8092}

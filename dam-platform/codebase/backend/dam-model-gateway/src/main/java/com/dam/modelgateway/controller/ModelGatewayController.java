@@ -1,9 +1,9 @@
-package com.dam.agent.controller;
+package com.dam.modelgateway.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
-import com.dam.agent.dto.ChatCompletionResponse;
-import com.dam.agent.dto.ChatRequest;
-import com.dam.agent.service.AgentService;
+import com.dam.modelgateway.dto.ChatCompletionResponse;
+import com.dam.modelgateway.dto.ChatRequest;
+import com.dam.modelgateway.service.ModelGatewayService;
 import com.dam.common.vo.Result;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
- * 智能体接口
+ * 模型网关接口
  * <p>
  * 提供：
  * <ul>
@@ -26,11 +26,11 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  * @author DAM Platform
  */
 @RestController
-@RequestMapping("/api/agent")
+@RequestMapping({"/api/model-gateway", "/api/agent"})
 @RequiredArgsConstructor
-public class AgentController {
+public class ModelGatewayController {
 
-    private final AgentService agentService;
+    private final ModelGatewayService gatewayService;
 
     /**
      * 流式对话（独立聊天窗口）
@@ -38,7 +38,7 @@ public class AgentController {
     @PostMapping(value = "/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter chat(@Valid @RequestBody ChatRequest request) {
         StpUtil.checkLogin();
-        return agentService.streamChat(request);
+        return gatewayService.streamChat(request);
     }
 
     /**
@@ -47,6 +47,6 @@ public class AgentController {
     @PostMapping("/complete")
     public Result<ChatCompletionResponse> complete(@Valid @RequestBody ChatRequest request) {
         StpUtil.checkLogin();
-        return Result.success(agentService.complete(request));
+        return Result.success(gatewayService.complete(request));
     }
 }

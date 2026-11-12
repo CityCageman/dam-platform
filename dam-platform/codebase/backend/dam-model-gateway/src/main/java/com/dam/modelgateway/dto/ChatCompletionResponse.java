@@ -1,4 +1,4 @@
-package com.dam.agent.dto;
+package com.dam.modelgateway.dto;
 
 import lombok.Data;
 

@@ -24,7 +24,8 @@ SERVICES=(
   "dam-security:8086"
   "dam-lifecycle:8087"
   "dam-operations:8088"
-  "dam-agent:8089"
+  "dam-model-gateway:8089"
+  "dam-ai-workbench:8090"
   "dam-gateway:8080"
 )
 
