@@ -383,6 +383,31 @@ public class AiTaskService {
      * 人工修正报表草稿：只允许修改 DRAFT 状态、REPORT 类型的明细。
      */
     @Transactional
+    /** 内部门户：获取当前用户拥有的任务，供 catalog 工具校验 */
+    public AiTask getOwnedTask(Long taskId) {
+        return ownedTask(taskId);
+    }
+
+    /** 内部工具写入草稿明细；catalog 不再直接访问 dam_ai.ai_task_item */
+    public void addDraftItem(Long taskId, String itemType, Long targetId, String targetName, String draftContent) {
+        AiTask task = ownedTask(taskId);
+        if ("CANCELLED".equals(task.getStatus())) throw new BusinessException("任务已停止");
+        AiTaskItem item = new AiTaskItem();
+        item.setTaskId(taskId);
+        item.setItemType(itemType);
+        item.setTargetId(targetId);
+        item.setTargetName(cut(targetName, 300));
+        item.setDraftContent(draftContent == null ? null
+                : (draftContent.length() > MAX_DRAFT_LEN ? draftContent.substring(0, MAX_DRAFT_LEN) : draftContent));
+        item.setStatus("DRAFT");
+        item.setCreatedAt(LocalDateTime.now());
+        itemMapper.insert(item);
+        task.setTotalCount(itemMapper.selectCount(new LambdaQueryWrapper<AiTaskItem>().eq(AiTaskItem::getTaskId, taskId)).intValue());
+        task.setStatus("RUNNING");
+        task.setUpdatedAt(LocalDateTime.now());
+        taskMapper.updateById(task);
+    }
+
     public void updateReportDraft(Long taskId, Long itemId, String draftContent) {
         AiTask task = ownedTask(taskId);
         AiTaskItem item = itemMapper.selectById(itemId);

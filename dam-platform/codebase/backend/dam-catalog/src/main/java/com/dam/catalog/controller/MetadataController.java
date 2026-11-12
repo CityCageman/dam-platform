@@ -4,9 +4,8 @@ import com.dam.catalog.entity.DamDataSource;
 import com.dam.catalog.entity.DamMetadataExt;
 import com.dam.catalog.entity.MetadataManagement;
 import com.dam.catalog.entity.MetadataSchema;
-import com.dam.catalog.service.AiTaskRunner;
-import com.dam.catalog.service.AiTaskService;
 import com.dam.catalog.service.AiRateLimiter;
+import com.dam.catalog.service.AiWorkbenchTaskClient;
 import com.dam.catalog.service.MetadataAiService;
 import com.dam.catalog.service.MetadataService;
 import com.dam.catalog.service.TechnicalMetadataService;
@@ -45,8 +44,7 @@ public class MetadataController {
 
     /** AI 接口限流 */
     private final AiRateLimiter aiRateLimiter;
-    private final AiTaskService aiTaskService;
-    private final AiTaskRunner aiTaskRunner;
+    private final AiWorkbenchTaskClient taskClient;
 
     /**
      * 获取资产的完整技术元数据（6大类别）
@@ -144,14 +142,11 @@ public class MetadataController {
         if (taskId == null) {
             throw new com.dam.common.exception.BusinessException("缺少任务ID");
         }
-        var task = aiTaskService.requireOwnedTask(taskId);
-        if (!"COMMENT".equalsIgnoreCase(task.getTaskType())) {
-            throw new com.dam.common.exception.BusinessException("任务类型不是 COMMENT");
-        }
         boolean pendingOnly = Boolean.TRUE.equals(body.get("pendingOnly"))
                 || "true".equalsIgnoreCase(String.valueOf(body.get("pendingOnly")));
         String token = cn.dev33.satoken.context.SaHolder.getRequest().getHeader("token");
-        aiTaskRunner.runAnnotate(taskId, dataSourceId, pendingOnly, token);
+        taskClient.requireTask(taskId, "COMMENT", token);
+        taskClient.runAnnotate(taskId, dataSourceId, pendingOnly, token);
         return Result.success(Map.of("taskId", taskId));
     }
 

@@ -15,9 +15,10 @@ spring:
       discovery:
         server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://10.162.3.16:11001/damplatform}
-    username: ${SPRING_DATASOURCE_USERNAME:dam}
-    password: ${SPRING_DATASOURCE_PASSWORD:}
+    # AI 工作台使用独立数据库账号，只授权 dam_ai schema
+    url: ${DAM_AI_DB_URL:${SPRING_DATASOURCE_URL:jdbc:postgresql://10.162.3.16:11001/damplatform}}
+    username: ${DAM_AI_DB_USERNAME:${SPRING_DATASOURCE_USERNAME:dam}}
+    password: ${DAM_AI_DB_PASSWORD:${SPRING_DATASOURCE_PASSWORD:}}
     driver-class-name: org.postgresql.Driver
   jdbc:
     template:

@@ -1,10 +1,9 @@
 package com.dam.catalog.controller;
 
 import com.dam.catalog.entity.*;
-import com.dam.catalog.service.AiTaskRunner;
-import com.dam.catalog.service.AiTaskService;
 import com.dam.catalog.service.AiRateLimiter;
 import com.dam.catalog.service.AssetClassifyAiService;
+import com.dam.catalog.service.AiWorkbenchTaskClient;
 import com.dam.catalog.service.CatalogService;
 import com.dam.catalog.service.ConfigService;
 import com.dam.catalog.service.CryptoService;
@@ -46,8 +45,7 @@ public class CatalogController {
     private final CryptoService cryptoService;
     private final AssetClassifyAiService assetClassifyAiService;
     private final AiRateLimiter aiRateLimiter;
-    private final AiTaskService aiTaskService;
-    private final AiTaskRunner aiTaskRunner;
+    private final AiWorkbenchTaskClient taskClient;
 
     // ==================== 分类接口 ====================
 
@@ -284,14 +282,11 @@ public class CatalogController {
         if (taskId == null) {
             throw new com.dam.common.exception.BusinessException("缺少任务ID");
         }
-        var task = aiTaskService.requireOwnedTask(taskId);
-        if (!"CLASSIFY".equalsIgnoreCase(task.getTaskType())) {
-            throw new com.dam.common.exception.BusinessException("任务类型不是 CLASSIFY");
-        }
         boolean pendingOnly = Boolean.TRUE.equals(body.get("pendingOnly"))
                 || "true".equalsIgnoreCase(String.valueOf(body.get("pendingOnly")));
         String token = cn.dev33.satoken.context.SaHolder.getRequest().getHeader("token");
-        aiTaskRunner.runClassify(taskId, dataSourceId, pendingOnly, token);
+        taskClient.requireTask(taskId, "CLASSIFY", token);
+        taskClient.runClassify(taskId, dataSourceId, pendingOnly, token);
         return Result.success(Map.of("taskId", taskId));
     }
 

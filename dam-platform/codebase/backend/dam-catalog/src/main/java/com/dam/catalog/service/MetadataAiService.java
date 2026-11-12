@@ -3,13 +3,10 @@ package com.dam.catalog.service;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import cn.hutool.json.JSONUtil;
-import com.dam.catalog.entity.AiTaskItem;
 import com.dam.catalog.entity.DamAsset;
 import com.dam.catalog.entity.MetadataColumn;
 import com.dam.catalog.entity.MetadataManagement;
 import com.dam.catalog.entity.MetadataTable;
-import com.dam.catalog.repository.AiTaskItemMapper;
-import com.dam.catalog.repository.AiTaskMapper;
 import com.dam.catalog.repository.DamAssetMapper;
 import com.dam.catalog.repository.MetadataColumnMapper;
 import com.dam.catalog.repository.MetadataManagementMapper;
@@ -71,9 +68,7 @@ public class MetadataAiService {
     private final MetadataColumnMapper columnMapper;
     private final MetadataManagementMapper managementMapper;
     private final DamAssetMapper assetMapper;
-    /** AI 任务草稿明细 */
-    private final AiTaskItemMapper aiTaskItemMapper;
-    private final AiTaskMapper aiTaskMapper;
+    private final AiWorkbenchTaskClient taskClient;
 
     /** asset_info.description 列长度上限（超长截断，避免写库报错） */
     private static final int ASSET_DESC_MAX_LEN = 500;
@@ -106,9 +101,7 @@ public class MetadataAiService {
     @Transactional
     public Map<String, Object> annotate(Long dataSourceId, boolean pendingOnly, Long afterId, Integer batchSize,
                                         String token, boolean draft, Long taskId) {
-        if (draft && (taskId == null || aiTaskMapper.selectById(taskId) == null)) {
-            throw new BusinessException("草稿模式需要有效的 taskId");
-        }
+        if (draft) taskClient.requireTask(taskId, "COMMENT", token);
         int limit = batchSize == null || batchSize <= 0 ? DEFAULT_BATCH_SIZE : Math.min(batchSize, MAX_BATCH_SIZE);
         Long cursor = afterId == null || afterId <= 0 ? null : afterId;
 
@@ -153,15 +146,8 @@ public class MetadataAiService {
                     if (StrUtil.isNotBlank(comment)) data.put("tableComment", comment);
                     if (StrUtil.isNotBlank(domain)) data.put("subjectDomain", domain);
                     if (StrUtil.isNotBlank(level)) data.put("securityLevel", level);
-                    AiTaskItem item = new AiTaskItem();
-                    item.setTaskId(taskId);
-                    item.setItemType("COMMENT");
-                    item.setTargetId(t.getId());
-                    item.setTargetName(t.getTableName());
-                    item.setDraftContent(JSONUtil.toJsonStr(data));
-                    item.setStatus("DRAFT");
-                    item.setCreatedAt(LocalDateTime.now());
-                    aiTaskItemMapper.insert(item);
+                    taskClient.addItem(taskId, "COMMENT", t.getId(), t.getTableName(),
+                            JSONUtil.toJsonStr(data), token);
                     drafted++;
                 }
                 continue;
@@ -249,9 +235,7 @@ public class MetadataAiService {
      */
     @Transactional
     public Map<String, Object> annotateTable(Long tableId, Long taskId, String token) {
-        if (taskId == null || aiTaskMapper.selectById(taskId) == null) {
-            throw new BusinessException("单表 AI 注释需要有效的 taskId");
-        }
+        taskClient.requireTask(taskId, "COMMENT", token);
         MetadataTable table = tableMapper.selectById(tableId);
         if (table == null) {
             throw new BusinessException("表不存在: " + tableId);
@@ -269,15 +253,8 @@ public class MetadataAiService {
             if (StrUtil.isNotBlank(str(it.get("subjectDomain")))) data.put("subjectDomain", str(it.get("subjectDomain")));
             if (StrUtil.isNotBlank(str(it.get("securityLevel")))) data.put("securityLevel", str(it.get("securityLevel")));
             if (data.isEmpty()) break;
-            AiTaskItem item = new AiTaskItem();
-            item.setTaskId(taskId);
-            item.setItemType("COMMENT");
-            item.setTargetId(table.getId());
-            item.setTargetName(table.getTableName());
-            item.setDraftContent(JSONUtil.toJsonStr(data));
-            item.setStatus("DRAFT");
-            item.setCreatedAt(LocalDateTime.now());
-            aiTaskItemMapper.insert(item);
+            taskClient.addItem(taskId, "COMMENT", table.getId(), table.getTableName(),
+                    JSONUtil.toJsonStr(data), token);
             drafted++;
             break;
         }

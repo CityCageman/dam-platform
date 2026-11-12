@@ -3,14 +3,11 @@ package com.dam.catalog.service;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import cn.hutool.json.JSONUtil;
-import com.dam.catalog.entity.AiTaskItem;
 import com.dam.catalog.entity.AssetCategoryRel;
 import com.dam.catalog.entity.DamAsset;
 import com.dam.catalog.entity.DamCategory;
 import com.dam.catalog.entity.MetadataColumn;
 import com.dam.catalog.entity.MetadataTable;
-import com.dam.catalog.repository.AiTaskItemMapper;
-import com.dam.catalog.repository.AiTaskMapper;
 import com.dam.catalog.repository.AssetCategoryRelMapper;
 import com.dam.catalog.repository.DamAssetMapper;
 import com.dam.catalog.repository.DamCategoryMapper;
@@ -73,9 +70,7 @@ public class AssetClassifyAiService {
     private final DamCategoryMapper categoryMapper;
     private final MetadataTableMapper tableMapper;
     private final MetadataColumnMapper columnMapper;
-    /** AI 任务草稿明细 */
-    private final AiTaskItemMapper aiTaskItemMapper;
-    private final AiTaskMapper aiTaskMapper;
+    private final AiWorkbenchTaskClient taskClient;
 
     /** dam-model-gateway 服务地址 */
     @Value("${dam.model-gateway-url:${dam.agent-url:http://localhost:8089}}")
@@ -106,9 +101,7 @@ public class AssetClassifyAiService {
     @Transactional
     public Map<String, Object> classify(Long dataSourceId, boolean pendingOnly, Long afterId,
                                         Integer batchSize, String token, boolean draft, Long taskId) {
-        if (draft && (taskId == null || aiTaskMapper.selectById(taskId) == null)) {
-            throw new BusinessException("草稿模式需要有效的 taskId");
-        }
+        if (draft) taskClient.requireTask(taskId, "CLASSIFY", token);
         int limit = batchSize == null || batchSize <= 0 ? DEFAULT_BATCH_SIZE : Math.min(batchSize, MAX_BATCH_SIZE);
         Long cursor = afterId == null || afterId <= 0 ? null : afterId;
 
@@ -166,15 +159,8 @@ public class AssetClassifyAiService {
                     data.put("categoryId", cat.getId());
                     data.put("categoryCode", cat.getCategoryCode());
                     data.put("categoryName", cat.getCategoryName());
-                    AiTaskItem item = new AiTaskItem();
-                    item.setTaskId(taskId);
-                    item.setItemType("CLASSIFY");
-                    item.setTargetId(a.getId());
-                    item.setTargetName(a.getAssetName());
-                    item.setDraftContent(JSONUtil.toJsonStr(data));
-                    item.setStatus("DRAFT");
-                    item.setCreatedAt(java.time.LocalDateTime.now());
-                    aiTaskItemMapper.insert(item);
+                    taskClient.addItem(taskId, "CLASSIFY", a.getId(), a.getAssetName(),
+                            JSONUtil.toJsonStr(data), token);
                     drafted++;
                 }
                 continue;
