@@ -28,7 +28,7 @@ export const reportApi = {
     history?: string
     displayRequirement?: string
   }) {
-    return request.post('/catalog/report/generate/async', data, { timeout: 30000 })
+    return request.post('/ai-workbench/reports/generate/async', data, { timeout: 30000 })
   },
   /** 执行报表 SQL（仅 SELECT，后端安全校验后只读执行） */
   execute(data: { dataSourceId: number; sql: string; limit?: number; params?: Record<string, any> }) {
@@ -78,18 +78,18 @@ export const catalogApi = {
   // 资产
   searchAssets(params: any) { return request.get('/catalog/assets/search', { params }) },
   // ===== AI 任务中心 =====
-  listAiTasks(params: any) { return request.get('/catalog/ai/tasks', { params }) },
-  getAiTaskStats() { return request.get('/catalog/ai/tasks/stats') },
-  getAiTask(id: number) { return request.get(`/catalog/ai/tasks/${id}`) },
-  createAiTask(data: any) { return request.post('/catalog/ai/tasks', data) },
-  deleteAiTask(id: number) { return request.delete(`/catalog/ai/tasks/${id}`) },
-  cancelAiTask(id: number) { return request.post(`/catalog/ai/tasks/${id}/cancel`) },
-  updateAiTaskItem(taskId: number, itemId: number, draftContent: string) { return request.put(`/catalog/ai/tasks/${taskId}/items/${itemId}`, { draftContent }) },
-  updateAiTaskStatus(id: number, data: any) { return request.post(`/catalog/ai/tasks/${id}/status`, data) },
-  getAiTaskItems(id: number, params: any) { return request.get(`/catalog/ai/tasks/${id}/items`, { params }) },
-  reviewAiTaskItems(id: number, data: any) { return request.post(`/catalog/ai/tasks/${id}/items/batch-review`, data) },
+  listAiTasks(params: any) { return request.get('/ai-workbench/ai/tasks', { params }) },
+  getAiTaskStats() { return request.get('/ai-workbench/ai/tasks/stats') },
+  getAiTask(id: number) { return request.get(`/ai-workbench/ai/tasks/${id}`) },
+  createAiTask(data: any) { return request.post('/ai-workbench/ai/tasks', data) },
+  deleteAiTask(id: number) { return request.delete(`/ai-workbench/ai/tasks/${id}`) },
+  cancelAiTask(id: number) { return request.post(`/ai-workbench/ai/tasks/${id}/cancel`) },
+  updateAiTaskItem(taskId: number, itemId: number, draftContent: string) { return request.put(`/ai-workbench/ai/tasks/${taskId}/items/${itemId}`, { draftContent }) },
+  updateAiTaskStatus(id: number, data: any) { return request.post(`/ai-workbench/ai/tasks/${id}/status`, data) },
+  getAiTaskItems(id: number, params: any) { return request.get(`/ai-workbench/ai/tasks/${id}/items`, { params }) },
+  reviewAiTaskItems(id: number, data: any) { return request.post(`/ai-workbench/ai/tasks/${id}/items/batch-review`, data) },
   reviewAiTaskItem(taskId: number, itemId: number, accept: boolean, reviewer?: string) {
-    return request.post(`/catalog/ai/tasks/${taskId}/items/${itemId}/review`, null, { params: { accept, reviewer } })
+    return request.post(`/ai-workbench/ai/tasks/${taskId}/items/${itemId}/review`, null, { params: { accept, reviewer } })
   },
   getAssetDetail(id: number) { return request.get(`/catalog/assets/${id}`) },
   createAsset(data: any) { return request.post('/catalog/assets', data) },

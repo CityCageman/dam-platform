@@ -1,10 +1,9 @@
 package com.dam.catalog.service;
 
-import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dam.catalog.entity.AiTask;
-import com.dam.catalog.entity.AiTaskItem;
 import com.dam.catalog.repository.AiTaskItemMapper;
+import com.dam.catalog.entity.AiTaskItem;
 import com.dam.catalog.repository.AiTaskMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +31,6 @@ public class AiTaskRunner {
 
     private final MetadataAiService metadataAiService;
     private final AssetClassifyAiService assetClassifyAiService;
-    private final ReportService reportService;
     private final AiTaskMapper taskMapper;
     private final AiTaskItemMapper itemMapper;
 
@@ -55,81 +53,6 @@ public class AiTaskRunner {
     public void runClassify(Long taskId, Long dataSourceId, boolean pendingOnly, String token) {
         run(taskId, "CLASSIFY", cursor -> assetClassifyAiService.classify(
                 dataSourceId, pendingOnly, cursor, BATCH_SIZE, token, true, taskId));
-    }
-
-    /**
-     * 异步生成报表：AI 生成 SQL 后自动登记到报表体系，并写入任务明细。
-     * 任务进度用 totalCount=1 / acceptedCount=0→1 表示。
-     */
-    @Async("aiTaskExecutor")
-    public void runReport(Long taskId, String requirement, Long dataSourceId, String token, String mode, Long baseReportId) {
-        AiTask task = taskMapper.selectById(taskId);
-        if (task == null || "CANCELLED".equals(task.getStatus())) return;
-        try {
-            task.setStatus("RUNNING");
-            task.setTotalCount(1);
-            task.setAcceptedCount(0);
-            task.setRejectedCount(0);
-            task.setUpdatedAt(LocalDateTime.now());
-            taskMapper.updateById(task);
-
-            Map<String, Object> generated = reportService.generate(requirement, dataSourceId, token);
-            if (isCancelled(taskId)) return;
-            String sql = String.valueOf(generated.getOrDefault("sql", ""));
-            if (sql.isBlank()) throw new IllegalStateException("AI 未生成有效 SQL");
-
-            if (isCancelled(taskId)) return;
-            boolean modify = "MODIFY".equalsIgnoreCase(mode);
-            String title = reportService.generateTitle(requirement, token);
-            if (isCancelled(taskId)) return;
-            if (title == null || title.isBlank()) title = "AI报表 " + taskId;
-            if (title.length() > 200) title = title.substring(0, 200);
-
-            // 只生成草稿，确认后才由 AiTaskService.applyDraft 写入 report_catalog
-            Map<String, Object> draft = new java.util.LinkedHashMap<>();
-            draft.put("reportName", title);
-            draft.put("requirement", requirement);
-            draft.put("dataSourceId", dataSourceId);
-            draft.put("dataSourceName", generated.get("dataSourceName"));
-            draft.put("sql", sql);
-            draft.put("tablesUsed", generated.get("tablesUsed"));
-            draft.put("knowledgeUsed", generated.get("knowledgeUsed"));
-            draft.put("params", generated.get("params"));
-            draft.put("drillSql", generated.get("drillSql"));
-            draft.put("drillParams", generated.get("drillParams"));
-            draft.put("drillError", generated.get("drillError"));
-            draft.put("mode", modify ? "MODIFY" : "NEW");
-            draft.put("baseReportId", baseReportId);
-            String draftJson = JSONUtil.toJsonStr(draft);
-            if (draftJson.length() > 20000) draftJson = draftJson.substring(0, 20000);
-
-            AiTaskItem item = new AiTaskItem();
-            item.setTaskId(taskId);
-            item.setItemType("REPORT");
-            item.setTargetId(baseReportId);
-            item.setTargetName(title);
-            item.setDraftContent(draftJson);
-            item.setStatus("DRAFT");
-            item.setCreatedAt(LocalDateTime.now());
-            itemMapper.insert(item);
-
-            task.setTitle(("MODIFY".equals(mode) ? "AI 报表修改 · " : "AI 报表 · ") + title);
-            task.setStatus("REVIEW");
-            task.setTotalCount(1);
-            task.setAcceptedCount(0);
-            task.setRejectedCount(0);
-            task.setErrorMessage(null);
-            task.setUpdatedAt(LocalDateTime.now());
-            taskMapper.updateById(task);
-        } catch (Exception e) {
-            log.warn("AI 报表任务执行失败 [taskId={}]: {}", taskId, e.getMessage());
-            task.setStatus("FAILED");
-            task.setTotalCount(1);
-            String msg = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
-            task.setErrorMessage(msg.length() > 500 ? msg.substring(0, 500) : msg);
-            task.setUpdatedAt(LocalDateTime.now());
-            taskMapper.updateById(task);
-        }
     }
 
     /**

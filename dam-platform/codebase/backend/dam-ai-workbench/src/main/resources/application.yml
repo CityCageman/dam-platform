@@ -14,11 +14,26 @@ spring:
         server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
       discovery:
         server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
-  autoconfigure:
-    # AI 编排服务不直接连接数据库，数据/执行仍由 catalog 提供
-    exclude:
-      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
-      - com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://10.162.3.16:11001/damplatform}
+    username: ${SPRING_DATASOURCE_USERNAME:dam}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  jdbc:
+    template:
+      fetch-size: 100
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+
+sa-token:
+  token-name: token
+  timeout: 86400
+  is-concurrent: true
+  is-share: false
+  token-style: jwt
+  jwt-secret-key: ${SA_TOKEN_JWT_SECRET_KEY}
 
 dam:
   ai-workbench:
