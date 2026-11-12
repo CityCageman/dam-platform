@@ -105,6 +105,31 @@
           <el-form-item label="指标 SQL">
             <el-input v-model="form.sqlExpression" type="textarea" :rows="6" placeholder="可由 AI 根据定义和公式生成，保存前可人工修改" />
           </el-form-item>
+          <el-collapse class="metric-rule-collapse">
+            <el-collapse-item title="取数规则（AI 报表按此生成，知识库只读引用）" name="rule">
+              <el-alert type="info" :closable="false" show-icon
+                        title="规则归属于指标库；知识库的指标解释只展示本规则，不再单独维护 SQL/取数规则。" />
+              <el-row :gutter="12">
+                <el-col :span="12">
+                  <el-form-item label="规则状态">
+                    <el-select v-model="form.reportSpec.ruleStatus" style="width: 100%;">
+                      <el-option label="草稿" value="DRAFT" />
+                      <el-option label="待审核" value="REVIEW" />
+                      <el-option label="已发布" value="PUBLISHED" />
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12"><el-form-item label="统计粒度"><el-input v-model="form.reportSpec.statisticalGrain" placeholder="如：就诊号 + 日期 + 科室" /></el-form-item></el-col>
+              </el-row>
+              <el-row :gutter="12">
+                <el-col :span="12"><el-form-item label="去重键"><el-input v-model="form.reportSpec.dedupKeys" placeholder="如：PAADM_RowId" /></el-form-item></el-col>
+                <el-col :span="12"><el-form-item label="必用表"><el-input v-model="form.reportSpec.requiredTables" placeholder="如：PA_Adm、DHC_PatBillOrder" /></el-form-item></el-col>
+              </el-row>
+              <el-form-item label="业务条件"><el-input v-model="form.reportSpec.conditions" type="textarea" :autosize="{ minRows: 2, maxRows: 8 }" placeholder="如：有费用产生；排除测试患者" /></el-form-item>
+              <el-form-item label="主报表 SQL"><el-input v-model="form.reportSpec.mainSql" type="textarea" :autosize="{ minRows: 2, maxRows: 14 }" placeholder="可选：主报表模板" /></el-form-item>
+              <el-form-item label="下钻 SQL"><el-input v-model="form.reportSpec.drillSql" type="textarea" :autosize="{ minRows: 2, maxRows: 14 }" placeholder="可选：下钻明细模板" /></el-form-item>
+            </el-collapse-item>
+          </el-collapse>
         </template>
         <el-row :gutter="12">
           <el-col :span="12"><el-form-item label="负责人"><el-input v-model="form.owner" /></el-form-item></el-col>
@@ -170,6 +195,12 @@ const manualCount = computed(() => metrics.value.filter(m => m.metricType === 'M
 const computedCount = computed(() => metrics.value.filter(m => m.metricType === 'COMPUTED').length)
 const enabledCount = computed(() => metrics.value.filter(m => m.status === 1).length)
 
+function parseObject(v: any): any {
+  if (!v) return { ruleStatus: 'DRAFT' }
+  if (typeof v === 'object') return v
+  try { return JSON.parse(v) } catch { return { ruleStatus: 'DRAFT' } }
+}
+
 function parseList(v: any): string {
   if (!v) return ''
   try { const a = JSON.parse(v); return Array.isArray(a) ? a.join(', ') : String(v) }
@@ -203,14 +234,14 @@ function search() { query.value.page = 1; loadMetrics() }
 function resetSearch() { query.value.keyword = ''; query.value.metricType = ''; query.value.status = undefined; search() }
 
 function openCreate() {
-  form.value = { metricType: 'COMPUTED', status: 1, sourceTablesText: '', dimensionsText: '' }
+  form.value = { metricType: 'COMPUTED', status: 1, sourceTablesText: '', dimensionsText: '', reportSpec: { ruleStatus: 'DRAFT' } }
   showForm.value = true
 }
 async function openEdit(row: any) {
   try {
     const res: any = await metricApi.get(row.id)
     const m = res.data
-    form.value = { ...m, sourceTablesText: parseList(m.sourceTables), dimensionsText: parseList(m.dimensions) }
+    form.value = { ...m, sourceTablesText: parseList(m.sourceTables), dimensionsText: parseList(m.dimensions), reportSpec: parseObject(m.reportSpec) }
     showForm.value = true
   } catch (e: any) { ElMessage.error(e.message || '加载指标失败') }
 }
@@ -292,4 +323,6 @@ onMounted(loadAll)
 <style scoped>
 .search-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
 .value-form { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.metric-rule-collapse { margin: 4px 0 16px 100px; }
+.metric-rule-collapse .el-alert { margin-bottom: 12px; }
 </style>
