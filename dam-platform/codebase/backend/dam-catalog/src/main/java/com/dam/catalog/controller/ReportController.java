@@ -61,16 +61,22 @@ public class ReportController {
         Long reportId = params.get("reportId") != null ? ((Number) params.get("reportId")).longValue() : null;
         String baseSql = params.get("baseSql") == null ? null : String.valueOf(params.get("baseSql"));
         String history = params.get("history") == null ? null : String.valueOf(params.get("history"));
-        String memory = aiTaskService.recentReportMemory();
-        if (StrUtil.isNotBlank(memory) || StrUtil.isNotBlank(history)) {
-            StringBuilder ctx = new StringBuilder("历史报表上下文（复用已确认的口径、字段和关联；不要重复问用户）：\n");
-            if (StrUtil.isNotBlank(memory)) ctx.append(memory).append("\n");
-            if (StrUtil.isNotBlank(history)) {
-                ctx.append("本次对话：\n")
-                        .append(history.length() > 4000 ? history.substring(history.length() - 4000) : history)
-                        .append("\n");
+        // NEW 报表默认不携带历史 SQL，避免上一张报表的表名/口径污染当前需求。
+        // 只有用户明确说“沿用/上次/之前/同一个/继续”，或 MODIFY 模式，才带历史上下文。
+        boolean reuseContext = "MODIFY".equals(mode)
+                || requirement.matches("(?s).*(沿用|上次|之前|同一个|继续).*");
+        if (reuseContext) {
+            String memory = aiTaskService.recentReportMemory();
+            if (StrUtil.isNotBlank(memory) || StrUtil.isNotBlank(history)) {
+                StringBuilder ctx = new StringBuilder("历史报表上下文（复用已确认的口径、字段和关联；不要重复问用户）：\n");
+                if (StrUtil.isNotBlank(memory)) ctx.append(memory).append("\n");
+                if (StrUtil.isNotBlank(history)) {
+                    ctx.append("本次对话：\n")
+                            .append(history.length() > 4000 ? history.substring(history.length() - 4000) : history)
+                            .append("\n");
+                }
+                requirement = ctx + "当前需求：" + requirement;
             }
-            requirement = ctx + "当前需求：" + requirement;
         }
         if ("MODIFY".equals(mode)) {
             if (reportId == null) throw new BusinessException("修改报表缺少报表ID");

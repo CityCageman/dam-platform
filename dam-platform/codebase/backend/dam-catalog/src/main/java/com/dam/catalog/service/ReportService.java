@@ -261,7 +261,8 @@ public class ReportService {
                     + "\n\n请生成下钻明细 SELECT。要求：\n"
                     + "1. 明细字段必须覆盖用户要求的下钻字段；\n"
                     + "2. 用 :date、:dept 绑定主报表的日期、科室筛选；\n"
-                    + "3. 只输出一条 SELECT，不要解释。";
+                    + "3. ORDER BY 只能使用 SELECT 中已经定义的别名或真实字段，不能引用不存在的别名；\n"
+                    + "4. 只输出一条 SELECT，不要解释。";
             TableContext ctx = buildTableContext(dataSourceId, drillRequirement, token);
             if (ctx.tables.isEmpty()) {
                 drillError.append("下钻 SQL 未生成：没有检索到可用表结构");
