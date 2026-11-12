@@ -82,6 +82,15 @@ public class ReportCatalogController {
     /**
      * 在线执行报表（SQL / 存储过程），SQL 中用 :paramName 绑定参数
      */
+    @PostMapping("/{id}/drill")
+    public Result<Map<String, Object>> drill(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
+        Object raw = body == null ? null : body.get("params");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> params = raw instanceof Map ? (Map<String, Object>) raw : Map.of();
+        Long dataSourceId = body != null && body.get("dataSourceId") instanceof Number n ? n.longValue() : null;
+        return Result.success(reportCatalogService.runDrill(id, params, dataSourceId));
+    }
+
     @PostMapping("/{id}/run")
     @SuppressWarnings("unchecked")
     public Result<Map<String, Object>> run(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {

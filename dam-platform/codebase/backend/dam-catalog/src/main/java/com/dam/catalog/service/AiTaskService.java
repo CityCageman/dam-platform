@@ -351,6 +351,7 @@ public class AiTaskService {
             body.put("dataSourceId", json.getLong("dataSourceId"));
             body.put("sqlContent", sql);
             body.put("paramDefs", json.get("params"));
+            body.put("drillSql", json.getStr("drillSql"));
             body.put("description", ("MODIFY".equalsIgnoreCase(json.getStr("mode")) ? "AI 修改" : "AI 生成")
                     + "｜任务 #" + item.getTaskId() + "｜" + json.getStr("requirement"));
             body.put("owner", operator);

@@ -104,6 +104,9 @@ public class ReportController {
         String sql = (String) params.get("sql");
         Integer limit = params.get("limit") != null
                 ? ((Number) params.get("limit")).intValue() : null;
-        return Result.success(reportService.execute(dataSourceId, sql, limit));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> queryParams = params.get("params") instanceof Map
+                ? (Map<String, Object>) params.get("params") : Map.of();
+        return Result.success(reportService.executeWithParams(dataSourceId, sql, queryParams, limit, false));
     }
 }

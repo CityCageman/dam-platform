@@ -138,12 +138,26 @@
                 <el-table-column
                   v-for="c in m.report.columns"
                   :key="c"
-                  :prop="c"
                   :label="c"
                   min-width="120"
                   show-overflow-tooltip
-                />
+                >
+                  <template #default="{ row }">
+                    <el-link v-if="isDrillable(m.report, c, row)" type="primary" :underline="false" @click="drillReport(m, row)">
+                      {{ row[c] }}
+                    </el-link>
+                    <span v-else>{{ row[c] }}</span>
+                  </template>
+                </el-table-column>
               </el-table>
+              <div v-if="m.report.drillError" class="report-error">{{ m.report.drillError }}</div>
+              <div v-if="m.report.drillLoading" class="drill-loading">正在加载下钻明细...</div>
+              <template v-if="m.report.drillResultColumns?.length">
+                <div class="report-meta" style="margin-top: 10px;">下钻明细 · {{ m.report.drillResultRowCount }} 行</div>
+                <el-table :data="m.report.drillResultRows || []" size="small" border max-height="300" style="width: 100%;">
+                  <el-table-column v-for="c in m.report.drillResultColumns" :key="c" :prop="c" :label="c" min-width="120" show-overflow-tooltip />
+                </el-table>
+              </template>
             </template>
           </div>
         </div>
@@ -183,6 +197,14 @@ interface ReportState {
   status: 'generating' | 'review' | 'ready' | 'executing' | 'done' | 'error'
   requirement?: string
   sql?: string
+  drillSql?: string
+  drillColumns?: string[]
+  drillRows?: Record<string, any>[]
+  drillLoading?: boolean
+  drillError?: string
+  drillResultColumns?: string[]
+  drillResultRows?: Record<string, any>[]
+  drillResultRowCount?: number
   dataSourceId?: number
   dataSourceName?: string
   tablesUsed?: { tableName: string; tableComment?: string }[]
@@ -368,6 +390,7 @@ async function runReportTask(report: ReportState, requirement: string,
       if (!item) throw new Error('报表任务已完成，但未找到生成结果')
       const d = JSON.parse(item.draftContent || '{}')
       report.sql = d.sql || ''
+      report.drillSql = d.drillSql || ''
       report.dataSourceName = d.dataSourceName
       report.tablesUsed = d.tablesUsed || []
       report.reportName = d.reportName
@@ -415,6 +438,52 @@ async function rejectReport(m: Msg) {
 
 async function goReportCenter() {
   router.push('/reports')
+}
+
+function isDrillable(report: ReportState, col: string, row: any) {
+  if (!report.drillSql) return false
+  const value = row?.[col]
+  if (value == null || value === '') return false
+  return /人数|数量|人次|例数|工作量|count|total|num/i.test(String(col)) && !isNaN(Number(value))
+}
+
+function drillParamValue(row: any, param: string) {
+  if (row[param] != null) return row[param]
+  const keys = Object.keys(row || {})
+  const lower = param.toLowerCase()
+  const exact = keys.find(k => k.toLowerCase() === lower)
+  if (exact) return row[exact]
+  if (/date/.test(lower)) return row[keys.find(k => /日期|时间|date/i.test(k)) || '']
+  if (/dept/.test(lower)) return row[keys.find(k => /科室|部门|dept/i.test(k)) || '']
+  if (/count|num|total/.test(lower)) return row[keys.find(k => /人数|数量|人次|例数|count|total/i.test(k)) || '']
+  return undefined
+}
+
+async function drillReport(m: Msg, row: any) {
+  const r = m.report
+  if (!r?.drillSql || r.drillLoading) return
+  const names = [...String(r.drillSql).matchAll(/(?<!:):([A-Za-z_][A-Za-z0-9_]*)/g)].map(x => x[1])
+  const params: Record<string, any> = {}
+  for (const name of names) {
+    const value = drillParamValue(row, name)
+    if (value == null || value === '') {
+      r.drillError = `下钻参数 ${name} 没有找到对应主表字段`
+      return
+    }
+    params[name] = value
+  }
+  r.drillLoading = true
+  r.drillError = ''
+  try {
+    const res: any = await reportApi.execute({ dataSourceId: r.dataSourceId!, sql: r.drillSql, params, limit: 500 })
+    const d = res.data || {}
+    r.drillResultColumns = d.columns || []
+    r.drillResultRows = d.rows || []
+    r.drillResultRowCount = d.rowCount || 0
+  } catch (e: any) {
+    r.drillError = e.message || '下钻失败'
+  } finally { r.drillLoading = false }
+  await scrollBottom()
 }
 
 /** 执行生成的报表 SQL *//** 执行生成的报表 SQL */
@@ -683,6 +752,7 @@ async function scrollBottom() {
   display: flex;
   gap: 8px;
 }
+.drill-loading { margin-top: 8px; color: var(--med-text-light); font-size: 12px; }
 .report-error {
   color: #f56c6c;
   font-size: 13px;

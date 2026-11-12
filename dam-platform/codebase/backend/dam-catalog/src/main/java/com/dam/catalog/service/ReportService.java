@@ -93,6 +93,7 @@ public class ReportService {
     private final MetricDefinitionMapper metricMapper;
     private final MetadataSchemaMapper schemaMapper;
     private final CryptoService cryptoService;
+    private final WeKnoraKnowledgeService weKnoraKnowledgeService;
 
     /** dam-agent 服务地址（报表 SQL 生成调用编码智能体） */
     @Value("${dam.agent-url:http://localhost:8089}")
@@ -125,8 +126,13 @@ public class ReportService {
         DamDataSource ds = dataSourceMapper.selectById(dataSourceId);
         if (ds == null) throw new BusinessException("数据源不存在");
 
-        // 1. 检索已同步的表结构（含中文注释）
-        TableContext ctx = buildTableContext(dataSourceId, requirement, token);
+        // 1. 检索 WeKnora 知识库，把指标解释/字段映射并入检索和 Prompt
+        String knowledgeContext = retrieveKnowledge(requirement);
+        String enrichedRequirement = StrUtil.isBlank(knowledgeContext) ? requirement
+                : requirement + "\n\n业务知识库参考：\n" + knowledgeContext;
+
+        // 2. 检索已同步的表结构（含中文注释）
+        TableContext ctx = buildTableContext(dataSourceId, enrichedRequirement, token);
         if (ctx.tables.isEmpty()) {
             if (ctx.noMatch) {
                 throw new BusinessException("没有从表名/表注释/字段注释中检索到与需求匹配的内容。请补充业务名称，或先在「元数据管理」完善表和字段注释");
@@ -134,8 +140,8 @@ public class ReportService {
             throw new BusinessException("该数据源暂无已同步的表结构，请先在「元数据管理」中同步表后再生成报表");
         }
 
-        // 2. 组装 Prompt 并调用编码智能体
-        String prompt = buildPrompt(requirement, ds.getDsType(), ctx, dataSourceId);
+        // 3. 组装 Prompt 并调用编码智能体
+        String prompt = buildPrompt(enrichedRequirement, ds.getDsType(), ctx, dataSourceId, knowledgeContext);
         String raw = callAgent(prompt, token);
         String sql = cleanSql(raw);
         if (StrUtil.isBlank(sql)) {
@@ -150,6 +156,15 @@ public class ReportService {
         result.put("tableCount", ctx.totalTables);
         result.put("truncatedTables", ctx.truncated);
         result.put("tablesUsed", extractUsedTables(sql, ctx));
+        result.put("params", extractParams(sql));
+        // 用户明确要求下钻/明细时，再生成下钻 SQL，避免每次多一次模型调用
+        if (requirement.contains("下钻") || requirement.contains("明细")) {
+            String drillSql = generateDrill(requirement, dataSourceId, sql, token, knowledgeContext);
+            if (StrUtil.isNotBlank(drillSql)) {
+                result.put("drillSql", drillSql);
+                result.put("drillParams", extractParams(drillSql));
+            }
+        }
         return result;
     }
 
@@ -178,7 +193,7 @@ public class ReportService {
             if (ctx.noMatch) throw new BusinessException("没有从表名/注释中检索到该指标准备使用的表，请补充来源表或注释");
             throw new BusinessException("该数据源暂无已同步的表结构");
         }
-        String prompt = buildPrompt(requirement, ds.getDsType(), ctx, metric.getDataSourceId());
+        String prompt = buildPrompt(requirement, ds.getDsType(), ctx, metric.getDataSourceId(), "");
         String raw = callAgent(prompt, token);
         String sql = cleanSql(raw);
         if (StrUtil.isBlank(sql)) throw new BusinessException("智能体未返回有效的指标 SQL");
@@ -190,6 +205,30 @@ public class ReportService {
         result.put("tablesUsed", extractUsedTables(sql, ctx));
         result.put("params", extractParams(sql));
         return result;
+    }
+
+    /** 根据主报表 SQL 生成下钻明细 SQL；参数名固定建议 date/dept，便于前端按行传值 */
+    private String generateDrill(String requirement, Long dataSourceId, String mainSql,
+                                 String token, String knowledgeContext) {
+        try {
+            String drillRequirement = "主报表 SQL：\n" + mainSql
+                    + "\n\n用户原始需求（包含下钻字段）：\n" + requirement
+                    + "\n\n请生成下钻明细 SELECT。要求：\n"
+                    + "1. 明细字段必须覆盖用户要求的下钻字段；\n"
+                    + "2. 用 :date、:dept 绑定主报表的日期、科室筛选；\n"
+                    + "3. 只输出一条 SELECT，不要解释。";
+            TableContext ctx = buildTableContext(dataSourceId, drillRequirement, token);
+            if (ctx.tables.isEmpty()) return null;
+            String prompt = buildPrompt(drillRequirement, "POSTGRESQL", ctx, dataSourceId, knowledgeContext);
+            String raw = callAgent(prompt, token);
+            String drillSql = cleanSql(raw);
+            if (StrUtil.isBlank(drillSql) || drillSql.startsWith("-- 无法生成")) return null;
+            validateGeneratedSql(drillSql, ctx);
+            return drillSql;
+        } catch (Exception e) {
+            log.warn("生成下钻 SQL 失败，保留主报表: {}", e.getMessage());
+            return null;
+        }
     }
 
     /** 从 SQL 中提取 :param 命名参数，供报表体系自动生成输入框 */
@@ -823,8 +862,34 @@ public class ReportService {
         }
     }
 
+    /** 检索 WeKnora/本地知识库，把业务解释和字段映射作为报表上下文 */
+    private String retrieveKnowledge(String requirement) {
+        try {
+            Map<String, Object> result = weKnoraKnowledgeService.search(requirement, 5);
+            Object raw = result.get("results");
+            if (!(raw instanceof List<?> list) || list.isEmpty()) return "";
+            StringBuilder sb = new StringBuilder();
+            int count = 0;
+            for (Object item : list) {
+                if (!(item instanceof Map<?, ?> hit)) continue;
+                Object titleValue = hit.get("title");
+                Object contentValue = hit.get("content");
+                String title = titleValue == null ? "" : String.valueOf(titleValue);
+                String content = contentValue == null ? "" : String.valueOf(contentValue);
+                if (StrUtil.isBlank(content)) continue;
+                sb.append("- ").append(title).append("：")
+                        .append(content.length() > 1200 ? content.substring(0, 1200) : content).append("\n");
+                if (++count >= 5) break;
+            }
+            return sb.toString().length() > 5000 ? sb.substring(0, 5000) : sb.toString();
+        } catch (Exception e) {
+            log.warn("报表检索知识库失败，继续使用元数据: {}", e.getMessage());
+            return "";
+        }
+    }
+
     /** 组装编码智能体 Prompt */
-    private String buildPrompt(String requirement, String dsType, TableContext ctx, Long dataSourceId) {
+    private String buildPrompt(String requirement, String dsType, TableContext ctx, Long dataSourceId, String knowledgeContext) {
         StringBuilder sb = new StringBuilder();
         sb.append("你是医疗行业数据治理专家，擅长编写 SQL。请根据用户的报表需求和给定的数据库表结构，生成一条可直接执行的 SELECT 查询语句。\n\n");
         sb.append("最高优先级规则：\n");
@@ -913,6 +978,10 @@ public class ReportService {
             hasJoin = true;
         }
         if (!hasJoin) sb.append("- 无显式关联条件，请只使用上下文中 PK/FK 注释\n");
+        if (StrUtil.isNotBlank(knowledgeContext)) {
+            sb.append("业务知识库参考（用于理解业务术语、指标口径和字段映射；不能替代真实表字段校验）：\n");
+            sb.append(knowledgeContext).append("\n\n");
+        }
         sb.append("\n用户需求：").append(requirement).append("\n\n");
         sb.append("要求：\n");
         sb.append("1. 只生成一条 SELECT 语句（可含 JOIN、GROUP BY、聚合、排序、LIMIT）\n");

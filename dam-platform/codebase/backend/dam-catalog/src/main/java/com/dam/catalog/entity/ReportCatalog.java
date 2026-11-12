@@ -46,6 +46,9 @@ public class ReportCatalog {
     /** 查询语句（SQL）或存储过程调用语句（CALL xxx(?)） */
     private String sqlContent;
 
+    /** 下钻明细 SQL，可用 :date、:dept 等参数 */
+    private String drillSql;
+
     /** 外部地址（HTTP/IFRAME 使用） */
     private String endpointUrl;
 

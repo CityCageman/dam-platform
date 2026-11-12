@@ -136,8 +136,23 @@
         <div v-if="runError" class="run-error">{{ runError }}</div>
 
         <el-table v-if="runResult && runResult.columns?.length" :data="runResult.rows" stripe border size="small" max-height="420" style="margin-top: 12px;">
-          <el-table-column v-for="col in runResult.columns" :key="col" :prop="col" :label="col" min-width="120" show-overflow-tooltip />
+          <el-table-column v-for="col in runResult.columns" :key="col" :label="col" min-width="120" show-overflow-tooltip>
+            <template #default="{ row }">
+              <el-link v-if="isDrillable(col, row)" type="primary" :underline="false" @click="drillDown(row)">
+                {{ row[col] }}
+              </el-link>
+              <span v-else>{{ row[col] }}</span>
+            </template>
+          </el-table-column>
         </el-table>
+        <div v-if="drillError" class="run-error" style="margin-top: 10px;">{{ drillError }}</div>
+        <div v-if="drillLoading" class="drill-loading">正在加载下钻明细...</div>
+        <div v-if="drillResult && drillResult.columns?.length" class="drill-panel">
+          <div class="block-title">下钻明细 <span class="drill-meta">{{ drillResult.rowCount }} 行</span></div>
+          <el-table :data="drillResult.rows" stripe border size="small" max-height="380">
+            <el-table-column v-for="col in drillResult.columns" :key="col" :prop="col" :label="col" min-width="120" show-overflow-tooltip />
+          </el-table>
+        </div>
         <el-empty v-else-if="runResult && !runResult.columns?.length" description="该报表无需取数（外链/静态）" :image-size="60" />
       </div>
     </el-drawer>
@@ -225,6 +240,9 @@ const runResult = ref<any>(null)
 const runError = ref('')
 const paramValues = ref<Record<string, any>>({})
 const previewDataSourceId = ref<number | undefined>(undefined)
+const drillResult = ref<any>(null)
+const drillLoading = ref(false)
+const drillError = ref('')
 
 const showForm = ref(false)
 const saving = ref(false)
@@ -356,10 +374,56 @@ async function openDetail(card: any) {
   }
 }
 
+function isDrillable(col: string, row: any) {
+  if (!detail.value?.report?.drillSql) return false
+  const value = row?.[col]
+  if (value == null || value === '') return false
+  const name = String(col)
+  return /人数|数量|人次|例数|工作量|count|total|num/i.test(name) && !isNaN(Number(value))
+}
+
+function drillParamValue(row: any, param: string) {
+  if (row[param] != null) return row[param]
+  const lower = param.toLowerCase()
+  const keys = Object.keys(row || {})
+  const exact = keys.find(k => k.toLowerCase() === lower)
+  if (exact) return row[exact]
+  if (/date/.test(lower)) return row[keys.find(k => /日期|时间|date/i.test(k)) || '']
+  if (/dept/.test(lower)) return row[keys.find(k => /科室|部门|dept/i.test(k)) || '']
+  if (/count|num|total/.test(lower)) return row[keys.find(k => /人数|数量|人次|例数|count|total/i.test(k)) || '']
+  return undefined
+}
+
+async function drillDown(row: any) {
+  const sql = detail.value?.report?.drillSql
+  if (!sql) return
+  const params: Record<string, any> = {}
+  const names = [...String(sql).matchAll(/(?<!:):([A-Za-z_][A-Za-z0-9_]*)/g)].map(m => m[1])
+  for (const name of names) {
+    const value = drillParamValue(row, name)
+    if (value == null || value === '') {
+      drillError.value = `下钻参数 ${name} 没有找到对应主表字段，请检查下钻 SQL 参数名`
+      return
+    }
+    params[name] = value
+  }
+  drillLoading.value = true
+  drillError.value = ''
+  drillResult.value = null
+  try {
+    const res: any = await reportCatalogApi.drill(detail.value.report.id, params, previewDataSourceId.value)
+    drillResult.value = res.data
+  } catch (e: any) {
+    drillError.value = e.message || '下钻失败'
+  } finally { drillLoading.value = false }
+}
+
 async function runReport() {
   if (!detail.value?.report?.id) return
   running.value = true
   runError.value = ''
+  drillResult.value = null
+  drillError.value = ''
   try {
     const res: any = await reportCatalogApi.run(detail.value.report.id, paramValues.value, previewDataSourceId.value)
     runResult.value = res.data
@@ -475,4 +539,8 @@ async function removeReport(report: any) {
 .preview-source { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
 .preview-label { font-size: 12px; color: var(--med-text-secondary); }
 .preview-hint { font-size: 11px; color: var(--med-text-light); }
+
+.drill-panel { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--med-border-light); }
+.drill-meta { margin-left: 8px; font-size: 11px; color: var(--med-text-light); font-weight: 400; }
+.drill-loading { margin-top: 10px; color: var(--med-text-light); font-size: 12px; }
 </style>

@@ -281,6 +281,7 @@ public class ReportCatalogService {
         rc.setExecType(execType);
         rc.setDataSourceId(dataSourceId);
         rc.setSqlContent(str(body.get("sqlContent")));
+        rc.setDrillSql(str(body.get("drillSql")));
         rc.setEndpointUrl(str(body.get("endpointUrl")));
         rc.setCoverImage(str(body.get("coverImage")));
         rc.setUpdateFrequency(str(body.get("updateFrequency")));
@@ -404,6 +405,22 @@ public class ReportCatalogService {
         log.info("报表执行: id={}, code={}, execType={}, rows={}, elapsed={}ms, user={}",
                 rc.getId(), rc.getReportCode(), execType, result.get("rowCount"),
                 result.get("elapsedMs"), currentUser());
+        return result;
+    }
+
+    /**
+     * 执行下钻明细 SQL。
+     */
+    public Map<String, Object> runDrill(Long id, Map<String, Object> params, Long previewDataSourceId) {
+        ReportCatalog rc = requireReport(id);
+        assertPermitted(rc.getAssetId());
+        if (StrUtil.isBlank(rc.getDrillSql())) throw new BusinessException("该报表未配置下钻 SQL");
+        Long execDataSourceId = previewDataSourceId != null ? previewDataSourceId : rc.getDataSourceId();
+        Map<String, Object> data = reportService.executeWithParams(
+                execDataSourceId, rc.getDrillSql(), params, MAX_ROWS, false);
+        Map<String, Object> result = new LinkedHashMap<>(data);
+        result.put("reportId", rc.getId());
+        result.put("drill", true);
         return result;
     }
 

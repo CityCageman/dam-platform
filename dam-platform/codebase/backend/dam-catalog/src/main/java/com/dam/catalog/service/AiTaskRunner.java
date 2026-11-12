@@ -94,6 +94,8 @@ public class AiTaskRunner {
             draft.put("sql", sql);
             draft.put("tablesUsed", generated.get("tablesUsed"));
             draft.put("params", generated.get("params"));
+            draft.put("drillSql", generated.get("drillSql"));
+            draft.put("drillParams", generated.get("drillParams"));
             draft.put("mode", modify ? "MODIFY" : "NEW");
             draft.put("baseReportId", baseReportId);
             String draftJson = JSONUtil.toJsonStr(draft);

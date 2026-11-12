@@ -31,7 +31,7 @@ export const reportApi = {
     return request.post('/catalog/report/generate/async', data, { timeout: 30000 })
   },
   /** 执行报表 SQL（仅 SELECT，后端安全校验后只读执行） */
-  execute(data: { dataSourceId: number; sql: string; limit?: number }) {
+  execute(data: { dataSourceId: number; sql: string; limit?: number; params?: Record<string, any> }) {
     return request.post('/catalog/report/execute', data, { timeout: 120000 })
   }
 }
@@ -474,6 +474,9 @@ export const reportCatalogApi = {
   update(id: number, data: any) { return request.put(`/catalog/reports/${id}`, data) },
   remove(id: number) { return request.delete(`/catalog/reports/${id}`) },
   /** 在线执行（SQL/存储过程），超时放宽 */
+  drill(id: number, params: Record<string, any>, dataSourceId?: number) {
+    return request.post(`/catalog/reports/${id}/drill`, { params, dataSourceId }, { timeout: 120000 })
+  },
   run(id: number, params: Record<string, any>, dataSourceId?: number) {
     return request.post(`/catalog/reports/${id}/run`, { params, dataSourceId }, { timeout: 120000 })
   }
