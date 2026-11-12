@@ -162,6 +162,10 @@
           <el-input v-model="entryForm.fieldMappingsText" type="textarea" :rows="2"
                     placeholder="一行一个，如：PA_PatMas.PAPMI_No → 病人号" />
         </el-form-item>
+        <el-form-item label="参考 SQL">
+          <el-input v-model="entryForm.sqlExample" type="textarea" :rows="5"
+                    placeholder="可选：维护该指标/术语的准确取数 SQL，AI 报表会优先沿用其表、关联和口径" />
+        </el-form-item>
         <el-form-item label="使用说明">
           <el-input v-model="entryForm.usageNote" type="textarea" :rows="2" placeholder="如：患者、就诊、费用等数据关联时使用该字段。" />
         </el-form-item>
@@ -227,6 +231,10 @@
           <el-descriptions-item label="解释">{{ entryDetail.definition || '-' }}</el-descriptions-item>
           <el-descriptions-item label="别名">{{ prettyJson(entryDetail.aliases) }}</el-descriptions-item>
           <el-descriptions-item label="字段映射">{{ prettyJson(entryDetail.fieldMappings) }}</el-descriptions-item>
+          <el-descriptions-item label="参考 SQL">
+            <pre v-if="entryDetail.sqlExample" class="detail-json">{{ entryDetail.sqlExample }}</pre>
+            <span v-else>-</span>
+          </el-descriptions-item>
           <el-descriptions-item label="使用说明">{{ entryDetail.usageNote || '-' }}</el-descriptions-item>
           <el-descriptions-item label="关联指标">{{ prettyJson(entryDetail.relatedMetrics) }}</el-descriptions-item>
           <el-descriptions-item label="来源系统">{{ entryDetail.sourceSystem || '-' }}</el-descriptions-item>

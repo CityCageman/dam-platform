@@ -38,6 +38,9 @@ public class KnowledgeEntry {
     @TableField(typeHandler = JsonbTypeHandler.class)
     private String relatedMetrics;
 
+    /** 该知识条目的参考 SQL（只作为口径示例，不作为直接执行依据） */
+    private String sqlExample;
+
     private String sourceSystem;
     private String owner;
     /** DRAFT / PUBLISHED / DEPRECATED */

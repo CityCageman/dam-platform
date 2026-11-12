@@ -153,10 +153,27 @@ public class ReportService {
         // 生成后自检：模型只能引用上下文中真实存在的表和字段，防止编造
         validateGeneratedSql(sql, ctx);
         // 知识库命中时，让模型按照知识库口径再复核/修正一次，避免只“参考”不执行
+        List<String> knowledgeTables = extractKnowledgeTables(knowledgeContext);
         if (StrUtil.isNotBlank(knowledgeContext)) {
             String reviewed = reviewSqlWithKnowledge(requirement, ds.getDsType(), ctx, dataSourceId,
                     sql, knowledgeContext, token);
             if (StrUtil.isNotBlank(reviewed)) sql = reviewed;
+        }
+        // 硬校验：知识库命中了明确表，但生成 SQL 完全没用这些表，则强制重生成一次
+        if (!knowledgeTables.isEmpty() && !usesKnowledgeTable(sql, knowledgeTables)) {
+            String retryRequirement = requirement + "\n必须使用知识库中的表：" + String.join("、", knowledgeTables)
+                    + "；不能只使用其他业务表替代。";
+            String retryPrompt = buildPrompt(retryRequirement, ds.getDsType(), ctx, dataSourceId, knowledgeContext);
+            String retryRaw = callAgent(retryPrompt, token);
+            String retrySql = cleanSql(retryRaw);
+            if (StrUtil.isNotBlank(retrySql) && !retrySql.startsWith("-- 无法生成")) {
+                validateGeneratedSql(retrySql, ctx);
+                sql = retrySql;
+            }
+            if (!usesKnowledgeTable(sql, knowledgeTables)) {
+                throw new BusinessException("生成的 SQL 没有使用知识库指定的表：" + String.join("、", knowledgeTables)
+                        + "。请在知识库补充参考 SQL，或检查知识条目字段映射后重试");
+            }
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -167,6 +184,7 @@ public class ReportService {
         result.put("tablesUsed", extractUsedTables(sql, ctx));
         result.put("params", extractParams(sql));
         result.put("knowledgeUsed", extractKnowledgeTitles(knowledgeContext));
+        result.put("knowledgeTables", knowledgeTables);
         // 用户明确要求下钻/明细时，再生成下钻 SQL，避免每次多一次模型调用
         if (requirement.contains("下钻") || requirement.contains("明细")) {
             StringBuilder drillError = new StringBuilder();
@@ -250,6 +268,24 @@ public class ReportService {
             if (titles.size() >= 5) break;
         }
         return titles;
+    }
+
+    private List<String> extractKnowledgeTables(String knowledgeContext) {
+        if (StrUtil.isBlank(knowledgeContext)) return List.of();
+        java.util.regex.Matcher m = Pattern.compile(
+                "\\b(?:PA_Adm(?:Ext)?|PA_PatMas|PA_PatBill|DHC[A-Za-z0-9_]+|CT_[A-Za-z0-9_]+|MR_[A-Za-z0-9_]+|OE_[A-Za-z0-9_]+|RB_[A-Za-z0-9_]+)\\b")
+                .matcher(knowledgeContext);
+        java.util.LinkedHashSet<String> tables = new java.util.LinkedHashSet<>();
+        while (m.find()) tables.add(m.group());
+        return tables.stream().limit(30).toList();
+    }
+
+    private boolean usesKnowledgeTable(String sql, List<String> tables) {
+        String lower = sql.toLowerCase();
+        for (String table : tables) {
+            if (lower.contains(table.toLowerCase())) return true;
+        }
+        return false;
     }
 
     /** 根据主报表 SQL 生成下钻明细 SQL；参数名固定建议 date/dept，便于前端按行传值 */
@@ -1064,7 +1100,8 @@ public class ReportService {
             sb.append("业务知识库参考（用于理解业务术语、指标口径、来源表和字段映射；不能替代真实表字段校验）：\n");
             sb.append(knowledgeContext).append("\n\n");
             sb.append("约束：如果知识库明确给出了指标口径、计算公式、来源表或字段映射，必须优先按照知识库执行；\n");
-            sb.append("不得用元数据或其他表的自定义口径覆盖知识库中的明确口径。\n\n");
+            sb.append("不得用元数据或其他表的自定义口径覆盖知识库中的明确口径。\n");
+            sb.append("如果知识库提供了参考 SQL，必须沿用其表、关联方式、方言语法和过滤条件，不要另起炉灶。\n\n");
         }
         sb.append("\n用户需求：").append(requirement).append("\n\n");
         sb.append("要求：\n");

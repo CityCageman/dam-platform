@@ -172,6 +172,7 @@ public class KnowledgeService {
         e.setAliases(jsonArray(body.get("aliases")));
         e.setFieldMappings(jsonArray(body.get("fieldMappings")));
         e.setRelatedMetrics(jsonArray(body.get("relatedMetrics")));
+        e.setSqlExample(str(body.get("sqlExample")));
         e.setSourceSystem(cut(str(body.get("sourceSystem")), 100));
         e.setOwner(cut(str(body.get("owner")), 100));
         e.setPublishStatus(StrUtil.blankToDefault(str(body.get("publishStatus")), "PUBLISHED").toUpperCase());

@@ -279,6 +279,7 @@ public class WeKnoraKnowledgeService {
         metadata.put("fieldMappings", cut(StrUtil.blankToDefault(entry.getFieldMappings(), ""), 1000));
         metadata.put("relatedMetrics", cut(StrUtil.blankToDefault(entry.getRelatedMetrics(), ""), 1000));
         metadata.put("sourceSystem", cut(StrUtil.blankToDefault(entry.getSourceSystem(), ""), 1000));
+        metadata.put("hasSqlExample", StrUtil.isBlank(entry.getSqlExample()) ? "false" : "true");
         metadata.put("owner", cut(StrUtil.blankToDefault(entry.getOwner(), ""), 1000));
         metadata.put("publishStatus", StrUtil.blankToDefault(entry.getPublishStatus(), "PUBLISHED"));
         metadata.put("version", entry.getVersion() == null ? "1" : String.valueOf(entry.getVersion()));
@@ -375,7 +376,8 @@ public class WeKnoraKnowledgeService {
             if (StrUtil.isNotBlank(e.getUsageNote())) content.append("使用说明：").append(e.getUsageNote()).append("\n");
             if (StrUtil.isNotBlank(e.getFieldMappings())) content.append("字段映射：").append(e.getFieldMappings()).append("\n");
             if (StrUtil.isNotBlank(e.getRelatedMetrics())) content.append("关联指标：").append(e.getRelatedMetrics()).append("\n");
-            if (StrUtil.isNotBlank(e.getContent())) content.append("补充：").append(e.getContent());
+            if (StrUtil.isNotBlank(e.getContent())) content.append("补充：").append(e.getContent()).append("\n");
+            if (StrUtil.isNotBlank(e.getSqlExample())) content.append("参考SQL：").append(e.getSqlExample());
             Map<String, Object> hit = new LinkedHashMap<>();
             hit.put("content", content.toString());
             hit.put("knowledgeId", e.getExternalDocId());
@@ -559,6 +561,9 @@ public class WeKnoraKnowledgeService {
         sb.append("## 状态\n").append(StrUtil.blankToDefault(entry.getPublishStatus(), "PUBLISHED")).append("\n");
         if (StrUtil.isNotBlank(entry.getContent())) {
             sb.append("\n## 补充说明\n").append(entry.getContent()).append("\n");
+        }
+        if (StrUtil.isNotBlank(entry.getSqlExample())) {
+            sb.append("\n## 参考 SQL\n```sql\n").append(entry.getSqlExample()).append("\n```\n");
         }
         return sb.toString();
     }
