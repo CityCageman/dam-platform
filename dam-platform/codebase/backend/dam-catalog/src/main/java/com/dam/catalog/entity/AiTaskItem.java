@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  * @author DAM Platform
  */
 @Data
-@TableName(value = "ai_task_item", schema = "dam_asset")
+@TableName(value = "ai_task_item", schema = "dam_ai")
 public class AiTaskItem {
 
     @TableId(type = IdType.AUTO)
