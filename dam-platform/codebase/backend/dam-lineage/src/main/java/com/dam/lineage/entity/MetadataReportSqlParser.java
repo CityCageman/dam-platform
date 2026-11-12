@@ -1,7 +1,7 @@
 package com.dam.lineage.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import com.dam.lineage.config.JsonbTypeHandler;
+import com.dam.common.config.JsonbTypeHandler;
 import lombok.Data;
 import java.time.LocalDateTime;
 

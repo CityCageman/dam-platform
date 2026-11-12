@@ -91,7 +91,7 @@ services:
       # 外键血缘自动落库调用 lineage 服务（容器网络内用服务名，可改为从 Nacos 配置下发）
       DAM_LINEAGE_URL: http://dam-lineage:8093
       # 报表 SQL 生成调用编码智能体（容器网络内用服务名）
-      DAM_AGENT_URL: http://dam-agent:8089
+      DAM_MODEL_GATEWAY_URL: http://dam-model-gateway:8089
     depends_on:
       postgres:
         condition: service_healthy
@@ -200,24 +200,21 @@ services:
       nacos:
         condition: service_healthy
 
-  # 智能体服务：不连库，仅外呼 LLM，密钥由 .env 注入（亦可迁移到 Nacos dam-agent.yml）
-  dam-agent:
+  # 智能体服务：不连库，仅外呼 LLM，密钥由 .env 注入（亦可迁移到 Nacos dam-model-gateway.yml）
+  dam-model-gateway:
     build:
       context: ../codebase/backend
       dockerfile: Dockerfile
       args:
-        JAR_FILE: dam-agent/target/dam-agent-1.0.0-exec.jar
-    container_name: dam-agent
+        JAR_FILE: dam-model-gateway/target/dam-model-gateway-1.0.0-exec.jar
+    container_name: dam-model-gateway
     restart: unless-stopped
     environment:
       TZ: Asia/Shanghai
       NACOS_SERVER_ADDR: nacos:8848
-      DAM_AGENT_CHAT_BASE_URL: ${DAM_AGENT_CHAT_BASE_URL}
-      DAM_AGENT_CHAT_API_KEY: ${DAM_AGENT_CHAT_API_KEY}
-      DAM_AGENT_CHAT_MODEL: ${DAM_AGENT_CHAT_MODEL:-qwen3.8-27b-tp8}
-      DAM_AGENT_CODE_BASE_URL: ${DAM_AGENT_CODE_BASE_URL}
-      DAM_AGENT_CODE_API_KEY: ${DAM_AGENT_CODE_API_KEY}
-      DAM_AGENT_CODE_MODEL: ${DAM_AGENT_CODE_MODEL:-qwen3-coder-30b-a3b}
+      DAM_MODEL_GATEWAY_CODE_BASE_URL: ${DAM_MODEL_GATEWAY_CODE_BASE_URL}
+      DAM_MODEL_GATEWAY_CODE_API_KEY: ${DAM_MODEL_GATEWAY_CODE_API_KEY}
+      DAM_MODEL_GATEWAY_CODE_MODEL: ${DAM_MODEL_GATEWAY_CODE_MODEL:-qwen3-coder-30b-a3b}
     depends_on:
       nacos:
         condition: service_healthy
@@ -246,7 +243,7 @@ services:
       - dam-security
       - dam-lifecycle
       - dam-operations
-      - dam-agent
+      - dam-model-gateway
 
 volumes:
   pgdata:

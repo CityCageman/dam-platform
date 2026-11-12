@@ -142,7 +142,7 @@
         <el-table v-if="runResult && runResult.columns?.length" :data="runResult.rows" stripe border size="small" max-height="420" style="margin-top: 12px;">
           <el-table-column v-for="col in runResult.columns" :key="col" :label="col" min-width="120" show-overflow-tooltip>
             <template #default="{ row }">
-              <el-link v-if="isDrillable(col, row)" type="primary" :underline="false" @click="drillDown(row)">
+              <el-link v-if="isDrillable(detail.report.drillSql, col, row)" type="primary" :underline="false" @click="drillDown(row)">
                 {{ row[col] }}
               </el-link>
               <span v-else>{{ row[col] }}</span>
@@ -223,6 +223,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { isDrillable, buildDrillParams } from '@/utils/reportDrill'
 import { reportCatalogApi, catalogApi } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
@@ -378,38 +379,13 @@ async function openDetail(card: any) {
   }
 }
 
-function isDrillable(col: string, row: any) {
-  if (!detail.value?.report?.drillSql) return false
-  const value = row?.[col]
-  if (value == null || value === '') return false
-  const name = String(col)
-  return /人数|数量|人次|例数|工作量|count|total|num/i.test(name) && !isNaN(Number(value))
-}
-
-function drillParamValue(row: any, param: string) {
-  if (row[param] != null) return row[param]
-  const lower = param.toLowerCase()
-  const keys = Object.keys(row || {})
-  const exact = keys.find(k => k.toLowerCase() === lower)
-  if (exact) return row[exact]
-  if (/date/.test(lower)) return row[keys.find(k => /日期|时间|date/i.test(k)) || '']
-  if (/dept/.test(lower)) return row[keys.find(k => /科室|部门|dept/i.test(k)) || '']
-  if (/count|num|total/.test(lower)) return row[keys.find(k => /人数|数量|人次|例数|count|total/i.test(k)) || '']
-  return undefined
-}
-
 async function drillDown(row: any) {
   const sql = detail.value?.report?.drillSql
   if (!sql) return
-  const params: Record<string, any> = {}
-  const names = [...String(sql).matchAll(/(?<!:):([A-Za-z_][A-Za-z0-9_]*)/g)].map(m => m[1])
-  for (const name of names) {
-    const value = drillParamValue(row, name)
-    if (value == null || value === '') {
-      drillError.value = `下钻参数 ${name} 没有找到对应主表字段，请检查下钻 SQL 参数名`
-      return
-    }
-    params[name] = value
+  const { params, missing } = buildDrillParams(sql, row)
+  if (missing.length) {
+    drillError.value = `下钻参数 ${missing.join('、')} 没有找到对应主表字段，请检查下钻 SQL 参数名`
+    return
   }
   drillLoading.value = true
   drillError.value = ''

@@ -152,7 +152,7 @@
                   show-overflow-tooltip
                 >
                   <template #default="{ row }">
-                    <el-link v-if="isDrillable(m.report, c, row)" type="primary" :underline="false" @click="drillReport(m, row)">
+                    <el-link v-if="isDrillable(m.report.drillSql, c, row)" type="primary" :underline="false" @click="drillReport(m, row)">
                       {{ row[c] }}
                     </el-link>
                     <span v-else>{{ row[c] }}</span>
@@ -195,6 +195,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from 'vue'
+import { isDrillable, buildDrillParams } from '@/utils/reportDrill'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { agentApi, reportApi, catalogApi } from '@/api'
@@ -452,37 +453,13 @@ async function goReportCenter() {
   router.push('/reports')
 }
 
-function isDrillable(report: ReportState, col: string, row: any) {
-  if (!report.drillSql) return false
-  const value = row?.[col]
-  if (value == null || value === '') return false
-  return /人数|数量|人次|例数|工作量|count|total|num/i.test(String(col)) && !isNaN(Number(value))
-}
-
-function drillParamValue(row: any, param: string) {
-  if (row[param] != null) return row[param]
-  const keys = Object.keys(row || {})
-  const lower = param.toLowerCase()
-  const exact = keys.find(k => k.toLowerCase() === lower)
-  if (exact) return row[exact]
-  if (/date/.test(lower)) return row[keys.find(k => /日期|时间|date/i.test(k)) || '']
-  if (/dept/.test(lower)) return row[keys.find(k => /科室|部门|dept/i.test(k)) || '']
-  if (/count|num|total/.test(lower)) return row[keys.find(k => /人数|数量|人次|例数|count|total/i.test(k)) || '']
-  return undefined
-}
-
 async function drillReport(m: Msg, row: any) {
   const r = m.report
   if (!r?.drillSql || r.drillLoading) return
-  const names = [...String(r.drillSql).matchAll(/(?<!:):([A-Za-z_][A-Za-z0-9_]*)/g)].map(x => x[1])
-  const params: Record<string, any> = {}
-  for (const name of names) {
-    const value = drillParamValue(row, name)
-    if (value == null || value === '') {
-      r.drillError = `下钻参数 ${name} 没有找到对应主表字段`
-      return
-    }
-    params[name] = value
+  const { params, missing } = buildDrillParams(r.drillSql, row)
+  if (missing.length) {
+    r.drillError = `下钻参数 ${missing.join('、')} 没有找到对应主表字段`
+    return
   }
   r.drillLoading = true
   r.drillError = ''

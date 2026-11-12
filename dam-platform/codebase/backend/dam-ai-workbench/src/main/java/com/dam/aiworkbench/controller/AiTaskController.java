@@ -2,7 +2,7 @@ package com.dam.aiworkbench.controller;
 
 import com.dam.aiworkbench.entity.AiTask;
 import com.dam.aiworkbench.entity.AiTaskItem;
-import com.dam.aiworkbench.service.AiRateLimiter;
+import com.dam.common.service.AiRateLimiter;
 import com.dam.aiworkbench.service.AiTaskService;
 import com.dam.common.vo.PageResult;
 import com.dam.common.vo.Result;

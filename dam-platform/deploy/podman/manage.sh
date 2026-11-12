@@ -42,12 +42,9 @@ NACOS_SERVER_ADDR="${NACOS_SERVER_ADDR:-}"
 GATEWAY_PORT="${GATEWAY_PORT:-8080}"
 FRONTEND_PORT="${FRONTEND_PORT:-80}"
 BACKEND_GATEWAY="${BACKEND_GATEWAY:-dam-gateway:8080}"
-DAM_AGENT_CHAT_BASE_URL="${DAM_AGENT_CHAT_BASE_URL:-}"
-DAM_AGENT_CHAT_API_KEY="${DAM_AGENT_CHAT_API_KEY:-}"
-DAM_AGENT_CHAT_MODEL="${DAM_AGENT_CHAT_MODEL:-}"
-DAM_AGENT_CODE_BASE_URL="${DAM_AGENT_CODE_BASE_URL:-}"
-DAM_AGENT_CODE_API_KEY="${DAM_AGENT_CODE_API_KEY:-}"
-DAM_AGENT_CODE_MODEL="${DAM_AGENT_CODE_MODEL:-}"
+DAM_MODEL_GATEWAY_CODE_BASE_URL="${DAM_MODEL_GATEWAY_CODE_BASE_URL:-}"
+DAM_MODEL_GATEWAY_CODE_API_KEY="${DAM_MODEL_GATEWAY_CODE_API_KEY:-}"
+DAM_MODEL_GATEWAY_CODE_MODEL="${DAM_MODEL_GATEWAY_CODE_MODEL:-}"
 
 SERVICES="auth catalog lineage standard quality security lifecycle operations agent gateway"
 DB_URL="jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}"
@@ -94,25 +91,19 @@ start_backend() {
 
     case "$svc" in
       catalog)
-        envs+=(-e "DAM_LINEAGE_URL=http://dam-lineage:8093" -e "DAM_AGENT_URL=http://dam-agent:8089")
+        envs+=(-e "DAM_LINEAGE_URL=http://dam-lineage:8093" -e "DAM_MODEL_GATEWAY_URL=http://dam-model-gateway:8089")
         ;;
       agent)
-        envs+=(-e "DAM_AGENT_CHAT_BASE_URL=${DAM_AGENT_CHAT_BASE_URL}"
-               -e "DAM_AGENT_CHAT_API_KEY=${DAM_AGENT_CHAT_API_KEY}"
-               -e "DAM_AGENT_CHAT_MODEL=${DAM_AGENT_CHAT_MODEL}"
-               -e "DAM_AGENT_CODE_BASE_URL=${DAM_AGENT_CODE_BASE_URL}"
-               -e "DAM_AGENT_CODE_API_KEY=${DAM_AGENT_CODE_API_KEY}"
-               -e "DAM_AGENT_CODE_MODEL=${DAM_AGENT_CODE_MODEL}")
+               -e "DAM_MODEL_GATEWAY_CODE_BASE_URL=${DAM_MODEL_GATEWAY_CODE_BASE_URL}"
+               -e "DAM_MODEL_GATEWAY_CODE_API_KEY=${DAM_MODEL_GATEWAY_CODE_API_KEY}"
+               -e "DAM_MODEL_GATEWAY_CODE_MODEL=${DAM_MODEL_GATEWAY_CODE_MODEL}")
         # 智能体不需要数据库，去掉数据源变量避免误连
         envs=(-e "TZ=Asia/Shanghai" -e "SPRING_PROFILES_ACTIVE=prod"
               -e "SPRING_CLOUD_NACOS_DISCOVERY_ENABLED=${NACOS_ENABLED}"
               -e "SPRING_CLOUD_NACOS_CONFIG_ENABLED=${NACOS_ENABLED}"
-              -e "DAM_AGENT_CHAT_BASE_URL=${DAM_AGENT_CHAT_BASE_URL}"
-              -e "DAM_AGENT_CHAT_API_KEY=${DAM_AGENT_CHAT_API_KEY}"
-              -e "DAM_AGENT_CHAT_MODEL=${DAM_AGENT_CHAT_MODEL}"
-              -e "DAM_AGENT_CODE_BASE_URL=${DAM_AGENT_CODE_BASE_URL}"
-              -e "DAM_AGENT_CODE_API_KEY=${DAM_AGENT_CODE_API_KEY}"
-              -e "DAM_AGENT_CODE_MODEL=${DAM_AGENT_CODE_MODEL}")
+              -e "DAM_MODEL_GATEWAY_CODE_BASE_URL=${DAM_MODEL_GATEWAY_CODE_BASE_URL}"
+              -e "DAM_MODEL_GATEWAY_CODE_API_KEY=${DAM_MODEL_GATEWAY_CODE_API_KEY}"
+              -e "DAM_MODEL_GATEWAY_CODE_MODEL=${DAM_MODEL_GATEWAY_CODE_MODEL}")
         ;;
       gateway)
         args+=(-p "${GATEWAY_PORT}:8080")
@@ -124,7 +115,7 @@ start_backend() {
                -e "DAM_ROUTE_SECURITY=http://dam-security:8086"
                -e "DAM_ROUTE_LIFECYCLE=http://dam-lifecycle:8087"
                -e "DAM_ROUTE_OPERATIONS=http://dam-operations:8088"
-               -e "DAM_ROUTE_AGENT=http://dam-agent:8089")
+               -e "DAM_ROUTE_MODEL_GATEWAY=http://dam-model-gateway:8089")
         ;;
     esac
 
@@ -146,7 +137,7 @@ start_frontend() {
 }
 
 stop_all() {
-  for name in dam-frontend dam-gateway dam-agent dam-operations dam-lifecycle dam-security \
+  for name in dam-frontend dam-gateway dam-model-gateway dam-operations dam-lifecycle dam-security \
               dam-quality dam-standard dam-lineage dam-catalog dam-auth; do
     if podman container exists "$name" >/dev/null 2>&1; then
       podman rm -f "$name" >/dev/null 2>&1 || true

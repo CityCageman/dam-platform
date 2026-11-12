@@ -4,7 +4,7 @@ import com.dam.catalog.entity.DamDataSource;
 import com.dam.catalog.entity.DamMetadataExt;
 import com.dam.catalog.entity.MetadataManagement;
 import com.dam.catalog.entity.MetadataSchema;
-import com.dam.catalog.service.AiRateLimiter;
+import com.dam.common.service.AiRateLimiter;
 import com.dam.catalog.service.AiWorkbenchTaskClient;
 import com.dam.catalog.service.MetadataAiService;
 import com.dam.catalog.service.MetadataService;

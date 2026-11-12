@@ -62,7 +62,7 @@ services:
       # 外键血缘自动落库调用 lineage 服务（容器网络内用服务名）
       DAM_LINEAGE_URL: http://dam-lineage:8093
       # 报表 SQL 生成调用编码智能体（容器网络内用服务名）
-      DAM_AGENT_URL: http://dam-agent:8089
+      DAM_MODEL_GATEWAY_URL: http://dam-model-gateway:8089
     depends_on:
       postgres:
         condition: service_healthy
@@ -152,22 +152,19 @@ services:
         condition: service_healthy
 
   # 智能体服务：不连库，仅外呼 LLM，密钥由 .env 注入
-  dam-agent:
+  dam-model-gateway:
     build:
       context: ../codebase/backend
       dockerfile: Dockerfile
       args:
-        JAR_FILE: dam-agent/target/dam-agent-1.0.0-exec.jar
-    container_name: dam-agent
+        JAR_FILE: dam-model-gateway/target/dam-model-gateway-1.0.0-exec.jar
+    container_name: dam-model-gateway
     restart: unless-stopped
     environment:
       TZ: Asia/Shanghai
-      DAM_AGENT_CHAT_BASE_URL: ${DAM_AGENT_CHAT_BASE_URL}
-      DAM_AGENT_CHAT_API_KEY: ${DAM_AGENT_CHAT_API_KEY}
-      DAM_AGENT_CHAT_MODEL: ${DAM_AGENT_CHAT_MODEL:-qwen3.8-27b-tp8}
-      DAM_AGENT_CODE_BASE_URL: ${DAM_AGENT_CODE_BASE_URL}
-      DAM_AGENT_CODE_API_KEY: ${DAM_AGENT_CODE_API_KEY}
-      DAM_AGENT_CODE_MODEL: ${DAM_AGENT_CODE_MODEL:-qwen3-coder-30b-a3b}
+      DAM_MODEL_GATEWAY_CODE_BASE_URL: ${DAM_MODEL_GATEWAY_CODE_BASE_URL}
+      DAM_MODEL_GATEWAY_CODE_API_KEY: ${DAM_MODEL_GATEWAY_CODE_API_KEY}
+      DAM_MODEL_GATEWAY_CODE_MODEL: ${DAM_MODEL_GATEWAY_CODE_MODEL:-qwen3-coder-30b-a3b}
 
   # 网关：对外唯一 API 入口，路由地址覆盖为容器服务名
   dam-gateway:
@@ -188,7 +185,7 @@ services:
       DAM_ROUTE_SECURITY: http://dam-security:8086
       DAM_ROUTE_LIFECYCLE: http://dam-lifecycle:8087
       DAM_ROUTE_OPERATIONS: http://dam-operations:8088
-      DAM_ROUTE_AGENT: http://dam-agent:8089
+      DAM_ROUTE_MODEL_GATEWAY: http://dam-model-gateway:8089
     ports:
       - "8080:8080"
     depends_on:
@@ -200,7 +197,7 @@ services:
       - dam-security
       - dam-lifecycle
       - dam-operations
-      - dam-agent
+      - dam-model-gateway
 
   # ==================== 前端（Nginx） ====================
   frontend:
