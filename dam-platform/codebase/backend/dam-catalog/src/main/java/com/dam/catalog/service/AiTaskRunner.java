@@ -93,6 +93,7 @@ public class AiTaskRunner {
             draft.put("dataSourceName", generated.get("dataSourceName"));
             draft.put("sql", sql);
             draft.put("tablesUsed", generated.get("tablesUsed"));
+            draft.put("knowledgeUsed", generated.get("knowledgeUsed"));
             draft.put("params", generated.get("params"));
             draft.put("drillSql", generated.get("drillSql"));
             draft.put("drillParams", generated.get("drillParams"));

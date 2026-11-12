@@ -152,6 +152,12 @@ public class ReportService {
         }
         // 生成后自检：模型只能引用上下文中真实存在的表和字段，防止编造
         validateGeneratedSql(sql, ctx);
+        // 知识库命中时，让模型按照知识库口径再复核/修正一次，避免只“参考”不执行
+        if (StrUtil.isNotBlank(knowledgeContext)) {
+            String reviewed = reviewSqlWithKnowledge(requirement, ds.getDsType(), ctx, dataSourceId,
+                    sql, knowledgeContext, token);
+            if (StrUtil.isNotBlank(reviewed)) sql = reviewed;
+        }
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("sql", sql);
@@ -160,6 +166,7 @@ public class ReportService {
         result.put("truncatedTables", ctx.truncated);
         result.put("tablesUsed", extractUsedTables(sql, ctx));
         result.put("params", extractParams(sql));
+        result.put("knowledgeUsed", extractKnowledgeTitles(knowledgeContext));
         // 用户明确要求下钻/明细时，再生成下钻 SQL，避免每次多一次模型调用
         if (requirement.contains("下钻") || requirement.contains("明细")) {
             StringBuilder drillError = new StringBuilder();
@@ -211,6 +218,38 @@ public class ReportService {
         result.put("tablesUsed", extractUsedTables(sql, ctx));
         result.put("params", extractParams(sql));
         return result;
+    }
+
+    /** 按知识库口径复核并修正 SQL；失败保留原 SQL */
+    private String reviewSqlWithKnowledge(String requirement, String dsType, TableContext ctx,
+                                         Long dataSourceId, String sql, String knowledgeContext, String token) {
+        try {
+            String prompt = buildPrompt(requirement, dsType, ctx, dataSourceId, knowledgeContext)
+                    + "\n\n当前生成的 SQL：\n" + sql
+                    + "\n\n请逐条检查当前 SQL 是否严格符合上面的知识库业务口径（尤其是指标范围、来源表、费用条件、三同一有等）。"
+                    + "如果不符合，请重写；如果符合，原样输出。\n"
+                    + "只输出最终 SELECT，不要解释，不要 Markdown，不要输出校验过程。";
+            String raw = callAgent(prompt, token);
+            String reviewed = cleanSql(raw);
+            if (StrUtil.isBlank(reviewed) || reviewed.startsWith("-- 无法生成")) return null;
+            validateGeneratedSql(reviewed, ctx);
+            return reviewed;
+        } catch (Exception e) {
+            log.warn("按知识库复核 SQL 失败，保留原 SQL: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private List<String> extractKnowledgeTitles(String knowledgeContext) {
+        List<String> titles = new ArrayList<>();
+        if (StrUtil.isBlank(knowledgeContext)) return titles;
+        for (String line : knowledgeContext.split("\n")) {
+            if (!line.startsWith("- ")) continue;
+            int idx = line.indexOf('：');
+            if (idx > 2) titles.add(line.substring(2, idx));
+            if (titles.size() >= 5) break;
+        }
+        return titles;
     }
 
     /** 根据主报表 SQL 生成下钻明细 SQL；参数名固定建议 date/dept，便于前端按行传值 */

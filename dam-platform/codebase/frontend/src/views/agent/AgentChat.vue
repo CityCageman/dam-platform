@@ -91,6 +91,10 @@
             </div>
 
             <template v-if="m.report.sql">
+              <div v-if="m.report.knowledgeUsed && m.report.knowledgeUsed.length" class="report-tables">
+                参考知识：
+                <el-tag v-for="k in m.report.knowledgeUsed" :key="k" size="small" type="success" class="report-table-tag">{{ k }}</el-tag>
+              </div>
               <div v-if="m.report.tablesUsed && m.report.tablesUsed.length" class="report-tables">
                 引用表：
                 <el-tag v-for="t in m.report.tablesUsed" :key="t.tableName" size="small" class="report-table-tag">
@@ -213,6 +217,7 @@ interface ReportState {
   dataSourceId?: number
   dataSourceName?: string
   tablesUsed?: { tableName: string; tableComment?: string }[]
+  knowledgeUsed?: string[]
   columns?: string[]
   rows?: Record<string, any>[]
   rowCount?: number
@@ -399,6 +404,7 @@ async function runReportTask(report: ReportState, requirement: string,
       report.drillError = d.drillError || ''
       report.dataSourceName = d.dataSourceName
       report.tablesUsed = d.tablesUsed || []
+      report.knowledgeUsed = d.knowledgeUsed || []
       report.reportName = d.reportName
       report.progress = 100
       if (item.status === 'ACCEPTED' || task.status === 'DONE') {
