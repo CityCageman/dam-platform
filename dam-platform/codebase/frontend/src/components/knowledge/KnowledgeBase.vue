@@ -166,6 +166,33 @@
           <el-input v-model="entryForm.sqlExample" type="textarea" :rows="5"
                     placeholder="可选：维护该指标/术语的准确取数 SQL，AI 报表会优先沿用其表、关联和口径" />
         </el-form-item>
+        <el-collapse class="rule-collapse">
+          <el-collapse-item title="取数规则（业务口径，AI 报表按此生成）" name="rule">
+            <div class="form-tip" style="margin-left: 0;">
+              不需要直接写 SQL：先描述统计粒度、去重方式、必用表和条件，可点“AI 起草规则”。
+            </div>
+            <el-row :gutter="12">
+              <el-col :span="12">
+                <el-form-item label="规则状态">
+                  <el-select v-model="entryForm.reportSpec.ruleStatus" style="width: 100%;">
+                    <el-option label="草稿" value="DRAFT" />
+                    <el-option label="待审核" value="REVIEW" />
+                    <el-option label="已发布" value="PUBLISHED" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12"><el-form-item label="统计粒度"><el-input v-model="entryForm.reportSpec.statisticalGrain" placeholder="如：就诊号 + 日期 + 科室" /></el-form-item></el-col>
+            </el-row>
+            <el-row :gutter="12">
+              <el-col :span="12"><el-form-item label="去重键"><el-input v-model="entryForm.reportSpec.dedupKeys" placeholder="如：PAADM_RowId" /></el-form-item></el-col>
+              <el-col :span="12"><el-form-item label="必用表"><el-input v-model="entryForm.reportSpec.requiredTables" placeholder="如：PA_Adm、DHC_PatBillOrder" /></el-form-item></el-col>
+            </el-row>
+            <el-form-item label="业务条件"><el-input v-model="entryForm.reportSpec.conditions" type="textarea" :rows="2" placeholder="如：有费用产生；排除测试患者；排除测试科室" /></el-form-item>
+            <el-form-item label="主报表 SQL"><el-input v-model="entryForm.reportSpec.mainSql" type="textarea" :rows="3" placeholder="可选：主报表模板，AI 会优先沿用" /></el-form-item>
+            <el-form-item label="下钻 SQL"><el-input v-model="entryForm.reportSpec.drillSql" type="textarea" :rows="3" placeholder="可选：下钻明细模板" /></el-form-item>
+            <el-button size="small" :loading="aiClassifying" @click="aiDraftReportSpec">AI 起草取数规则</el-button>
+          </el-collapse-item>
+        </el-collapse>
         <el-form-item label="使用说明">
           <el-input v-model="entryForm.usageNote" type="textarea" :rows="2" placeholder="如：患者、就诊、费用等数据关联时使用该字段。" />
         </el-form-item>
@@ -233,6 +260,10 @@
           <el-descriptions-item label="字段映射">{{ prettyJson(entryDetail.fieldMappings) }}</el-descriptions-item>
           <el-descriptions-item label="参考 SQL">
             <pre v-if="entryDetail.sqlExample" class="detail-json">{{ entryDetail.sqlExample }}</pre>
+            <span v-else>-</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="取数规则">
+            <pre v-if="entryDetail.reportSpec" class="detail-json">{{ prettyJson(entryDetail.reportSpec) }}</pre>
             <span v-else>-</span>
           </el-descriptions-item>
           <el-descriptions-item label="使用说明">{{ entryDetail.usageNote || '-' }}</el-descriptions-item>
@@ -406,15 +437,43 @@ function openEntry(row?: any) {
         tagsText: parseTags(row.tags),
         aliasesText: parseTags(row.aliases),
         fieldMappingsText: parseTags(row.fieldMappings),
-        relatedMetricsText: parseTags(row.relatedMetrics)
+        relatedMetricsText: parseTags(row.relatedMetrics),
+        reportSpec: parseObject(row.reportSpec)
       }
-    : { categoryId: selectedCategoryId.value, entryType: 'TERM', publishStatus: 'PUBLISHED', version: 1 }
+    : {
+        categoryId: selectedCategoryId.value, entryType: 'TERM', publishStatus: 'PUBLISHED', version: 1,
+        reportSpec: { ruleStatus: 'DRAFT' }
+      }
   showEntry.value = true
 }
+function parseObject(v: any): any {
+  if (!v) return { ruleStatus: 'DRAFT' }
+  if (typeof v === 'object') return v
+  try { return JSON.parse(v) } catch { return { ruleStatus: 'DRAFT' } }
+}
+
 function parseTags(v: any): string {
   if (!v) return ''
   try { const a = JSON.parse(v); return Array.isArray(a) ? a.join(', ') : String(v) } catch { return String(v) }
 }
+async function aiDraftReportSpec() {
+  if (!entryForm.value.title?.trim()) { ElMessage.warning('请先填写标题和解释'); return }
+  aiClassifying.value = true
+  try {
+    const prompt = `你是医院数据治理取数规则助手。请根据知识条目生成可执行的报表取数规则草案，不要编造知识中没有的表和字段。\n\n标题：${entryForm.value.title}\n解释：${entryForm.value.definition || ''}\n字段映射：${entryForm.value.fieldMappingsText || ''}\n参考 SQL：${entryForm.value.sqlExample || ''}\n\n只输出 JSON：\n{\n "statisticalGrain": "统计粒度，如 就诊号+日期+科室",\n "dedupKeys": "去重键",\n "requiredTables": "必用表，逗号分隔",\n "conditions": "业务条件",\n "mainSql": "主报表 SQL 模板，不确定留空",\n "drillSql": "下钻 SQL 模板，不确定留空",\n "explanation": "用业务语言解释口径"\n}`
+    const res: any = await agentApi.complete([{ role: 'user', content: prompt }], { agentType: 'code' })
+    const raw = String(res?.data?.content || '').replace(/```json/gi, '').replace(/```/g, '').trim()
+    const json = JSON.parse(raw)
+    entryForm.value.reportSpec = {
+      ...entryForm.value.reportSpec,
+      ...json,
+      ruleStatus: entryForm.value.reportSpec?.ruleStatus || 'DRAFT'
+    }
+    ElMessage.success('已生成取数规则草稿，请核对后保存')
+  } catch (e: any) { ElMessage.error(e.message || 'AI 起草规则失败') }
+  finally { aiClassifying.value = false }
+}
+
 async function aiClassifyEntry() {
   if (!entryForm.value.title?.trim()) { ElMessage.warning('请先填写标题'); return }
   if (!categories.value.length) { ElMessage.warning('请先维护知识分类'); return }
@@ -561,6 +620,7 @@ function categoryName(id: number) {
 
 function prettyJson(value: any) {
   if (!value) return '-'
+  if (typeof value === 'object') return JSON.stringify(value, null, 2)
   try { return JSON.stringify(JSON.parse(value), null, 2) } catch { return String(value) }
 }
 
@@ -616,4 +676,5 @@ onMounted(loadAll)
 .detail-muted { font-size: 11px; color: var(--med-text-light); margin-left: 4px; }
 .detail-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
 .form-tip { margin: -6px 0 12px 90px; font-size: 11px; line-height: 1.6; color: var(--med-text-light); }
+.rule-collapse { margin: 8px 0 12px 90px; }
 </style>

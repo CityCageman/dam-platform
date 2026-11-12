@@ -377,7 +377,8 @@ public class WeKnoraKnowledgeService {
             if (StrUtil.isNotBlank(e.getFieldMappings())) content.append("字段映射：").append(e.getFieldMappings()).append("\n");
             if (StrUtil.isNotBlank(e.getRelatedMetrics())) content.append("关联指标：").append(e.getRelatedMetrics()).append("\n");
             if (StrUtil.isNotBlank(e.getContent())) content.append("补充：").append(e.getContent()).append("\n");
-            if (StrUtil.isNotBlank(e.getSqlExample())) content.append("参考SQL：").append(e.getSqlExample());
+            if (StrUtil.isNotBlank(e.getSqlExample())) content.append("参考SQL：").append(e.getSqlExample()).append("\n");
+            if (StrUtil.isNotBlank(e.getReportSpec())) content.append("取数规则：").append(e.getReportSpec());
             Map<String, Object> hit = new LinkedHashMap<>();
             hit.put("content", content.toString());
             hit.put("knowledgeId", e.getExternalDocId());
@@ -564,6 +565,9 @@ public class WeKnoraKnowledgeService {
         }
         if (StrUtil.isNotBlank(entry.getSqlExample())) {
             sb.append("\n## 参考 SQL\n```sql\n").append(entry.getSqlExample()).append("\n```\n");
+        }
+        if (StrUtil.isNotBlank(entry.getReportSpec())) {
+            sb.append("\n## 取数规则\n").append(entry.getReportSpec()).append("\n");
         }
         return sb.toString();
     }
