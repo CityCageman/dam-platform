@@ -175,6 +175,23 @@ public class ReportService {
                         + "。请在知识库补充参考 SQL，或检查知识条目字段映射后重试");
             }
         }
+        // “三同一有”/费用口径硬校验：不能只查 PA_Adm 就算完成
+        if (requiresBilling(knowledgeContext) && !usesBilling(sql)) {
+            String retryRequirement = requirement + "\n知识库要求按“三同一有”统计：必须有费用产生，"
+                    + "必须使用 DHC_PatBillOrder / DHC_PatBillDetails / DHC_PatientBill 等账单表，"
+                    + "并按同一就诊号、同一天、同一科室去重统计。";
+            String retryPrompt = buildPrompt(retryRequirement, ds.getDsType(), ctx, dataSourceId, knowledgeContext);
+            String retryRaw = callAgent(retryPrompt, token);
+            String retrySql = cleanSql(retryRaw);
+            if (StrUtil.isNotBlank(retrySql) && !retrySql.startsWith("-- 无法生成")) {
+                validateGeneratedSql(retrySql, ctx);
+                sql = retrySql;
+            }
+            if (!usesBilling(sql)) {
+                throw new BusinessException("生成的 SQL 没有体现知识库的“三同一有/有费用产生”规则，"
+                        + "必须使用账单表（DHC_PatBillOrder / DHC_PatBillDetails）并扣除诊金、挂号费");
+            }
+        }
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("sql", sql);
@@ -270,6 +287,20 @@ public class ReportService {
         return titles;
     }
 
+    private boolean requiresBilling(String knowledgeContext) {
+        return knowledgeContext.contains("三同一有")
+                || knowledgeContext.contains("DHC_PatBillOrder")
+                || knowledgeContext.contains("DHC_PatBillDetails")
+                || knowledgeContext.contains("DHC_PatientBill");
+    }
+
+    private boolean usesBilling(String sql) {
+        String lower = sql.toLowerCase();
+        return lower.contains("dhc_patbillorder")
+                || lower.contains("dhc_patbilldetails")
+                || lower.contains("dhc_patientbill");
+    }
+
     private List<String> extractKnowledgeTables(String knowledgeContext) {
         if (StrUtil.isBlank(knowledgeContext)) return List.of();
         java.util.regex.Matcher m = Pattern.compile(
@@ -313,14 +344,20 @@ public class ReportService {
             }
             try {
                 validateGeneratedSql(drillSql, ctx);
+                if (requiresBilling(knowledgeContext) && !usesBilling(drillSql)) {
+                    throw new BusinessException("下钻 SQL 没有使用知识库要求的账单表，未体现“三同一有/有费用产生”");
+                }
                 return drillSql;
             } catch (Exception first) {
-                // 第一次生成了不存在的字段时，把校验错误给模型，再纠正一次
+                // 第一次生成了不存在的字段/漏了费用规则时，把校验错误给模型，再纠正一次
                 String retryPrompt = prompt + "\n\n上一次生成的下钻 SQL 校验失败：" + first.getMessage()
-                        + "\n请修正 SQL，只能使用上下文中真实存在的表和字段，重新输出一条 SELECT。";
+                        + "\n请修正 SQL，只能使用上下文中真实存在的表和字段，并遵守知识库的账单/三同一有规则，重新输出一条 SELECT。";
                 String retryRaw = callAgent(retryPrompt, token);
                 String retrySql = cleanSql(retryRaw);
                 validateGeneratedSql(retrySql, ctx);
+                if (requiresBilling(knowledgeContext) && !usesBilling(retrySql)) {
+                    throw new BusinessException("下钻 SQL 仍未体现知识库的“三同一有/有费用产生”规则");
+                }
                 return retrySql;
             }
         } catch (Exception e) {
