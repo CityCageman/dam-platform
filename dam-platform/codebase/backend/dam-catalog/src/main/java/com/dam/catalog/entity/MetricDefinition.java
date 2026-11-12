@@ -29,6 +29,10 @@ public class MetricDefinition {
 
     private String sqlExpression;
 
+    /** 取数规则：粒度、去重、必用表、条件、主报表/下钻模板 */
+    @TableField(typeHandler = JsonbTypeHandler.class)
+    private String reportSpec;
+
     @TableField(typeHandler = JsonbTypeHandler.class)
     private String dimensions;
 

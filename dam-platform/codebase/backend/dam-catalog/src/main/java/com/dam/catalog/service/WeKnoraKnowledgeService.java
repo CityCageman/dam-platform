@@ -4,9 +4,11 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dam.catalog.entity.KnowledgeCategory;
 import com.dam.catalog.entity.KnowledgeEntry;
+import com.dam.catalog.entity.MetricDefinition;
 import com.dam.catalog.entity.KnowledgeSyncConfig;
 import com.dam.catalog.repository.KnowledgeCategoryMapper;
 import com.dam.catalog.repository.KnowledgeEntryMapper;
+import com.dam.catalog.repository.MetricDefinitionMapper;
 import com.dam.catalog.repository.KnowledgeSyncConfigMapper;
 import com.dam.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -32,6 +34,7 @@ public class WeKnoraKnowledgeService {
     private final KnowledgeSyncConfigMapper configMapper;
     private final KnowledgeCategoryMapper categoryMapper;
     private final KnowledgeEntryMapper entryMapper;
+    private final MetricDefinitionMapper metricMapper;
 
     @Value("${dam.weknora.llm-model:qwen3-coder-30b-a3b}")
     private String preferredLlmModel;
@@ -377,15 +380,25 @@ public class WeKnoraKnowledgeService {
             if (StrUtil.isNotBlank(e.getFieldMappings())) content.append("字段映射：").append(e.getFieldMappings()).append("\n");
             if (StrUtil.isNotBlank(e.getRelatedMetrics())) content.append("关联指标：").append(e.getRelatedMetrics()).append("\n");
             if (StrUtil.isNotBlank(e.getContent())) content.append("补充：").append(e.getContent()).append("\n");
-            if (StrUtil.isNotBlank(e.getSqlExample())) content.append("参考SQL：").append(e.getSqlExample()).append("\n");
-            if (StrUtil.isNotBlank(e.getReportSpec())) content.append("取数规则：").append(e.getReportSpec());
+            MetricDefinition metric = e.getMetricId() == null ? null : metricMapper.selectById(e.getMetricId());
+            if (metric != null) {
+                content.append("指标库口径：").append(StrUtil.blankToDefault(metric.getDefinition(), "")).append("\n");
+                if (StrUtil.isNotBlank(metric.getFormula())) content.append("计算公式：").append(metric.getFormula()).append("\n");
+                if (StrUtil.isNotBlank(metric.getUnit())) content.append("单位：").append(metric.getUnit()).append("\n");
+                if (StrUtil.isNotBlank(metric.getSourceTables())) content.append("来源表：").append(metric.getSourceTables()).append("\n");
+                if (StrUtil.isNotBlank(metric.getSqlExpression())) content.append("指标库SQL：").append(metric.getSqlExpression()).append("\n");
+                if (StrUtil.isNotBlank(metric.getReportSpec())) content.append("指标库取数规则：").append(metric.getReportSpec());
+            } else {
+                if (StrUtil.isNotBlank(e.getSqlExample())) content.append("参考SQL：").append(e.getSqlExample()).append("\n");
+                if (StrUtil.isNotBlank(e.getReportSpec())) content.append("取数规则：").append(e.getReportSpec());
+            }
             Map<String, Object> hit = new LinkedHashMap<>();
             hit.put("content", content.toString());
             hit.put("knowledgeId", e.getExternalDocId());
             hit.put("title", e.getTitle());
             hit.put("score", item.getKey() / 100.0);
             hit.put("source", "LOCAL");
-            hit.put("reportSpec", e.getReportSpec());
+            hit.put("reportSpec", metric != null ? metric.getReportSpec() : e.getReportSpec());
             hits.add(hit);
         }
         return hits;

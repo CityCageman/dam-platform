@@ -166,7 +166,13 @@ public class KnowledgeService {
         e.setCategoryId(categoryId);
         e.setTitle(cut(title, 300));
         e.setContent(str(body.get("content")));
-        e.setEntryType(StrUtil.blankToDefault(str(body.get("entryType")), "TERM").toUpperCase());
+        String entryType = StrUtil.blankToDefault(str(body.get("entryType")), "TERM").toUpperCase();
+        Long metricId = toLong(body.get("metricId"));
+        e.setEntryType(entryType);
+        e.setMetricId("METRIC".equals(entryType) ? metricId : null);
+        if ("METRIC".equals(entryType) && metricId == null) {
+            throw new BusinessException("指标解释必须关联指标库中的指标");
+        }
         e.setDefinition(str(body.get("definition")));
         e.setUsageNote(str(body.get("usageNote")));
         e.setAliases(jsonArray(body.get("aliases")));
@@ -176,6 +182,17 @@ public class KnowledgeService {
         Object reportSpec = body.get("reportSpec");
         e.setReportSpec(reportSpec == null ? null
                 : (reportSpec instanceof String s ? s : JSONUtil.toJsonStr(reportSpec)));
+        if ("METRIC".equals(entryType) && metricId != null) {
+            MetricDefinition metric = metricMapper.selectById(metricId);
+            if (metric == null || metric.getDeletedAt() != null) {
+                throw new BusinessException("关联指标不存在或已删除");
+            }
+            // 计算口径唯一来源：知识库只展示指标库的 SQL/规则，不单独维护
+            e.setSqlExample(metric.getSqlExpression());
+            e.setReportSpec(metric.getReportSpec());
+            e.setSourceType("METRIC");
+            e.setSourceKey("metric:" + metricId);
+        }
         e.setSourceSystem(cut(str(body.get("sourceSystem")), 100));
         e.setOwner(cut(str(body.get("owner")), 100));
         e.setPublishStatus(StrUtil.blankToDefault(str(body.get("publishStatus")), "PUBLISHED").toUpperCase());

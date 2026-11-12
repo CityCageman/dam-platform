@@ -90,6 +90,7 @@ public class MetricService {
         m.setDataSourceId(toLong(body.get("dataSourceId")));
         m.setSourceTables(json(body.get("sourceTables")));
         m.setSqlExpression(str(body.get("sqlExpression")));
+        m.setReportSpec(json(body.get("reportSpec")));
         m.setDimensions(json(body.get("dimensions")));
         m.setTimeGrain(cut(str(body.get("timeGrain")), 30));
         m.setOwner(cut(str(body.get("owner")), 100));

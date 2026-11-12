@@ -12,6 +12,8 @@ public class KnowledgeEntry {
     private Long id;
     private Long categoryId;
     private String title;
+    /** 指标解释关联的指标库指标；METRIC 类型必填 */
+    private Long metricId;
     private String content;
     /** MANUAL / METADATA / METRIC / STANDARD */
     private String sourceType;

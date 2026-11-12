@@ -160,6 +160,22 @@
           </el-col>
         </el-row>
         <el-form-item label="标题" required><el-input v-model="entryForm.title" placeholder="如：病人号" /></el-form-item>
+        <el-form-item v-if="entryForm.entryType === 'METRIC'" label="关联指标" required>
+          <el-select v-model="entryForm.metricId" filterable clearable style="width: 100%;"
+                     placeholder="选择指标库中的指标">
+            <el-option v-for="m in metricOptions" :key="m.id" :label="metricLabel(m)" :value="m.id" />
+          </el-select>
+          <div class="field-help">指标解释必须关联指标库；公式、来源表、SQL 以指标库为准，知识库只维护解释和上下文。</div>
+        </el-form-item>
+        <el-alert v-if="entryForm.entryType === 'METRIC' && selectedMetric" class="metric-authority" type="success" :closable="false" show-icon>
+          <template #title>
+            指标库口径：{{ selectedMetric.metricName }}
+            <span v-if="selectedMetric.formula">｜公式：{{ selectedMetric.formula }}</span>
+            <span v-if="selectedMetric.unit">｜单位：{{ selectedMetric.unit }}</span>
+          </template>
+          <div v-if="selectedMetric.sourceTables" class="metric-detail">来源表：{{ selectedMetric.sourceTables }}</div>
+          <div v-if="selectedMetric.sqlExpression" class="metric-detail">参考 SQL 来自指标库，知识库不单独维护。</div>
+        </el-alert>
         <el-form-item label="解释">
           <el-input v-model="entryForm.definition" type="textarea"
                     :autosize="{ minRows: 4, maxRows: 18 }"
@@ -178,12 +194,12 @@
             PA_PatMas 表的 PAPMI_No 字段就是“病人号”。
           </div>
         </el-form-item>
-        <el-form-item label="参考 SQL">
+        <el-form-item v-if="entryForm.entryType !== 'METRIC'" label="参考 SQL">
           <el-input v-model="entryForm.sqlExample" type="textarea"
                     :autosize="{ minRows: 2, maxRows: 16 }"
                     placeholder="可选：维护该指标/术语的准确取数 SQL，AI 报表会优先沿用其表、关联和口径" />
         </el-form-item>
-        <el-collapse class="rule-collapse">
+        <el-collapse v-if="entryForm.entryType !== 'METRIC'" class="rule-collapse">
           <el-collapse-item title="取数规则（业务口径，AI 报表按此生成）" name="rule">
             <el-alert class="rule-tip" type="info" :closable="false" show-icon
                       title="不需要直接写 SQL：先描述统计粒度、去重方式、必用表和条件，可点“AI 起草取数规则”。" />
@@ -322,11 +338,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { knowledgeApi, agentApi } from '@/api'
+import { knowledgeApi, agentApi, metricApi } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
 
 const categories = ref<any[]>([])
+const metricOptions = ref<any[]>([])
 const entries = ref<any[]>([])
 const stats = ref<any>({})
 const external = ref<any>({ configured: false })
@@ -369,7 +386,16 @@ const vectorTag = (v: string) => (v === 'SYNCED' ? 'success' : v === 'FAILED' ? 
 const syncLabel = (v: string) => ({ LOCAL_ONLY: '未同步', PENDING: '解析中', SYNCED: '已同步', FAILED: '失败' } as any)[v] || '未同步'
 const syncTag = (v: string) => (v === 'SYNCED' ? 'success' : v === 'FAILED' ? 'danger' : 'info')
 const entryTypeLabel = (v: string) => ({ TERM: '业务术语', METRIC: '指标解释', STANDARD: '标准与编码', CASE: '案例与变更' } as any)[v] || '业务术语'
+const metricLabel = (m: any) => m ? `${m.metricName || m.metricCode}${m.metricCode ? '（' + m.metricCode + '）' : ''}` : ''
+const selectedMetric = computed(() => metricOptions.value.find(m => m.id === entryForm.value.metricId))
 const formatTime = (v: string) => v ? String(v).replace('T', ' ').slice(0, 16) : '-'
+
+async function loadMetrics() {
+  try {
+    const res: any = await metricApi.list({ page: 1, pageSize: 500 })
+    metricOptions.value = res.data?.records || res.data || []
+  } catch { metricOptions.value = [] }
+}
 
 async function loadCategories() {
   try {
@@ -463,7 +489,8 @@ function openEntry(row?: any) {
         aliasesText: parseTags(row.aliases),
         fieldMappingsText: parseTags(row.fieldMappings),
         relatedMetricsText: parseTags(row.relatedMetrics),
-        reportSpec: parseObject(row.reportSpec)
+        reportSpec: parseObject(row.reportSpec),
+        metricId: row.metricId || parseMetricId(row.sourceKey)
       }
     : {
         categoryId: selectedCategoryId.value, entryType: 'TERM', publishStatus: 'PUBLISHED', version: 1,
@@ -471,6 +498,11 @@ function openEntry(row?: any) {
       }
   showEntry.value = true
 }
+function parseMetricId(sourceKey: any): number | undefined {
+  const m = String(sourceKey || '').match(/^metric:(\d+)$/)
+  return m ? Number(m[1]) : undefined
+}
+
 function parseObject(v: any): any {
   if (!v) return { ruleStatus: 'DRAFT' }
   if (typeof v === 'object') return v
@@ -548,6 +580,9 @@ ${categoryLines}
 
 async function saveEntry() {
   if (!entryForm.value.title?.trim()) { ElMessage.warning('标题不能为空'); return }
+  if (entryForm.value.entryType === 'METRIC' && !entryForm.value.metricId) {
+    ElMessage.warning('指标解释必须关联指标库中的指标'); return
+  }
   saving.value = true
   try {
     const payload = {
@@ -665,7 +700,7 @@ async function refreshEntryStatus(row: any) {
 
 onBeforeUnmount(() => { if (statusTimer) clearTimeout(statusTimer) })
 
-onMounted(loadAll)
+onMounted(() => { loadAll(); loadMetrics() })
 </script>
 
 <style scoped>
@@ -704,6 +739,8 @@ onMounted(loadAll)
 .field-help { margin-top: 5px; font-size: 11px; line-height: 1.6; color: var(--med-text-light); }
 .rule-collapse { margin: 8px 0 16px; }
 .rule-tip { margin: 0 0 12px; }
+.metric-authority { margin: 0 0 14px 90px; }
+.metric-detail { margin-top: 4px; font-size: 11px; line-height: 1.6; }
 .entry-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-right: 18px; }
 .entry-dialog-title { font-size: 16px; font-weight: 600; color: var(--med-text-primary); }
 .entry-dialog-actions { display: flex; align-items: center; gap: 8px; }
