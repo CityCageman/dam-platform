@@ -128,7 +128,17 @@
     </el-dialog>
 
     <!-- 条目 -->
-    <el-dialog v-model="showEntry" :title="entryForm.id ? '编辑知识' : '新增知识'" width="680px" top="8vh">
+    <el-dialog v-model="showEntry" class="knowledge-entry-dialog" width="960px" top="4vh">
+      <template #header>
+        <div class="entry-dialog-header">
+          <span class="entry-dialog-title">{{ entryForm.id ? '编辑知识' : '新增知识' }}</span>
+          <div class="entry-dialog-actions">
+            <el-button v-if="entryForm.title" :loading="aiClassifying" @click="aiClassifyEntry">AI 归类</el-button>
+            <el-button @click="showEntry = false">取消</el-button>
+            <el-button type="primary" :loading="saving" @click="saveEntry">保存</el-button>
+          </div>
+        </div>
+      </template>
       <el-form :model="entryForm" label-width="80px">
         <el-row :gutter="12">
           <el-col :span="12">
@@ -151,7 +161,8 @@
         </el-row>
         <el-form-item label="标题" required><el-input v-model="entryForm.title" placeholder="如：病人号" /></el-form-item>
         <el-form-item label="解释">
-          <el-input v-model="entryForm.definition" type="textarea" :rows="4"
+          <el-input v-model="entryForm.definition" type="textarea"
+                    :autosize="{ minRows: 4, maxRows: 18 }"
                     placeholder="如：病人号是患者唯一号，也叫主索引 ID；与病人相关的内容都需要通过病人号关联。" />
         </el-form-item>
         <el-row :gutter="12">
@@ -159,18 +170,23 @@
           <el-col :span="12"><el-form-item label="来源系统"><el-input v-model="entryForm.sourceSystem" placeholder="如：HIS / 患者主索引" /></el-form-item></el-col>
         </el-row>
         <el-form-item label="字段映射">
-          <el-input v-model="entryForm.fieldMappingsText" type="textarea" :rows="2"
+          <el-input v-model="entryForm.fieldMappingsText" type="textarea"
+                    :autosize="{ minRows: 2, maxRows: 10 }"
                     placeholder="一行一个，如：PA_PatMas.PAPMI_No → 病人号" />
+          <div class="field-help">
+            说明业务术语/指标对应哪张表、哪个字段，以及关联关系。上面示例表示：
+            PA_PatMas 表的 PAPMI_No 字段就是“病人号”。
+          </div>
         </el-form-item>
         <el-form-item label="参考 SQL">
-          <el-input v-model="entryForm.sqlExample" type="textarea" :rows="5"
+          <el-input v-model="entryForm.sqlExample" type="textarea"
+                    :autosize="{ minRows: 2, maxRows: 16 }"
                     placeholder="可选：维护该指标/术语的准确取数 SQL，AI 报表会优先沿用其表、关联和口径" />
         </el-form-item>
         <el-collapse class="rule-collapse">
           <el-collapse-item title="取数规则（业务口径，AI 报表按此生成）" name="rule">
-            <div class="form-tip" style="margin-left: 0;">
-              不需要直接写 SQL：先描述统计粒度、去重方式、必用表和条件，可点“AI 起草规则”。
-            </div>
+            <el-alert class="rule-tip" type="info" :closable="false" show-icon
+                      title="不需要直接写 SQL：先描述统计粒度、去重方式、必用表和条件，可点“AI 起草取数规则”。" />
             <el-row :gutter="12">
               <el-col :span="12">
                 <el-form-item label="规则状态">
@@ -187,14 +203,25 @@
               <el-col :span="12"><el-form-item label="去重键"><el-input v-model="entryForm.reportSpec.dedupKeys" placeholder="如：PAADM_RowId" /></el-form-item></el-col>
               <el-col :span="12"><el-form-item label="必用表"><el-input v-model="entryForm.reportSpec.requiredTables" placeholder="如：PA_Adm、DHC_PatBillOrder" /></el-form-item></el-col>
             </el-row>
-            <el-form-item label="业务条件"><el-input v-model="entryForm.reportSpec.conditions" type="textarea" :rows="2" placeholder="如：有费用产生；排除测试患者；排除测试科室" /></el-form-item>
-            <el-form-item label="主报表 SQL"><el-input v-model="entryForm.reportSpec.mainSql" type="textarea" :rows="3" placeholder="可选：主报表模板，AI 会优先沿用" /></el-form-item>
-            <el-form-item label="下钻 SQL"><el-input v-model="entryForm.reportSpec.drillSql" type="textarea" :rows="3" placeholder="可选：下钻明细模板" /></el-form-item>
+            <el-form-item label="业务条件">
+              <el-input v-model="entryForm.reportSpec.conditions" type="textarea"
+                        :autosize="{ minRows: 2, maxRows: 8 }" placeholder="如：有费用产生；排除测试患者；排除测试科室" />
+            </el-form-item>
+            <el-form-item label="主报表 SQL">
+              <el-input v-model="entryForm.reportSpec.mainSql" type="textarea"
+                        :autosize="{ minRows: 2, maxRows: 14 }" placeholder="可选：主报表模板，AI 会优先沿用" />
+            </el-form-item>
+            <el-form-item label="下钻 SQL">
+              <el-input v-model="entryForm.reportSpec.drillSql" type="textarea"
+                        :autosize="{ minRows: 2, maxRows: 14 }" placeholder="可选：下钻明细模板" />
+            </el-form-item>
             <el-button size="small" :loading="aiClassifying" @click="aiDraftReportSpec">AI 起草取数规则</el-button>
           </el-collapse-item>
         </el-collapse>
         <el-form-item label="使用说明">
-          <el-input v-model="entryForm.usageNote" type="textarea" :rows="2" placeholder="如：患者、就诊、费用等数据关联时使用该字段。" />
+          <el-input v-model="entryForm.usageNote" type="textarea"
+                    :autosize="{ minRows: 2, maxRows: 10 }"
+                    placeholder="如：患者、就诊、费用等数据关联时使用该字段。" />
         </el-form-item>
         <el-row :gutter="12">
           <el-col :span="12"><el-form-item label="关联指标"><el-input v-model="entryForm.relatedMetricsText" placeholder="逗号分隔，如：门诊量、住院人次" /></el-form-item></el-col>
@@ -213,13 +240,11 @@
           <el-col :span="12"><el-form-item label="版本"><el-input-number v-model="entryForm.version" :min="1" style="width: 100%;" /></el-form-item></el-col>
         </el-row>
         <el-form-item label="标签"><el-input v-model="entryForm.tagsText" placeholder="逗号分隔" /></el-form-item>
-        <el-form-item label="补充说明"><el-input v-model="entryForm.content" type="textarea" :rows="3" placeholder="案例、注意事项等补充内容" /></el-form-item>
+        <el-form-item label="补充说明">
+          <el-input v-model="entryForm.content" type="textarea"
+                    :autosize="{ minRows: 3, maxRows: 12 }" placeholder="案例、注意事项等补充内容" />
+        </el-form-item>
       </el-form>
-      <template #footer>
-        <el-button v-if="entryForm.title" :loading="aiClassifying" @click="aiClassifyEntry">AI 归类</el-button>
-        <el-button @click="showEntry = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="saveEntry">保存</el-button>
-      </template>
     </el-dialog>
 
     <!-- 同步 -->
@@ -676,5 +701,13 @@ onMounted(loadAll)
 .detail-muted { font-size: 11px; color: var(--med-text-light); margin-left: 4px; }
 .detail-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
 .form-tip { margin: -6px 0 12px 90px; font-size: 11px; line-height: 1.6; color: var(--med-text-light); }
-.rule-collapse { margin: 8px 0 12px 90px; }
+.field-help { margin-top: 5px; font-size: 11px; line-height: 1.6; color: var(--med-text-light); }
+.rule-collapse { margin: 8px 0 16px; }
+.rule-tip { margin: 0 0 12px; }
+.entry-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-right: 18px; }
+.entry-dialog-title { font-size: 16px; font-weight: 600; color: var(--med-text-primary); }
+.entry-dialog-actions { display: flex; align-items: center; gap: 8px; }
+.knowledge-entry-dialog .el-dialog__body { max-height: calc(92vh - 110px); overflow-y: auto; padding-top: 8px; }
+.knowledge-entry-dialog .el-dialog__header { margin-right: 0; padding-bottom: 8px; }
+.knowledge-entry-dialog .el-collapse-item__content { padding-bottom: 8px; }
 </style>
