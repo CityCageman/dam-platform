@@ -129,8 +129,10 @@ public class ReportService {
         DamDataSource ds = dataSourceMapper.selectById(dataSourceId);
         if (ds == null) throw new BusinessException("数据源不存在");
 
-        // 1. 检索 WeKnora 知识库，把指标解释/字段映射并入检索和 Prompt
-        String knowledgeContext = retrieveKnowledge(requirement);
+        // 1. 检索 WeKnora/本地知识库，把指标解释、字段映射和取数规则并入检索和 Prompt
+        KnowledgeContext kb = retrieveKnowledge(requirement);
+        String knowledgeContext = kb.text;
+        String reportSpec = kb.reportSpec;
         String enrichedRequirement = StrUtil.isBlank(knowledgeContext) ? requirement
                 : requirement + "\n\n业务知识库参考：\n" + knowledgeContext;
 
@@ -153,15 +155,17 @@ public class ReportService {
         // 生成后自检：模型只能引用上下文中真实存在的表和字段，防止编造
         validateGeneratedSql(sql, ctx);
         // 知识库命中时，让模型按照知识库口径再复核/修正一次，避免只“参考”不执行
-        List<String> knowledgeTables = extractKnowledgeTables(knowledgeContext);
         if (StrUtil.isNotBlank(knowledgeContext)) {
             String reviewed = reviewSqlWithKnowledge(requirement, ds.getDsType(), ctx, dataSourceId,
                     sql, knowledgeContext, token);
             if (StrUtil.isNotBlank(reviewed)) sql = reviewed;
         }
-        // 硬校验：知识库命中了明确表，但生成 SQL 完全没用这些表，则强制重生成一次
-        if (!knowledgeTables.isEmpty() && !usesKnowledgeTable(sql, knowledgeTables)) {
-            String retryRequirement = requirement + "\n必须使用知识库中的表：" + String.join("、", knowledgeTables)
+        // 规则驱动校验：只读取知识条目的 reportSpec，不在代码里写死任何业务口径
+        // 草稿规则只作为上下文参考，只有已发布规则才强制校验
+        boolean enforceRule = rulePublished(reportSpec);
+        List<String> requiredTables = enforceRule ? reportSpecTables(reportSpec) : List.of();
+        if (!requiredTables.isEmpty() && !usesAllTables(sql, requiredTables)) {
+            String retryRequirement = requirement + "\n取数规则要求必须使用以下表：" + String.join("、", requiredTables)
                     + "；不能只使用其他业务表替代。";
             String retryPrompt = buildPrompt(retryRequirement, ds.getDsType(), ctx, dataSourceId, knowledgeContext);
             String retryRaw = callAgent(retryPrompt, token);
@@ -170,26 +174,9 @@ public class ReportService {
                 validateGeneratedSql(retrySql, ctx);
                 sql = retrySql;
             }
-            if (!usesKnowledgeTable(sql, knowledgeTables)) {
-                throw new BusinessException("生成的 SQL 没有使用知识库指定的表：" + String.join("、", knowledgeTables)
-                        + "。请在知识库补充参考 SQL，或检查知识条目字段映射后重试");
-            }
-        }
-        // “三同一有”/费用口径硬校验：不能只查 PA_Adm 就算完成
-        if (requiresBilling(knowledgeContext) && !usesBilling(sql)) {
-            String retryRequirement = requirement + "\n知识库要求按“三同一有”统计：必须有费用产生，"
-                    + "必须使用 DHC_PatBillOrder / DHC_PatBillDetails / DHC_PatientBill 等账单表，"
-                    + "并按同一就诊号、同一天、同一科室去重统计。";
-            String retryPrompt = buildPrompt(retryRequirement, ds.getDsType(), ctx, dataSourceId, knowledgeContext);
-            String retryRaw = callAgent(retryPrompt, token);
-            String retrySql = cleanSql(retryRaw);
-            if (StrUtil.isNotBlank(retrySql) && !retrySql.startsWith("-- 无法生成")) {
-                validateGeneratedSql(retrySql, ctx);
-                sql = retrySql;
-            }
-            if (!usesBilling(sql)) {
-                throw new BusinessException("生成的 SQL 没有体现知识库的“三同一有/有费用产生”规则，"
-                        + "必须使用账单表（DHC_PatBillOrder / DHC_PatBillDetails）并扣除诊金、挂号费");
+            if (!usesAllTables(sql, requiredTables)) {
+                throw new BusinessException("生成的 SQL 没有使用取数规则要求的表：" + String.join("、", requiredTables)
+                        + "。请核对知识条目的取数规则，或补充参考 SQL 后重试");
             }
         }
 
@@ -201,7 +188,7 @@ public class ReportService {
         result.put("tablesUsed", extractUsedTables(sql, ctx));
         result.put("params", extractParams(sql));
         result.put("knowledgeUsed", extractKnowledgeTitles(knowledgeContext));
-        result.put("knowledgeTables", knowledgeTables);
+        result.put("knowledgeTables", requiredTables);
         // 用户明确要求下钻/明细时，再生成下钻 SQL，避免每次多一次模型调用
         if (requirement.contains("下钻") || requirement.contains("明细")) {
             StringBuilder drillError = new StringBuilder();
@@ -261,7 +248,7 @@ public class ReportService {
         try {
             String prompt = buildPrompt(requirement, dsType, ctx, dataSourceId, knowledgeContext)
                     + "\n\n当前生成的 SQL：\n" + sql
-                    + "\n\n请逐条检查当前 SQL 是否严格符合上面的知识库业务口径（尤其是指标范围、来源表、费用条件、三同一有等）。"
+                    + "\n\n请逐条检查当前 SQL 是否严格符合上面的知识库业务口径（尤其是知识库中的指标范围、来源表、取数规则和过滤条件）。"
                     + "如果不符合，请重写；如果符合，原样输出。\n"
                     + "只输出最终 SELECT，不要解释，不要 Markdown，不要输出校验过程。";
             String raw = callAgent(prompt, token);
@@ -287,36 +274,45 @@ public class ReportService {
         return titles;
     }
 
-    private boolean requiresBilling(String knowledgeContext) {
-        return knowledgeContext.contains("三同一有")
-                || knowledgeContext.contains("DHC_PatBillOrder")
-                || knowledgeContext.contains("DHC_PatBillDetails")
-                || knowledgeContext.contains("DHC_PatientBill");
+    private boolean rulePublished(String reportSpec) {
+        if (StrUtil.isBlank(reportSpec)) return false;
+        try {
+            JsonNode spec = MAPPER.readTree(reportSpec);
+            String status = spec.path("ruleStatus").asText("");
+            // 兼容旧规则没有 ruleStatus 的情况，视为已发布
+            return status.isBlank() || "PUBLISHED".equalsIgnoreCase(status);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
-    private boolean usesBilling(String sql) {
-        String lower = sql.toLowerCase();
-        return lower.contains("dhc_patbillorder")
-                || lower.contains("dhc_patbilldetails")
-                || lower.contains("dhc_patientbill");
+    /** 从 reportSpec 读取 requiredTables，支持字符串或数组 */
+    private List<String> reportSpecTables(String reportSpec) {
+        if (StrUtil.isBlank(reportSpec)) return List.of();
+        try {
+            JsonNode spec = MAPPER.readTree(reportSpec);
+            JsonNode node = spec.path("requiredTables");
+            List<String> tables = new ArrayList<>();
+            if (node.isArray()) {
+                node.forEach(n -> tables.add(n.asText()));
+            } else if (node.isTextual()) {
+                for (String item : node.asText().split("[,，、\\s]+")) {
+                    if (StrUtil.isNotBlank(item)) tables.add(item.trim());
+                }
+            }
+            return tables.stream().filter(StrUtil::isNotBlank).distinct().limit(30).toList();
+        } catch (Exception e) {
+            log.warn("解析取数规则 requiredTables 失败: {}", e.getMessage());
+            return List.of();
+        }
     }
 
-    private List<String> extractKnowledgeTables(String knowledgeContext) {
-        if (StrUtil.isBlank(knowledgeContext)) return List.of();
-        java.util.regex.Matcher m = Pattern.compile(
-                "\\b(?:PA_Adm(?:Ext)?|PA_PatMas|PA_PatBill|DHC[A-Za-z0-9_]+|CT_[A-Za-z0-9_]+|MR_[A-Za-z0-9_]+|OE_[A-Za-z0-9_]+|RB_[A-Za-z0-9_]+)\\b")
-                .matcher(knowledgeContext);
-        java.util.LinkedHashSet<String> tables = new java.util.LinkedHashSet<>();
-        while (m.find()) tables.add(m.group());
-        return tables.stream().limit(30).toList();
-    }
-
-    private boolean usesKnowledgeTable(String sql, List<String> tables) {
+    private boolean usesAllTables(String sql, List<String> tables) {
         String lower = sql.toLowerCase();
         for (String table : tables) {
-            if (lower.contains(table.toLowerCase())) return true;
+            if (!lower.contains(table.toLowerCase())) return false;
         }
-        return false;
+        return true;
     }
 
     /** 根据主报表 SQL 生成下钻明细 SQL；参数名固定建议 date/dept，便于前端按行传值 */
@@ -344,20 +340,16 @@ public class ReportService {
             }
             try {
                 validateGeneratedSql(drillSql, ctx);
-                if (requiresBilling(knowledgeContext) && !usesBilling(drillSql)) {
-                    throw new BusinessException("下钻 SQL 没有使用知识库要求的账单表，未体现“三同一有/有费用产生”");
-                }
+
                 return drillSql;
             } catch (Exception first) {
                 // 第一次生成了不存在的字段/漏了费用规则时，把校验错误给模型，再纠正一次
                 String retryPrompt = prompt + "\n\n上一次生成的下钻 SQL 校验失败：" + first.getMessage()
-                        + "\n请修正 SQL，只能使用上下文中真实存在的表和字段，并遵守知识库的账单/三同一有规则，重新输出一条 SELECT。";
+                        + "\n请修正 SQL，只能使用上下文中真实存在的表和字段，并遵守知识库的取数规则，重新输出一条 SELECT。";
                 String retryRaw = callAgent(retryPrompt, token);
                 String retrySql = cleanSql(retryRaw);
                 validateGeneratedSql(retrySql, ctx);
-                if (requiresBilling(knowledgeContext) && !usesBilling(retrySql)) {
-                    throw new BusinessException("下钻 SQL 仍未体现知识库的“三同一有/有费用产生”规则");
-                }
+
                 return retrySql;
             }
         } catch (Exception e) {
@@ -1017,13 +1009,14 @@ public class ReportService {
         }
     }
 
-    /** 检索 WeKnora/本地知识库，把业务解释和字段映射作为报表上下文 */
-    private String retrieveKnowledge(String requirement) {
+    /** 检索 WeKnora/本地知识库，返回文本上下文和结构化取数规则 */
+    private KnowledgeContext retrieveKnowledge(String requirement) {
         try {
             Map<String, Object> result = weKnoraKnowledgeService.search(requirement, 5);
             Object raw = result.get("results");
-            if (!(raw instanceof List<?> list) || list.isEmpty()) return "";
+            if (!(raw instanceof List<?> list) || list.isEmpty()) return new KnowledgeContext("", null);
             StringBuilder sb = new StringBuilder();
+            String reportSpec = null;
             int count = 0;
             for (Object item : list) {
                 if (!(item instanceof Map<?, ?> hit)) continue;
@@ -1032,14 +1025,28 @@ public class ReportService {
                 String title = titleValue == null ? "" : String.valueOf(titleValue);
                 String content = contentValue == null ? "" : String.valueOf(contentValue);
                 if (StrUtil.isBlank(content)) continue;
+                Object specValue = hit.get("reportSpec");
+                if (reportSpec == null && specValue != null && StrUtil.isNotBlank(String.valueOf(specValue))) {
+                    reportSpec = String.valueOf(specValue);
+                }
                 sb.append("- ").append(title).append("：")
                         .append(content.length() > 1200 ? content.substring(0, 1200) : content).append("\n");
                 if (++count >= 5) break;
             }
-            return sb.toString().length() > 5000 ? sb.substring(0, 5000) : sb.toString();
+            String text = sb.toString().length() > 5000 ? sb.substring(0, 5000) : sb.toString();
+            return new KnowledgeContext(text, reportSpec);
         } catch (Exception e) {
             log.warn("报表检索知识库失败，继续使用元数据: {}", e.getMessage());
-            return "";
+            return new KnowledgeContext("", null);
+        }
+    }
+
+    private static final class KnowledgeContext {
+        private final String text;
+        private final String reportSpec;
+        private KnowledgeContext(String text, String reportSpec) {
+            this.text = text;
+            this.reportSpec = reportSpec;
         }
     }
 

@@ -385,6 +385,7 @@ public class WeKnoraKnowledgeService {
             hit.put("title", e.getTitle());
             hit.put("score", item.getKey() / 100.0);
             hit.put("source", "LOCAL");
+            hit.put("reportSpec", e.getReportSpec());
             hits.add(hit);
         }
         return hits;
