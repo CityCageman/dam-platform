@@ -300,16 +300,17 @@ public class WeKnoraKnowledgeService {
         catch (Exception e) { log.warn("删除 WeKnora 知识失败 [{}]: {}", entry.getExternalDocId(), e.getMessage()); }
     }
 
-    /** 外部检索优先，失败/无结果时回退本地快照 */
+    /** 本地结构化知识优先，外部 WeKnora 结果补充；保证 DAM 维护的口径一定进入上下文 */
     public Map<String, Object> search(String query, Integer limit) {
         if (StrUtil.isBlank(query)) throw new BusinessException("查询内容不能为空");
         int topK = limit == null ? 10 : Math.clamp(limit, 1, 50);
-        Map<String, Object> result = new LinkedHashMap<>();
+        List<Map<String, Object>> hits = localHits(query, topK);
+        String source = "LOCAL";
+        String externalError = null;
         if (client.isConfigured()) {
             try {
                 KnowledgeSyncConfig c = ensureKnowledgeBase();
                 List<JsonNode> rows = client.search(query, c.getExternalKbId(), topK);
-                List<Map<String, Object>> hits = new ArrayList<>();
                 for (JsonNode row : rows) {
                     Map<String, Object> hit = new LinkedHashMap<>();
                     hit.put("content", text(row, "content"));
@@ -317,36 +318,106 @@ public class WeKnoraKnowledgeService {
                     hit.put("title", text(row, "knowledge_title"));
                     hit.put("score", row.path("score").asDouble(0));
                     hit.put("knowledgeBaseId", text(row, "knowledge_base_id"));
-                    hits.add(hit);
+                    hit.put("source", "WEKNORA");
+                    if (hit.get("content") != null) hits.add(hit);
                 }
-                if (!hits.isEmpty()) {
-                    result.put("source", "WEKNORA");
-                    result.put("results", hits);
-                    return result;
-                }
+                source = "MIXED";
             } catch (Exception e) {
-                log.warn("WeKnora 检索失败，回退本地知识库: {}", e.getMessage());
-                result.put("externalError", e.getMessage());
+                log.warn("WeKnora 检索失败，使用本地知识库: {}", e.getMessage());
+                externalError = e.getMessage();
             }
         }
-        List<KnowledgeEntry> local = entryMapper.selectList(new LambdaQueryWrapper<KnowledgeEntry>()
+        // 去重，保持本地结构化知识在前
+        Map<String, Map<String, Object>> unique = new LinkedHashMap<>();
+        for (Map<String, Object> hit : hits) {
+            String key = StrUtil.blankToDefault(String.valueOf(hit.get("knowledgeId")),
+                    String.valueOf(hit.get("title")));
+            unique.putIfAbsent(key, hit);
+        }
+        List<Map<String, Object>> resultHits = new ArrayList<>(unique.values());
+        if (resultHits.size() > topK) resultHits = resultHits.subList(0, topK);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("source", source);
+        result.put("results", resultHits);
+        if (externalError != null) result.put("externalError", externalError);
+        return result;
+    }
+
+    /** 本地结构化知识匹配：标题、别名、定义、字段映射、使用说明、正文 */
+    private List<Map<String, Object>> localHits(String query, int limit) {
+        List<KnowledgeEntry> entries = entryMapper.selectList(new LambdaQueryWrapper<KnowledgeEntry>()
                 .isNull(KnowledgeEntry::getDeletedAt)
                 .eq(KnowledgeEntry::getEnabled, 1)
-                .and(w -> w.like(KnowledgeEntry::getTitle, query).or().like(KnowledgeEntry::getContent, query))
-                .last("LIMIT " + topK));
+                .eq(KnowledgeEntry::getPublishStatus, "PUBLISHED")
+                .orderByDesc(KnowledgeEntry::getUpdatedAt)
+                .last("LIMIT 300"));
+        List<Map.Entry<Integer, KnowledgeEntry>> scored = new ArrayList<>();
+        for (KnowledgeEntry e : entries) {
+            String haystack = String.valueOf(e.getTitle()) + " " + String.valueOf(e.getDefinition())
+                    + " " + String.valueOf(e.getAliases()) + " " + String.valueOf(e.getFieldMappings())
+                    + " " + String.valueOf(e.getUsageNote()) + " " + String.valueOf(e.getContent());
+            int score = 0;
+            if (StrUtil.isNotBlank(e.getTitle()) && query.contains(e.getTitle())) score += 100;
+            for (String alias : jsonStrings(e.getAliases())) {
+                if (StrUtil.isNotBlank(alias) && query.contains(alias)) score += 60;
+            }
+            for (String term : queryTerms(query)) {
+                if (haystack.contains(term)) score += Math.min(10, term.length());
+            }
+            if (score > 0) scored.add(Map.entry(score, e));
+        }
+        scored.sort((a, b) -> Integer.compare(b.getKey(), a.getKey()));
         List<Map<String, Object>> hits = new ArrayList<>();
-        for (KnowledgeEntry e : local) {
+        for (Map.Entry<Integer, KnowledgeEntry> item : scored.stream().limit(limit).toList()) {
+            KnowledgeEntry e = item.getValue();
+            StringBuilder content = new StringBuilder();
+            if (StrUtil.isNotBlank(e.getDefinition())) content.append("解释：").append(e.getDefinition()).append("\n");
+            if (StrUtil.isNotBlank(e.getUsageNote())) content.append("使用说明：").append(e.getUsageNote()).append("\n");
+            if (StrUtil.isNotBlank(e.getFieldMappings())) content.append("字段映射：").append(e.getFieldMappings()).append("\n");
+            if (StrUtil.isNotBlank(e.getRelatedMetrics())) content.append("关联指标：").append(e.getRelatedMetrics()).append("\n");
+            if (StrUtil.isNotBlank(e.getContent())) content.append("补充：").append(e.getContent());
             Map<String, Object> hit = new LinkedHashMap<>();
-            hit.put("content", e.getContent());
+            hit.put("content", content.toString());
             hit.put("knowledgeId", e.getExternalDocId());
             hit.put("title", e.getTitle());
-            hit.put("score", 1.0);
-            hit.put("knowledgeBaseId", e.getExternalKbId());
+            hit.put("score", item.getKey() / 100.0);
+            hit.put("source", "LOCAL");
             hits.add(hit);
         }
-        result.put("source", "LOCAL");
-        result.put("results", hits);
-        return result;
+        return hits;
+    }
+
+    private List<String> jsonStrings(String json) {
+        if (StrUtil.isBlank(json)) return List.of();
+        try {
+            JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
+            if (node.isArray()) {
+                List<String> values = new ArrayList<>();
+                node.forEach(n -> values.add(n.asText()));
+                return values;
+            }
+            return List.of(node.asText());
+        } catch (Exception e) {
+            return List.of(json);
+        }
+    }
+
+    private List<String> queryTerms(String query) {
+        // 中文按 2-4 字片段，英文/数字按词，去掉泛化词
+        List<String> terms = new ArrayList<>();
+        for (String token : query.split("[\\s,，。；;：:、/\\\\|()（）]+")) {
+            String t = token.trim();
+            if (t.length() >= 2) {
+                terms.add(t);
+                if (t.length() <= 8) {
+                    for (int len = Math.min(4, t.length()); len >= 2; len--) {
+                        for (int i = 0; i + len <= t.length(); i++) terms.add(t.substring(i, i + len));
+                    }
+                }
+            }
+        }
+        return terms.stream().filter(t -> !Set.of("统计", "查询", "报表", "显示", "需要", "工作").contains(t))
+                .distinct().limit(40).toList();
     }
 
     /** 外部 KB 被删除后，清掉旧 KB/旧 tag/旧文档 ID，避免继续更新已不存在的文档 */

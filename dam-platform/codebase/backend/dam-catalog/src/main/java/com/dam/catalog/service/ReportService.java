@@ -163,7 +163,7 @@ public class ReportService {
         // 用户明确要求下钻/明细时，再生成下钻 SQL，避免每次多一次模型调用
         if (requirement.contains("下钻") || requirement.contains("明细")) {
             StringBuilder drillError = new StringBuilder();
-            String drillSql = generateDrill(requirement, dataSourceId, sql, token, knowledgeContext, drillError);
+            String drillSql = generateDrill(requirement, dataSourceId, sql, token, knowledgeContext, ds.getDsType(), drillError);
             if (StrUtil.isNotBlank(drillSql)) {
                 result.put("drillSql", drillSql);
                 result.put("drillParams", extractParams(drillSql));
@@ -215,7 +215,7 @@ public class ReportService {
 
     /** 根据主报表 SQL 生成下钻明细 SQL；参数名固定建议 date/dept，便于前端按行传值 */
     private String generateDrill(String requirement, Long dataSourceId, String mainSql,
-                                 String token, String knowledgeContext, StringBuilder drillError) {
+                                 String token, String knowledgeContext, String dsType, StringBuilder drillError) {
         try {
             String drillRequirement = "主报表 SQL：\n" + mainSql
                     + "\n\n用户原始需求（包含下钻字段）：\n" + requirement
@@ -228,15 +228,25 @@ public class ReportService {
                 drillError.append("下钻 SQL 未生成：没有检索到可用表结构");
                 return null;
             }
-            String prompt = buildPrompt(drillRequirement, "POSTGRESQL", ctx, dataSourceId, knowledgeContext);
+            String prompt = buildPrompt(drillRequirement, dsType, ctx, dataSourceId, knowledgeContext);
             String raw = callAgent(prompt, token);
             String drillSql = cleanSql(raw);
             if (StrUtil.isBlank(drillSql) || drillSql.startsWith("-- 无法生成")) {
                 drillError.append("下钻 SQL 未生成：模型没有返回有效明细 SQL");
                 return null;
             }
-            validateGeneratedSql(drillSql, ctx);
-            return drillSql;
+            try {
+                validateGeneratedSql(drillSql, ctx);
+                return drillSql;
+            } catch (Exception first) {
+                // 第一次生成了不存在的字段时，把校验错误给模型，再纠正一次
+                String retryPrompt = prompt + "\n\n上一次生成的下钻 SQL 校验失败：" + first.getMessage()
+                        + "\n请修正 SQL，只能使用上下文中真实存在的表和字段，重新输出一条 SELECT。";
+                String retryRaw = callAgent(retryPrompt, token);
+                String retrySql = cleanSql(retryRaw);
+                validateGeneratedSql(retrySql, ctx);
+                return retrySql;
+            }
         } catch (Exception e) {
             log.warn("生成下钻 SQL 失败，保留主报表: {}", e.getMessage());
             drillError.append("下钻 SQL 校验失败：").append(e.getMessage());
