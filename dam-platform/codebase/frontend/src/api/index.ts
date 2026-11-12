@@ -4,19 +4,19 @@ import { streamPost, type SseCallbacks } from '@/utils/sse'
 export const agentApi = {
   /** 流式对话（独立聊天窗口） */
   streamChat(messages: any[], callbacks: SseCallbacks, signal?: AbortSignal) {
-    return streamPost('/api/agent/chat', { messages }, callbacks, signal)
+    return streamPost('/api/model-gateway/chat', { messages }, callbacks, signal)
   },
   /** 一次性完成（业务嵌入，如生成资产描述/工单摘要；agentType: chat=对话, code=编码） */
   complete(messages: any[], params?: { agentType?: string; model?: string; temperature?: number; maxTokens?: number }) {
     // 编码模型批量生成（如字段注释）耗时较长，单独放宽超时至 120s（匹配后端超时）
-    return request.post('/agent/complete', { messages, ...params }, { timeout: 120000 })
+    return request.post('/model-gateway/complete', { messages, ...params }, { timeout: 120000 })
   }
 }
 
 export const reportApi = {
   /** 根据自然语言需求生成报表 SQL（后端检索表结构 + 调用编码智能体，耗时较长） */
   generate(data: { requirement: string; dataSourceId: number }) {
-    return request.post('/catalog/report/generate', data, { timeout: 300000 })
+    return request.post('/ai-workbench/reports/generate', data, { timeout: 300000 })
   },
   /** 异步生成报表：创建 REPORT 任务，后台生成并登记到报表体系 */
   generateAsync(data: {
