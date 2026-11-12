@@ -134,6 +134,10 @@
         </div>
 
         <div v-if="runError" class="run-error">{{ runError }}</div>
+        <div v-if="detail.report.drillSql" class="drill-sql-block">
+          <div class="block-title">下钻 SQL</div>
+          <pre class="drill-sql">{{ detail.report.drillSql }}</pre>
+        </div>
 
         <el-table v-if="runResult && runResult.columns?.length" :data="runResult.rows" stripe border size="small" max-height="420" style="margin-top: 12px;">
           <el-table-column v-for="col in runResult.columns" :key="col" :label="col" min-width="120" show-overflow-tooltip>
@@ -543,4 +547,6 @@ async function removeReport(report: any) {
 .drill-panel { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--med-border-light); }
 .drill-meta { margin-left: 8px; font-size: 11px; color: var(--med-text-light); font-weight: 400; }
 .drill-loading { margin-top: 10px; color: var(--med-text-light); font-size: 12px; }
+.drill-sql-block { margin-top: 12px; }
+.drill-sql { background: #2A1F2A; color: #E9DCE7; border-radius: 8px; padding: 10px 12px; font-size: 11.5px; line-height: 1.6; white-space: pre-wrap; max-height: 180px; overflow: auto; }
 </style>

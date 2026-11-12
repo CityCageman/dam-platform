@@ -2,11 +2,13 @@ package com.dam.catalog.service;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.dam.catalog.entity.DamAsset;
 import com.dam.catalog.entity.DamDataSource;
 import com.dam.catalog.entity.MetadataColumn;
 import com.dam.catalog.entity.MetadataSchema;
 import com.dam.catalog.entity.MetadataTable;
 import com.dam.catalog.entity.MetricDefinition;
+import com.dam.catalog.repository.DamAssetMapper;
 import com.dam.catalog.repository.DamDataSourceMapper;
 import com.dam.catalog.repository.MetadataColumnMapper;
 import com.dam.catalog.repository.MetadataSchemaMapper;
@@ -88,6 +90,7 @@ public class ReportService {
     private static final int DEFAULT_MAX_ROWS = 500;
 
     private final DamDataSourceMapper dataSourceMapper;
+    private final DamAssetMapper assetMapper;
     private final MetadataTableMapper tableMapper;
     private final MetadataColumnMapper columnMapper;
     private final MetricDefinitionMapper metricMapper;
@@ -159,10 +162,13 @@ public class ReportService {
         result.put("params", extractParams(sql));
         // 用户明确要求下钻/明细时，再生成下钻 SQL，避免每次多一次模型调用
         if (requirement.contains("下钻") || requirement.contains("明细")) {
-            String drillSql = generateDrill(requirement, dataSourceId, sql, token, knowledgeContext);
+            StringBuilder drillError = new StringBuilder();
+            String drillSql = generateDrill(requirement, dataSourceId, sql, token, knowledgeContext, drillError);
             if (StrUtil.isNotBlank(drillSql)) {
                 result.put("drillSql", drillSql);
                 result.put("drillParams", extractParams(drillSql));
+            } else {
+                result.put("drillError", drillError.toString());
             }
         }
         return result;
@@ -209,7 +215,7 @@ public class ReportService {
 
     /** 根据主报表 SQL 生成下钻明细 SQL；参数名固定建议 date/dept，便于前端按行传值 */
     private String generateDrill(String requirement, Long dataSourceId, String mainSql,
-                                 String token, String knowledgeContext) {
+                                 String token, String knowledgeContext, StringBuilder drillError) {
         try {
             String drillRequirement = "主报表 SQL：\n" + mainSql
                     + "\n\n用户原始需求（包含下钻字段）：\n" + requirement
@@ -218,15 +224,22 @@ public class ReportService {
                     + "2. 用 :date、:dept 绑定主报表的日期、科室筛选；\n"
                     + "3. 只输出一条 SELECT，不要解释。";
             TableContext ctx = buildTableContext(dataSourceId, drillRequirement, token);
-            if (ctx.tables.isEmpty()) return null;
+            if (ctx.tables.isEmpty()) {
+                drillError.append("下钻 SQL 未生成：没有检索到可用表结构");
+                return null;
+            }
             String prompt = buildPrompt(drillRequirement, "POSTGRESQL", ctx, dataSourceId, knowledgeContext);
             String raw = callAgent(prompt, token);
             String drillSql = cleanSql(raw);
-            if (StrUtil.isBlank(drillSql) || drillSql.startsWith("-- 无法生成")) return null;
+            if (StrUtil.isBlank(drillSql) || drillSql.startsWith("-- 无法生成")) {
+                drillError.append("下钻 SQL 未生成：模型没有返回有效明细 SQL");
+                return null;
+            }
             validateGeneratedSql(drillSql, ctx);
             return drillSql;
         } catch (Exception e) {
             log.warn("生成下钻 SQL 失败，保留主报表: {}", e.getMessage());
+            drillError.append("下钻 SQL 校验失败：").append(e.getMessage());
             return null;
         }
     }
@@ -589,6 +602,25 @@ public class ReportService {
             m.put("tableComment", t.getTableComment());
             m.put("columns", columns);
             ctx.tables.add(m);
+        }
+        // 资产描述是元数据页面可直接维护的表注释；覆盖 metadata_table 的旧注释，
+        // 保证 Prompt、引用表展示和生成结果使用同一个最新口径。
+        try {
+            List<String> selectedNames = ctx.tables.stream()
+                    .map(t -> String.valueOf(t.get("tableName"))).filter(StrUtil::isNotBlank).toList();
+            if (!selectedNames.isEmpty()) {
+                Map<String, String> comments = assetMapper.selectList(new LambdaQueryWrapper<DamAsset>()
+                                .eq(DamAsset::getDataSourceId, dataSourceId)
+                                .in(DamAsset::getAssetName, selectedNames))
+                        .stream().filter(a -> StrUtil.isNotBlank(a.getDescription()))
+                        .collect(Collectors.toMap(DamAsset::getAssetName, DamAsset::getDescription, (a, b) -> a));
+                for (Map<String, Object> table : ctx.tables) {
+                    String comment = comments.get(String.valueOf(table.get("tableName")));
+                    if (StrUtil.isNotBlank(comment)) table.put("tableComment", comment);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("加载资产表注释失败，继续使用元数据注释: {}", e.getMessage());
         }
         return ctx;
     }
@@ -979,8 +1011,10 @@ public class ReportService {
         }
         if (!hasJoin) sb.append("- 无显式关联条件，请只使用上下文中 PK/FK 注释\n");
         if (StrUtil.isNotBlank(knowledgeContext)) {
-            sb.append("业务知识库参考（用于理解业务术语、指标口径和字段映射；不能替代真实表字段校验）：\n");
+            sb.append("业务知识库参考（用于理解业务术语、指标口径、来源表和字段映射；不能替代真实表字段校验）：\n");
             sb.append(knowledgeContext).append("\n\n");
+            sb.append("约束：如果知识库明确给出了指标口径、计算公式、来源表或字段映射，必须优先按照知识库执行；\n");
+            sb.append("不得用元数据或其他表的自定义口径覆盖知识库中的明确口径。\n\n");
         }
         sb.append("\n用户需求：").append(requirement).append("\n\n");
         sb.append("要求：\n");

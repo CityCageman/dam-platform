@@ -1260,6 +1260,20 @@ public class CatalogService {
                 log.warn("同步主题域异常（不影响资产保存）: {}", e.getMessage());
             }
         }
+        // 元数据管理修改的是 asset_info.description；同步回 metadata_table.table_comment，
+        // 供报表生成、Prompt 和引用表展示使用，避免两处注释不一致。
+        if (asset.getId() != null && asset.getDescription() != null) {
+            Long mtId = asset.getSourceMetadataId();
+            if (mtId == null) {
+                DamAsset db = assetMapper.selectById(asset.getId());
+                if (db != null) mtId = db.getSourceMetadataId();
+            }
+            MetadataTable mt = mtId != null ? metadataTableMapper.selectById(mtId) : null;
+            if (mt != null) {
+                mt.setTableComment(StrUtil.isBlank(asset.getDescription()) ? null : asset.getDescription());
+                metadataTableMapper.updateById(mt);
+            }
+        }
         assetMapper.updateById(asset);
         calculateAssetSecurityLevel(asset.getId());
         return assetMapper.selectById(asset.getId());

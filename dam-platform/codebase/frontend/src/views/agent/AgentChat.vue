@@ -99,6 +99,11 @@
               </div>
               <div class="report-sql-label">生成的 SQL（执行前请确认）</div>
               <pre class="report-sql">{{ m.report.sql }}</pre>
+              <template v-if="m.report.drillSql">
+                <div class="report-sql-label">下钻 SQL</div>
+                <pre class="report-sql">{{ m.report.drillSql }}</pre>
+              </template>
+              <div v-if="m.report.drillError" class="report-error">下钻未生成：{{ m.report.drillError }}</div>
               <div class="report-actions">
                 <el-button
                   size="small"
@@ -391,6 +396,7 @@ async function runReportTask(report: ReportState, requirement: string,
       const d = JSON.parse(item.draftContent || '{}')
       report.sql = d.sql || ''
       report.drillSql = d.drillSql || ''
+      report.drillError = d.drillError || ''
       report.dataSourceName = d.dataSourceName
       report.tablesUsed = d.tablesUsed || []
       report.reportName = d.reportName
