@@ -152,11 +152,11 @@ function Load-Env {
     $env:DAM_ROUTE_SECURITY = "http://127.0.0.1:8086"
     $env:DAM_ROUTE_LIFECYCLE = "http://127.0.0.1:8087"
     $env:DAM_ROUTE_OPERATIONS = "http://127.0.0.1:8088"
-    $env:DAM_ROUTE_AGENT = "http://127.0.0.1:8089"
+    $env:DAM_ROUTE_MODEL_GATEWAY = "http://127.0.0.1:8089"
+    $env:DAM_ROUTE_AI_WORKBENCH = "http://127.0.0.1:8090"
     $env:DAM_LINEAGE_URL = "http://127.0.0.1:8093"
-    $env:DAM_AGENT_URL = "http://127.0.0.1:8089"
-    if ($Config.ChatKey) { $env:DAM_AGENT_CHAT_API_KEY = $Config.ChatKey }
-    if ($Config.CodeKey) { $env:DAM_AGENT_CODE_API_KEY = $Config.CodeKey }
+    $env:DAM_MODEL_GATEWAY_URL = "http://127.0.0.1:8089"
+        if ($Config.CodeKey) { $env:DAM_MODEL_GATEWAY_CODE_API_KEY = $Config.CodeKey }
 }
 
 function Test-PortInUse([int]$Port) {
