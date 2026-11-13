@@ -160,13 +160,19 @@
           </el-col>
         </el-row>
         <el-form-item label="标题" required><el-input v-model="entryForm.title" placeholder="如：病人号" /></el-form-item>
-        <el-form-item v-if="entryForm.entryType === 'METRIC'" label="关联指标" required>
+        <el-form-item v-if="entryForm.entryType === 'METRIC'" label="归属指标"
+                      :required="entryForm.publishStatus === 'PUBLISHED'">
           <el-select v-model="entryForm.metricId" filterable clearable style="width: 100%;"
                      placeholder="选择指标库中的指标">
             <el-option v-for="m in metricOptions" :key="m.id" :label="metricLabel(m)" :value="m.id" />
           </el-select>
-          <div class="field-help">指标解释必须关联指标库；公式、来源表、SQL 以指标库为准，知识库只维护解释和上下文。</div>
+          <div class="field-help">
+            指标解释在发布前必须归属指标库；草稿可以先不关联。
+            公式、来源表、SQL 和取数规则以指标库为准，知识库只维护解释和上下文。
+          </div>
         </el-form-item>
+        <el-alert v-if="entryForm.entryType === 'METRIC'" class="metric-boundary-tip" type="warning" :closable="false" show-icon
+                  title="当前是“指标解释”，不是指标定义：这里不维护公式、SQL 和取数规则。" />
         <el-alert v-if="entryForm.entryType === 'METRIC' && selectedMetric" class="metric-authority" type="success" :closable="false" show-icon>
           <template #title>
             指标库口径：{{ selectedMetric.metricName }}
@@ -240,12 +246,12 @@
                     placeholder="如：患者、就诊、费用等数据关联时使用该字段。" />
         </el-form-item>
         <el-row :gutter="12">
-          <el-col :span="12"><el-form-item label="关联指标"><el-input v-model="entryForm.relatedMetricsText" placeholder="逗号分隔，如：门诊量、住院人次" /></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="相关指标"><el-input v-model="entryForm.relatedMetricsText" placeholder="其他相关指标，逗号分隔，如：门诊量、住院人次" /></el-form-item></el-col>
           <el-col :span="12"><el-form-item label="负责人"><el-input v-model="entryForm.owner" /></el-form-item></el-col>
         </el-row>
         <el-row :gutter="12">
           <el-col :span="12">
-            <el-form-item label="发布状态">
+            <el-form-item label="知识状态">
               <el-select v-model="entryForm.publishStatus" style="width: 100%;">
                 <el-option label="草稿" value="DRAFT" />
                 <el-option label="已发布" value="PUBLISHED" />
@@ -253,7 +259,7 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="12"><el-form-item label="版本"><el-input-number v-model="entryForm.version" :min="1" style="width: 100%;" /></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="知识版本"><el-input-number v-model="entryForm.version" :min="1" style="width: 100%;" /></el-form-item></el-col>
         </el-row>
         <el-form-item label="标签"><el-input v-model="entryForm.tagsText" placeholder="逗号分隔" /></el-form-item>
         <el-form-item label="补充说明">
@@ -308,7 +314,7 @@
             <span v-else>-</span>
           </el-descriptions-item>
           <el-descriptions-item label="使用说明">{{ entryDetail.usageNote || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="关联指标">{{ prettyJson(entryDetail.relatedMetrics) }}</el-descriptions-item>
+          <el-descriptions-item label="相关指标">{{ prettyJson(entryDetail.relatedMetrics) }}</el-descriptions-item>
           <el-descriptions-item label="来源系统">{{ entryDetail.sourceSystem || '-' }}</el-descriptions-item>
           <el-descriptions-item label="负责人">{{ entryDetail.owner || '-' }}</el-descriptions-item>
           <el-descriptions-item label="发布状态">{{ entryDetail.publishStatus || '-' }}</el-descriptions-item>
@@ -580,8 +586,8 @@ ${categoryLines}
 
 async function saveEntry() {
   if (!entryForm.value.title?.trim()) { ElMessage.warning('标题不能为空'); return }
-  if (entryForm.value.entryType === 'METRIC' && !entryForm.value.metricId) {
-    ElMessage.warning('指标解释必须关联指标库中的指标'); return
+  if (entryForm.value.entryType === 'METRIC' && entryForm.value.publishStatus === 'PUBLISHED' && !entryForm.value.metricId) {
+    ElMessage.warning('指标解释发布前必须关联指标库中的指标'); return
   }
   saving.value = true
   try {
@@ -740,6 +746,7 @@ onMounted(() => { loadAll(); loadMetrics() })
 .rule-collapse { margin: 8px 0 16px; }
 .rule-tip { margin: 0 0 12px; }
 .metric-authority { margin: 0 0 14px 90px; }
+.metric-boundary-tip { margin: 0 0 14px 90px; }
 .metric-detail { margin-top: 4px; font-size: 11px; line-height: 1.6; }
 .entry-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-right: 18px; }
 .entry-dialog-title { font-size: 16px; font-weight: 600; color: var(--med-text-primary); }

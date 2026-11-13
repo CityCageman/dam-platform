@@ -168,10 +168,13 @@ public class KnowledgeService {
         e.setContent(str(body.get("content")));
         String entryType = StrUtil.blankToDefault(str(body.get("entryType")), "TERM").toUpperCase();
         Long metricId = toLong(body.get("metricId"));
+        String publishStatus = StrUtil.blankToDefault(str(body.get("publishStatus")), "PUBLISHED").toUpperCase();
         e.setEntryType(entryType);
         e.setMetricId("METRIC".equals(entryType) ? metricId : null);
-        if ("METRIC".equals(entryType) && metricId == null) {
-            throw new BusinessException("指标解释必须关联指标库中的指标");
+        e.setPublishStatus(publishStatus);
+        // 草稿允许先不关联指标；正式发布前必须完成指标归属
+        if ("METRIC".equals(entryType) && metricId == null && "PUBLISHED".equals(publishStatus)) {
+            throw new BusinessException("指标解释发布前必须关联指标库中的指标");
         }
         e.setDefinition(str(body.get("definition")));
         e.setUsageNote(str(body.get("usageNote")));
@@ -195,11 +198,11 @@ public class KnowledgeService {
         }
         e.setSourceSystem(cut(str(body.get("sourceSystem")), 100));
         e.setOwner(cut(str(body.get("owner")), 100));
-        e.setPublishStatus(StrUtil.blankToDefault(str(body.get("publishStatus")), "PUBLISHED").toUpperCase());
         e.setVersion(id == null ? 1 : (e.getVersion() == null ? 1 : e.getVersion() + 1));
         e.setEffectiveFrom(parseDateTime(str(body.get("effectiveFrom"))));
         e.setEffectiveTo(parseDateTime(str(body.get("effectiveTo"))));
-        e.setSourceType(id == null ? "MANUAL" : StrUtil.blankToDefault(e.getSourceType(), "MANUAL"));
+        // 指标关联设置的 METRIC 不能被初始化逻辑覆盖
+        if (StrUtil.isBlank(e.getSourceType())) e.setSourceType("MANUAL");
         e.setTags(body.get("tags") == null ? null : (body.get("tags") instanceof String s ? s : JSONUtil.toJsonStr(body.get("tags"))));
         e.setEmbeddingStatus("PENDING");
         e.setEnabled(body.get("enabled") instanceof Number n ? n.intValue() : 1);

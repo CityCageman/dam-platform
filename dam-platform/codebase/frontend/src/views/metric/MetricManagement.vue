@@ -87,7 +87,9 @@
           <el-col :span="8"><el-form-item label="业务域"><el-input v-model="form.businessDomain" placeholder="门诊/住院/财务" /></el-form-item></el-col>
           <el-col :span="8"><el-form-item label="单位"><el-input v-model="form.unit" placeholder="人次/元/%" /></el-form-item></el-col>
         </el-row>
-        <el-form-item label="业务定义"><el-input v-model="form.definition" type="textarea" :rows="2" placeholder="这个指标业务上代表什么" /></el-form-item>
+        <el-alert class="metric-boundary-tip" type="warning" :closable="false" show-icon
+                  title="这里是指标定义：公式、来源表、SQL 和取数规则在本页维护；解释、别名和案例请到知识库的“指标解释”中维护。" />
+        <el-form-item label="业务定义"><el-input v-model="form.definition" type="textarea" :autosize="{ minRows: 2, maxRows: 8 }" placeholder="这个指标业务上代表什么" /></el-form-item>
         <el-form-item label="计算公式"><el-input v-model="form.formula" type="textarea" :rows="2" placeholder="如 SUM(fee_amount) / COUNT(DISTINCT visit_id)" /></el-form-item>
         <template v-if="form.metricType === 'COMPUTED'">
           <el-row :gutter="12">
@@ -324,5 +326,6 @@ onMounted(loadAll)
 .search-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
 .value-form { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
 .metric-rule-collapse { margin: 4px 0 16px 100px; }
+.metric-boundary-tip { margin: 0 0 14px 100px; }
 .metric-rule-collapse .el-alert { margin-bottom: 12px; }
 </style>
