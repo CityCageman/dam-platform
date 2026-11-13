@@ -172,7 +172,9 @@
           </div>
         </el-form-item>
         <el-alert v-if="entryForm.entryType === 'METRIC'" class="metric-boundary-tip" type="warning" :closable="false" show-icon
-                  title="当前是“指标解释”，不是指标定义：这里不维护公式、SQL 和取数规则。" />
+                  title="当前是“指标解释”，不是指标定义：这里只补充解释，不维护公式、SQL 和取数规则。" />
+        <el-alert v-else-if="entryForm.entryType === 'TERM'" class="metric-boundary-tip" type="info" :closable="false" show-icon
+                  title="当前是“业务术语”：维护术语解释和字段映射，不维护指标公式或取数规则。" />
         <el-alert v-if="entryForm.entryType === 'METRIC' && selectedMetric" class="metric-authority" type="success" :closable="false" show-icon>
           <template #title>
             指标库口径：{{ selectedMetric.metricName }}
@@ -182,16 +184,18 @@
           <div v-if="selectedMetric.sourceTables" class="metric-detail">来源表：{{ selectedMetric.sourceTables }}</div>
           <div v-if="selectedMetric.sqlExpression" class="metric-detail">参考 SQL 来自指标库，知识库不单独维护。</div>
         </el-alert>
-        <el-form-item label="解释">
+        <el-form-item :label="entryForm.entryType === 'METRIC' ? '补充解释' : '解释'">
           <el-input v-model="entryForm.definition" type="textarea"
                     :autosize="{ minRows: 4, maxRows: 18 }"
-                    placeholder="如：病人号是患者唯一号，也叫主索引 ID；与病人相关的内容都需要通过病人号关联。" />
+                    :placeholder="entryForm.entryType === 'METRIC'
+                      ? '在指标库正式定义之外，补充业务背景、使用注意事项等，不重复写公式。'
+                      : '如：病人号是患者唯一号，也叫主索引 ID；与病人相关的内容都需要通过病人号关联。'" />
         </el-form-item>
         <el-row :gutter="12">
           <el-col :span="12"><el-form-item label="别名"><el-input v-model="entryForm.aliasesText" placeholder="逗号分隔，如：患者唯一号、主索引 ID" /></el-form-item></el-col>
           <el-col :span="12"><el-form-item label="来源系统"><el-input v-model="entryForm.sourceSystem" placeholder="如：HIS / 患者主索引" /></el-form-item></el-col>
         </el-row>
-        <el-form-item label="字段映射">
+        <el-form-item v-if="entryForm.entryType === 'TERM' || entryForm.entryType === 'STANDARD'" label="字段映射">
           <el-input v-model="entryForm.fieldMappingsText" type="textarea"
                     :autosize="{ minRows: 2, maxRows: 10 }"
                     placeholder="一行一个，如：PA_PatMas.PAPMI_No → 病人号" />
@@ -200,46 +204,8 @@
             PA_PatMas 表的 PAPMI_No 字段就是“病人号”。
           </div>
         </el-form-item>
-        <el-form-item v-if="entryForm.entryType !== 'METRIC'" label="参考 SQL">
-          <el-input v-model="entryForm.sqlExample" type="textarea"
-                    :autosize="{ minRows: 2, maxRows: 16 }"
-                    placeholder="可选：维护该指标/术语的准确取数 SQL，AI 报表会优先沿用其表、关联和口径" />
-        </el-form-item>
-        <el-collapse v-if="entryForm.entryType !== 'METRIC'" class="rule-collapse">
-          <el-collapse-item title="取数规则（业务口径，AI 报表按此生成）" name="rule">
-            <el-alert class="rule-tip" type="info" :closable="false" show-icon
-                      title="不需要直接写 SQL：先描述统计粒度、去重方式、必用表和条件，可点“AI 起草取数规则”。" />
-            <el-row :gutter="12">
-              <el-col :span="12">
-                <el-form-item label="规则状态">
-                  <el-select v-model="entryForm.reportSpec.ruleStatus" style="width: 100%;">
-                    <el-option label="草稿" value="DRAFT" />
-                    <el-option label="待审核" value="REVIEW" />
-                    <el-option label="已发布" value="PUBLISHED" />
-                  </el-select>
-                </el-form-item>
-              </el-col>
-              <el-col :span="12"><el-form-item label="统计粒度"><el-input v-model="entryForm.reportSpec.statisticalGrain" placeholder="如：就诊号 + 日期 + 科室" /></el-form-item></el-col>
-            </el-row>
-            <el-row :gutter="12">
-              <el-col :span="12"><el-form-item label="去重键"><el-input v-model="entryForm.reportSpec.dedupKeys" placeholder="如：PAADM_RowId" /></el-form-item></el-col>
-              <el-col :span="12"><el-form-item label="必用表"><el-input v-model="entryForm.reportSpec.requiredTables" placeholder="如：PA_Adm、DHC_PatBillOrder" /></el-form-item></el-col>
-            </el-row>
-            <el-form-item label="业务条件">
-              <el-input v-model="entryForm.reportSpec.conditions" type="textarea"
-                        :autosize="{ minRows: 2, maxRows: 8 }" placeholder="如：有费用产生；排除测试患者；排除测试科室" />
-            </el-form-item>
-            <el-form-item label="主报表 SQL">
-              <el-input v-model="entryForm.reportSpec.mainSql" type="textarea"
-                        :autosize="{ minRows: 2, maxRows: 14 }" placeholder="可选：主报表模板，AI 会优先沿用" />
-            </el-form-item>
-            <el-form-item label="下钻 SQL">
-              <el-input v-model="entryForm.reportSpec.drillSql" type="textarea"
-                        :autosize="{ minRows: 2, maxRows: 14 }" placeholder="可选：下钻明细模板" />
-            </el-form-item>
-            <el-button size="small" :loading="aiClassifying" @click="aiDraftReportSpec">AI 起草取数规则</el-button>
-          </el-collapse-item>
-        </el-collapse>
+
+
         <el-form-item label="使用说明">
           <el-input v-model="entryForm.usageNote" type="textarea"
                     :autosize="{ minRows: 2, maxRows: 10 }"
