@@ -19,7 +19,7 @@ public class DamTicketComment {
     /** 评论内容 */
     private String content;
     /** 附件列表 */
-    @TableField(typeHandler = com.dam.catalog.config.JsonbTypeHandler.class)
+    @TableField(typeHandler = com.dam.common.config.JsonbTypeHandler.class)
     private String attachments;
     /** @提及的用户ID列表 */
     private String mentionedUsers;

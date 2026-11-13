@@ -22,7 +22,7 @@ public class DamMaskingPolicy {
     /** 脱敏类型 */
     private String maskingType;
     /** 脱敏配置 */
-    @TableField(typeHandler = com.dam.catalog.config.JsonbTypeHandler.class)
+    @TableField(typeHandler = com.dam.common.config.JsonbTypeHandler.class)
     private String maskingConfig;
     /** 优先级 */
     private Integer priority;

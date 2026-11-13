@@ -19,7 +19,7 @@ public class DamQualityCheck {
     /** 结果状态 */
     private String resultStatus;
     /** 失败样例 */
-    @TableField(typeHandler = com.dam.catalog.config.JsonbTypeHandler.class)
+    @TableField(typeHandler = com.dam.common.config.JsonbTypeHandler.class)
     private String failSamples;
     /** 错误详情 */
     private String errorDetail;
