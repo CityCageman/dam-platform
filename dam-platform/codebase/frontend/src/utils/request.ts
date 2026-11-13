@@ -29,8 +29,12 @@ request.interceptors.response.use(
     return res
   },
   error => {
-    ElMessage.error(error.message || '网络错误')
-    return Promise.reject(error)
+    const data = error?.response?.data
+    const msg = (typeof data === 'string' && data)
+      ? (data.length > 200 ? data.slice(0, 200) : data)
+      : (data?.message || error.message || '网络错误')
+    ElMessage.error(msg)
+    return Promise.reject(new Error(msg))
   }
 )
 

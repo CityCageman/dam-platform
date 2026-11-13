@@ -591,12 +591,17 @@ async function saveEntry() {
   }
   saving.value = true
   try {
-    const payload = {
+    const payload: any = {
       ...entryForm.value,
       tags: entryForm.value.tagsText ? entryForm.value.tagsText.split(/[,，]/).map((s: string) => s.trim()).filter(Boolean) : [],
       aliases: entryForm.value.aliasesText ? entryForm.value.aliasesText.split(/[,，]/).map((s: string) => s.trim()).filter(Boolean) : [],
       relatedMetrics: entryForm.value.relatedMetricsText ? entryForm.value.relatedMetricsText.split(/[,，]/).map((s: string) => s.trim()).filter(Boolean) : [],
       fieldMappings: entryForm.value.fieldMappingsText ? entryForm.value.fieldMappingsText.split(/\n/).map((s: string) => s.trim()).filter(Boolean) : []
+    }
+    // 指标解释的 SQL/取数规则只从指标库读取，不重复提交，避免旧值覆盖和触发安全拦截
+    if (payload.entryType === 'METRIC') {
+      delete payload.sqlExample
+      delete payload.reportSpec
     }
     delete payload.tagsText
     delete payload.aliasesText
