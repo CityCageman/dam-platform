@@ -64,9 +64,6 @@
         <div class="topbar-right">
           <el-input v-model="keyword" class="global-search" placeholder="搜索资产 / 表 / 字段 / 指标"
                     :prefix-icon="Search" clearable @keyup.enter="goSearch" />
-          <el-button class="ai-assist" size="small" @click="router.push('/agent')">
-            <el-icon><MagicStick /></el-icon>AI 助手
-          </el-button>
           <el-button class="bell-btn" text @click="showNotice">
             <el-icon><Bell /></el-icon>
             <span class="bell-dot"></span>
@@ -101,7 +98,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Search, ArrowRight, ArrowDown, User, Setting, SwitchButton, MagicStick, Bell } from '@element-plus/icons-vue'
+import { Search, ArrowRight, ArrowDown, User, Setting, SwitchButton, Bell } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { authApi, catalogApi } from '@/api'
@@ -411,16 +408,6 @@ async function handleLogout() {
 }
 :deep(.global-search .el-input__wrapper.is-focus) { border-color: var(--med-primary); background: #fff; }
 
-.ai-assist {
-  height: 32px;
-  border: 0;
-  border-radius: 9px;
-  padding: 0 12px;
-  color: #fff;
-  background: linear-gradient(135deg, #72156A, #2FA6A1);
-  box-shadow: 0 4px 12px rgba(114, 21, 106, .24);
-}
-.ai-assist:hover { color: #fff; background: linear-gradient(135deg, #5D1057, #238C88); }
 .bell-btn { position: relative; width: 32px; height: 32px; padding: 0; color: var(--med-text-secondary); }
 .bell-btn:hover { background: #F8F3F7; }
 .bell-dot {
