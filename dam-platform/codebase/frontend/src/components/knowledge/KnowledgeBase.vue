@@ -716,8 +716,12 @@ onMounted(() => { loadAll(); loadMetrics() })
 .field-help { margin-top: 5px; font-size: 11px; line-height: 1.6; color: var(--med-text-light); }
 .rule-collapse { margin: 8px 0 16px; }
 .rule-tip { margin: 0 0 12px; }
-.metric-authority { margin: 0 0 14px 90px; }
-.metric-boundary-tip { margin: 0 0 14px 90px; }
+.metric-authority,
+.metric-boundary-tip {
+  margin: 0 0 14px 90px;
+  width: calc(100% - 90px);
+  box-sizing: border-box;
+}
 .metric-detail { margin-top: 4px; font-size: 11px; line-height: 1.6; }
 .entry-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-right: 18px; }
 .entry-dialog-title { font-size: 16px; font-weight: 600; color: var(--med-text-primary); }
