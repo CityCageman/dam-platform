@@ -1,6 +1,6 @@
-package com.dam.catalog.controller;
+package com.dam.catalog.ai.controller;
 
-import com.dam.catalog.service.LineageAiService;
+import com.dam.catalog.ai.service.LineageAiService;
 import com.dam.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

@@ -1,9 +1,9 @@
-package com.dam.catalog.controller;
+package com.dam.catalog.ai.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.dam.catalog.report.entity.ReportCatalog;
-import com.dam.catalog.service.AssetClassifyAiService;
-import com.dam.catalog.service.MetadataAiService;
+import com.dam.catalog.ai.service.AssetClassifyAiService;
+import com.dam.catalog.ai.service.MetadataAiService;
 import com.dam.catalog.report.service.ReportCatalogService;
 import com.dam.catalog.report.service.ReportService;
 import com.dam.common.vo.Result;

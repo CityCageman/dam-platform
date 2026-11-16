@@ -1,4 +1,4 @@
-package com.dam.catalog.service;
+package com.dam.catalog.ai.service;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.dam.common.exception.BusinessException;
