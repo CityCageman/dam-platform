@@ -1,8 +1,8 @@
-package com.dam.catalog.controller;
+package com.dam.catalog.knowledge.controller;
 
-import com.dam.catalog.entity.KnowledgeCategory;
-import com.dam.catalog.entity.KnowledgeEntry;
-import com.dam.catalog.service.KnowledgeService;
+import com.dam.catalog.knowledge.entity.KnowledgeCategory;
+import com.dam.catalog.knowledge.entity.KnowledgeEntry;
+import com.dam.catalog.knowledge.service.KnowledgeService;
 import com.dam.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

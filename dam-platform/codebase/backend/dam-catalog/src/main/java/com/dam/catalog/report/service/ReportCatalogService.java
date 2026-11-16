@@ -1,9 +1,13 @@
-package com.dam.catalog.service;
+package com.dam.catalog.report.service;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.dam.catalog.service.CatalogService;
+import com.dam.catalog.service.DictService;
 import com.dam.catalog.entity.*;
+import com.dam.catalog.report.entity.ReportCatalog;
+import com.dam.catalog.report.repository.ReportCatalogMapper;
 import com.dam.catalog.repository.*;
 import com.dam.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.ObjectMapper;

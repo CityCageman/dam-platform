@@ -1,15 +1,15 @@
-package com.dam.catalog.service;
+package com.dam.catalog.knowledge.service;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.catalog.entity.KnowledgeCategory;
-import com.dam.catalog.entity.KnowledgeEntry;
-import com.dam.catalog.entity.MetricDefinition;
-import com.dam.catalog.entity.KnowledgeSyncConfig;
-import com.dam.catalog.repository.KnowledgeCategoryMapper;
-import com.dam.catalog.repository.KnowledgeEntryMapper;
-import com.dam.catalog.repository.MetricDefinitionMapper;
-import com.dam.catalog.repository.KnowledgeSyncConfigMapper;
+import com.dam.catalog.knowledge.entity.KnowledgeCategory;
+import com.dam.catalog.knowledge.entity.KnowledgeEntry;
+import com.dam.catalog.metric.entity.MetricDefinition;
+import com.dam.catalog.knowledge.entity.KnowledgeSyncConfig;
+import com.dam.catalog.knowledge.repository.KnowledgeCategoryMapper;
+import com.dam.catalog.knowledge.repository.KnowledgeEntryMapper;
+import com.dam.catalog.metric.repository.MetricDefinitionMapper;
+import com.dam.catalog.knowledge.repository.KnowledgeSyncConfigMapper;
 import com.dam.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;

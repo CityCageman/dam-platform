@@ -1,7 +1,7 @@
-package com.dam.catalog.repository;
+package com.dam.catalog.report.repository;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.dam.catalog.entity.ReportCatalog;
+import com.dam.catalog.report.entity.ReportCatalog;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;

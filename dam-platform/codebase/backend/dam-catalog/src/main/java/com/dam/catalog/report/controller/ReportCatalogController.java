@@ -1,6 +1,6 @@
-package com.dam.catalog.controller;
+package com.dam.catalog.report.controller;
 
-import com.dam.catalog.service.ReportCatalogService;
+import com.dam.catalog.report.service.ReportCatalogService;
 import com.dam.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

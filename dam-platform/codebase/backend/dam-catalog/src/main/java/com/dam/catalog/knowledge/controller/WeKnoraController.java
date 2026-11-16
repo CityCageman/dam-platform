@@ -1,6 +1,6 @@
-package com.dam.catalog.controller;
+package com.dam.catalog.knowledge.controller;
 
-import com.dam.catalog.service.WeKnoraKnowledgeService;
+import com.dam.catalog.knowledge.service.WeKnoraKnowledgeService;
 import com.dam.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

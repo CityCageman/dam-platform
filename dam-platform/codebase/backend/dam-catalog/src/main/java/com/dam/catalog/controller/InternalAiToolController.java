@@ -1,11 +1,11 @@
 package com.dam.catalog.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
-import com.dam.catalog.entity.ReportCatalog;
+import com.dam.catalog.report.entity.ReportCatalog;
 import com.dam.catalog.service.AssetClassifyAiService;
 import com.dam.catalog.service.MetadataAiService;
-import com.dam.catalog.service.ReportCatalogService;
-import com.dam.catalog.service.ReportService;
+import com.dam.catalog.report.service.ReportCatalogService;
+import com.dam.catalog.report.service.ReportService;
 import com.dam.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

@@ -1,8 +1,8 @@
-package com.dam.catalog.controller;
+package com.dam.catalog.metric.controller;
 
-import com.dam.catalog.entity.MetricDefinition;
-import com.dam.catalog.entity.MetricValue;
-import com.dam.catalog.service.MetricService;
+import com.dam.catalog.metric.entity.MetricDefinition;
+import com.dam.catalog.metric.entity.MetricValue;
+import com.dam.catalog.metric.service.MetricService;
 import com.dam.common.vo.PageResult;
 import com.dam.common.vo.Result;
 import lombok.RequiredArgsConstructor;

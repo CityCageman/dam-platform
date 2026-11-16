@@ -1,7 +1,7 @@
-package com.dam.catalog.repository;
+package com.dam.catalog.knowledge.repository;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.dam.catalog.entity.KnowledgeSyncConfig;
+import com.dam.catalog.knowledge.entity.KnowledgeSyncConfig;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper

@@ -1,13 +1,14 @@
-package com.dam.catalog.service;
+package com.dam.catalog.metric.service;
 
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.dam.catalog.entity.MetricDefinition;
-import com.dam.catalog.entity.MetricValue;
-import com.dam.catalog.repository.MetricDefinitionMapper;
-import com.dam.catalog.repository.MetricValueMapper;
+import com.dam.catalog.metric.entity.MetricDefinition;
+import com.dam.catalog.metric.entity.MetricValue;
+import com.dam.catalog.report.service.ReportService;
+import com.dam.catalog.metric.repository.MetricDefinitionMapper;
+import com.dam.catalog.metric.repository.MetricValueMapper;
 import com.dam.common.exception.BusinessException;
 import com.dam.common.vo.PageResult;
 import lombok.RequiredArgsConstructor;

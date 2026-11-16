@@ -1,4 +1,4 @@
-package com.dam.catalog.service;
+package com.dam.catalog.knowledge.service;
 
 import cn.hutool.core.util.StrUtil;
 import com.dam.common.exception.BusinessException;

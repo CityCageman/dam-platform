@@ -1,4 +1,4 @@
-package com.dam.catalog.entity;
+package com.dam.catalog.knowledge.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import com.dam.common.config.JsonbTypeHandler;

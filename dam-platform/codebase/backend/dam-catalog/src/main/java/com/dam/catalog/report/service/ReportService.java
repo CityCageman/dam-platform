@@ -1,4 +1,4 @@
-package com.dam.catalog.service;
+package com.dam.catalog.report.service;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -7,13 +7,15 @@ import com.dam.catalog.entity.DamDataSource;
 import com.dam.catalog.entity.MetadataColumn;
 import com.dam.catalog.entity.MetadataSchema;
 import com.dam.catalog.entity.MetadataTable;
-import com.dam.catalog.entity.MetricDefinition;
+import com.dam.catalog.service.CryptoService;
+import com.dam.catalog.metric.entity.MetricDefinition;
+import com.dam.catalog.knowledge.service.WeKnoraKnowledgeService;
 import com.dam.catalog.repository.DamAssetMapper;
 import com.dam.catalog.repository.DamDataSourceMapper;
 import com.dam.catalog.repository.MetadataColumnMapper;
 import com.dam.catalog.repository.MetadataSchemaMapper;
 import com.dam.catalog.repository.MetadataTableMapper;
-import com.dam.catalog.repository.MetricDefinitionMapper;
+import com.dam.catalog.metric.repository.MetricDefinitionMapper;
 import com.dam.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
