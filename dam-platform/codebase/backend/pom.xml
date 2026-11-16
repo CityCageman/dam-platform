@@ -83,6 +83,9 @@
         <module>dam-operations</module>
         <module>dam-model-gateway</module>
         <module>dam-ai-workbench</module>
+        <module>dam-integration</module>
+        <module>dam-scheduler</module>
+        <module>dam-data-service</module>
         <module>dam-portal</module>
     </modules>
 

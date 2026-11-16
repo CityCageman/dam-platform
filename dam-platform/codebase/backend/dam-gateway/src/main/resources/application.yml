@@ -57,6 +57,18 @@ spring:
               uri: ${DAM_ROUTE_AI_WORKBENCH:http://localhost:8090}
               predicates:
                 - Path=/api/ai-workbench/**
+            - id: dam-integration
+              uri: ${DAM_ROUTE_INTEGRATION:http://localhost:8095}
+              predicates:
+                - Path=/api/integration/**
+            - id: dam-scheduler
+              uri: ${DAM_ROUTE_SCHEDULER:http://localhost:8096}
+              predicates:
+                - Path=/api/scheduler/**
+            - id: dam-data-service
+              uri: ${DAM_ROUTE_DATA_SERVICE:http://localhost:8097}
+              predicates:
+                - Path=/api/data-service/**
             - id: dam-portal
               uri: ${DAM_ROUTE_PORTAL:http://localhost:8091}
               predicates:
