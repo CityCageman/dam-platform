@@ -5,13 +5,13 @@ import cn.hutool.core.util.StrUtil;
 import com.dam.catalog.metric.entity.MetricDefinition;
 import com.dam.catalog.shared.port.MetricLookupPort;
 import com.dam.common.exception.BusinessException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,8 +29,11 @@ import java.util.List;
 @Component
 public class MetricLookupHttpAdapter implements MetricLookupPort {
 
-    /** 解析 dam-metric 返回的 Result 与指标 DTO（需注册 JavaTime 模块以解析 LocalDateTime） */
-    private static final ObjectMapper MAPPER = new ObjectMapper().findAndRegisterModules();
+    /**
+     * 解析 dam-metric 返回的 Result 与指标 DTO。
+     * Spring Boot 4 使用 Jackson 3，内置 java.time 支持，可直接解析指标的 LocalDateTime 审计字段。
+     */
+    private static final JsonMapper MAPPER = JsonMapper.builder().build();
 
     /** listActive 的最大条数，与 dam-metric 内部接口上限保持一致 */
     private static final int MAX_LIMIT = 500;
