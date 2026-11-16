@@ -26,4 +26,18 @@ public interface DataApiMapper extends BaseMapper<DataApi> {
      */
     @Select("SELECT COUNT(1) FROM dam_data_service.data_api WHERE api_code = #{apiCode}")
     long countByApiCodeIncludingDeleted(@Param("apiCode") String apiCode);
+
+    /**
+     * 按 apiCode 查询未逻辑删除的数据 API
+     * <p>
+     * 自定义 SQL 不会自动追加 {@code @TableLogic} 条件，这里显式限定
+     * {@code deleted_at IS NULL}；apiCode 为数据库唯一键，最多返回一条。
+     * 调用方仍需自行校验 {@code status=PUBLISHED} 等运行条件。
+     *
+     * @param apiCode API 编码
+     * @return 数据 API 定义；不存在或已删除时返回 null
+     */
+    @Select("SELECT * FROM dam_data_service.data_api "
+            + "WHERE api_code = #{apiCode} AND deleted_at IS NULL LIMIT 1")
+    DataApi selectByApiCode(@Param("apiCode") String apiCode);
 }

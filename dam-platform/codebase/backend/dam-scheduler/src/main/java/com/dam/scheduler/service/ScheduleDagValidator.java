@@ -1,6 +1,7 @@
 package com.dam.scheduler.service;
 
 import com.dam.common.exception.BusinessException;
+import com.dam.common.security.CredentialCipher;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ObjectNode;
@@ -53,6 +54,14 @@ public final class ScheduleDagValidator {
 
     /** datasource.password 最大长度 */
     private static final int MAX_PASSWORD_LENGTH = 4096;
+
+    /**
+     * datasource.password 密文最大长度。
+     * <p>
+     * 明文上限 4096 字符，AES-GCM 密文经 Base64 编码后体积约为明文的 5.4 倍；
+     * 读取库内定义时按密文上限放行，避免长密码加密后无法通过再次校验。
+     */
+    private static final int MAX_ENCRYPTED_PASSWORD_LENGTH = 32768;
 
     /** 编码格式：字母或数字开头，只允许字母、数字、下划线与连字符 */
     private static final Pattern CODE_PATTERN = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$");
@@ -380,6 +389,9 @@ public final class ScheduleDagValidator {
 
     /**
      * 读取可空密码：缺省/null 归一为空串；不裁剪，避免改变真实密码。
+     * <p>
+     * 明文仍受 4096 字符限制；已带 {@code ENC1:} 前缀的密文按加密后的上限校验，
+     * 使落库密文在读取/执行时能通过同一套校验。
      *
      * @param node  密码节点
      * @param label 节点标签
@@ -393,9 +405,11 @@ public final class ScheduleDagValidator {
             throw new BusinessException(400, label + ".datasource.password 必须是字符串");
         }
         String password = node.asString();
-        if (password.length() > MAX_PASSWORD_LENGTH) {
+        int maxLength = password.startsWith(CredentialCipher.PREFIX)
+                ? MAX_ENCRYPTED_PASSWORD_LENGTH : MAX_PASSWORD_LENGTH;
+        if (password.length() > maxLength) {
             throw new BusinessException(400,
-                    label + ".datasource.password 不能超过 " + MAX_PASSWORD_LENGTH + " 个字符");
+                    label + ".datasource.password 不能超过 " + maxLength + " 个字符");
         }
         return password;
     }

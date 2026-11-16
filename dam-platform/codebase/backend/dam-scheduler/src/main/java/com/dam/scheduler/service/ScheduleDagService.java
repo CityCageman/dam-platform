@@ -2,6 +2,7 @@ package com.dam.scheduler.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dam.common.exception.BusinessException;
+import com.dam.common.security.CredentialCipher;
 import com.dam.scheduler.dto.ScheduleDagRequest;
 import com.dam.scheduler.dto.ScheduleDagView;
 import com.dam.scheduler.entity.ScheduleDag;
@@ -23,8 +24,10 @@ import java.util.Set;
 /**
  * 调度 DAG 定义管理服务。
  * <p>
- * 提供基础顺序 SQL DAG 的真实 CRUD。DAG 定义以 jsonb 原文落库，执行器按 nodes
- * 顺序读取；所有响应在返回前将 datasource.password 替换为 {@code ***}。
+ * 提供基础顺序 SQL DAG 的真实 CRUD。DAG 定义以 jsonb 原文落库，写入前将
+ * nodes[].datasource.password 加密为 {@code ENC1:} 密文（历史明文保持兼容），
+ * 执行器按 nodes 顺序读取；所有响应在返回前将 datasource.password 替换为
+ * {@code ***}。
  *
  * @author DAM Platform
  */
@@ -43,6 +46,9 @@ public class ScheduleDagService {
     private static final String DEFAULT_STATUS = "ENABLED";
 
     private final ScheduleDagMapper dagMapper;
+
+    /** 凭据加解密组件，负责节点密码落库前加密 */
+    private final CredentialCipher credentialCipher;
 
     /**
      * 查询 DAG 列表（按更新时间/编码倒序），定义中的密码已脱敏。
@@ -87,6 +93,7 @@ public class ScheduleDagService {
         String description = optionalText(request.getDescription());
         String status = normalizeStatus(request.getStatus(), DEFAULT_STATUS);
         ObjectNode normalized = ScheduleDagValidator.normalizeDefinition(request.getDefinition());
+        encryptNodePasswords(normalized);
         String definition = ScheduleDagValidator.toJson(normalized);
 
         if (dagMapper.selectById(code) != null) {
@@ -137,6 +144,7 @@ public class ScheduleDagService {
         }
         if (request.getDefinition() != null) {
             ObjectNode normalized = ScheduleDagValidator.normalizeDefinition(request.getDefinition());
+            encryptNodePasswords(normalized);
             dag.setDefinition(ScheduleDagValidator.toJson(normalized));
         }
         if (request.getDescription() != null) {
@@ -149,6 +157,44 @@ public class ScheduleDagService {
         dagMapper.updateById(dag);
         log.info("更新调度 DAG: dagCode={}, status={}", dag.getDagCode(), dag.getStatus());
         return toView(dag);
+    }
+
+    /**
+     * 加密定义中所有节点的 datasource.password。
+     * <p>
+     * 仅加密非空且未带 {@link CredentialCipher#PREFIX} 前缀的明文；空值与已加密
+     * 密文保持原样，避免重复加密。任一节点加密失败立即抛出业务异常并回滚事务，
+     * 保证失败时不会以明文落库；异常消息与日志均不包含密码内容。
+     *
+     * @param definition 已校验并规范化的 DAG 定义
+     */
+    private void encryptNodePasswords(ObjectNode definition) {
+        JsonNode nodes = definition.get("nodes");
+        if (nodes == null || !nodes.isArray()) {
+            return;
+        }
+        int index = 0;
+        for (JsonNode item : nodes) {
+            try {
+                JsonNode datasource = item.get("datasource");
+                if (datasource instanceof ObjectNode datasourceObject) {
+                    JsonNode passwordNode = datasourceObject.get("password");
+                    if (passwordNode != null && passwordNode.isString()) {
+                        String password = passwordNode.asString();
+                        if (StringUtils.hasText(password)
+                                && !password.startsWith(CredentialCipher.PREFIX)) {
+                            datasourceObject.put("password", credentialCipher.encrypt(password));
+                        }
+                    }
+                }
+            } catch (RuntimeException e) {
+                // 仅记录节点下标与异常类型，禁止输出密码或定义内容
+                log.error("DAG 节点密码加密失败: nodeIndex={}, errorType={}",
+                        index, e.getClass().getSimpleName());
+                throw new BusinessException(500, "DAG 节点密码加密失败，已拒绝保存");
+            }
+            index++;
+        }
     }
 
     /**

@@ -2,6 +2,7 @@ package com.dam.scheduler.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.dam.common.security.CredentialCipher;
 import com.dam.scheduler.client.TaskCenterClient;
 import com.dam.scheduler.entity.ScheduleDag;
 import com.dam.scheduler.entity.ScheduleJob;
@@ -111,6 +112,9 @@ public class ScheduleRunExecutor {
     /** DAG 定义 Mapper */
     private final ScheduleDagMapper dagMapper;
 
+    /** 凭据加解密组件，执行节点前解密 datasource.password */
+    private final CredentialCipher credentialCipher;
+
     /** TaskCenter 回调客户端，统一负责运行开始/结束回写 */
     private final TaskCenterClient taskCenterClient;
 
@@ -129,6 +133,7 @@ public class ScheduleRunExecutor {
      * @param runMapper          运行记录 Mapper
      * @param jobMapper          调度任务 Mapper
      * @param dagMapper          DAG 定义 Mapper
+     * @param credentialCipher   凭据加解密组件
      * @param taskCenterClient   TaskCenter 回调客户端
      * @param transactionManager 平台事务管理器
      * @param staleRunMinutes    遗留 RUNNING 阈值，默认 180 分钟
@@ -136,12 +141,14 @@ public class ScheduleRunExecutor {
     public ScheduleRunExecutor(ScheduleRunMapper runMapper,
                                ScheduleJobMapper jobMapper,
                                ScheduleDagMapper dagMapper,
+                               CredentialCipher credentialCipher,
                                TaskCenterClient taskCenterClient,
                                PlatformTransactionManager transactionManager,
                                @Value("${dam.scheduler.stale-run-minutes:180}") long staleRunMinutes) {
         this.runMapper = runMapper;
         this.jobMapper = jobMapper;
         this.dagMapper = dagMapper;
+        this.credentialCipher = credentialCipher;
         this.taskCenterClient = taskCenterClient;
         this.staleRunMinutes = Math.max(1, staleRunMinutes);
         this.requiresNewTemplate = new TransactionTemplate(transactionManager);
@@ -286,6 +293,9 @@ public class ScheduleRunExecutor {
                 return;
             }
 
+            // 执行前解密：ENC1: 密文还原为明文，历史明文由 CredentialCipher 原样返回
+            nodes = decryptPasswords(nodes);
+
             log.info("DAG 顺序执行开始: runId={}, jobId={}, jobCode={}, dagCode={}, nodeCount={}",
                     runId, jobId, job.getJobCode(), dagCode, nodes.size());
             for (ScheduleDagValidator.SqlNode node : nodes) {
@@ -316,6 +326,25 @@ public class ScheduleRunExecutor {
         } finally {
             taskCenterClient.finish(instanceId, status, error, token);
         }
+    }
+
+    /**
+     * 解密节点密码，生成仅供本次执行使用的节点副本。
+     * <p>
+     * {@code ENC1:} 密文由 {@link CredentialCipher#decrypt(String)} 还原为明文；
+     * 历史明文和解密失败的值按明文兼容，避免存量 DAG 无法执行。库内定义不被改写，
+     * 解密后的明文只用于 JDBC 连接，日志与 error_message 仍由脱敏逻辑处理。
+     *
+     * @param nodes 库内定义解析出的节点
+     * @return 密码已解密的节点列表
+     */
+    private List<ScheduleDagValidator.SqlNode> decryptPasswords(
+            List<ScheduleDagValidator.SqlNode> nodes) {
+        return nodes.stream()
+                .map(node -> new ScheduleDagValidator.SqlNode(node.code(), node.name(),
+                        node.url(), node.username(), credentialCipher.decrypt(node.password()),
+                        node.sql()))
+                .toList();
     }
 
     /**

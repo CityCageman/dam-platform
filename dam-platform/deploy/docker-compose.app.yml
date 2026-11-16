@@ -242,6 +242,7 @@ services:
       <<: *pg-env
       DAM_TASK_CENTER_URL: http://dam-task-center:8099
       NACOS_SERVER_ADDR: ${NACOS_HOST:-192.168.1.13}:8848
+      DAM_CREDENTIAL_SECRET: ${DAM_CREDENTIAL_SECRET:?DAM_CREDENTIAL_SECRET is required}
       SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
 
   # 数据服务：dam_data_service schema（v25）
@@ -323,6 +324,7 @@ services:
       DAM_ROUTE_INTEGRATION: http://dam-integration:8095
       DAM_ROUTE_SCHEDULER: http://dam-scheduler:8096
       DAM_ROUTE_DATA_SERVICE: http://dam-data-service:8097
+      DAM_ROUTE_OPEN_API: http://dam-data-service:8097
       DAM_ROUTE_TASK_CENTER: http://dam-task-center:8099
       DAM_ROUTE_DEVELOP: http://dam-develop:8100
     # 对外暴露 8080，供中间件服务器（台3）Nginx 反代 /api 访问
