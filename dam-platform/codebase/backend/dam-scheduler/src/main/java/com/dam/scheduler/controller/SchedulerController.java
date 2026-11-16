@@ -5,8 +5,11 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.dam.common.exception.BusinessException;
 import com.dam.common.vo.PageResult;
 import com.dam.common.vo.Result;
+import com.dam.scheduler.dto.ScheduleDagRequest;
+import com.dam.scheduler.dto.ScheduleDagView;
 import com.dam.scheduler.entity.ScheduleJob;
 import com.dam.scheduler.entity.ScheduleRun;
+import com.dam.scheduler.service.ScheduleDagService;
 import com.dam.scheduler.service.ScheduleDispatchService;
 import com.dam.scheduler.service.SchedulerService;
 import lombok.RequiredArgsConstructor;
@@ -28,8 +31,8 @@ import java.util.Map;
 /**
  * 调度服务 API。
  * <p>
- * 提供调度任务的数据库持久化管理、启停、手动触发、Cron 自动派发扫描与运行记录查询。
- * 派发只落 PENDING 记录，不执行真实 DAG（执行引擎后续实现）。
+ * 提供调度任务与 DAG 的持久化管理、启停、手动触发、Cron 自动派发扫描与运行记录查询。
+ * 触发/派发提交后由基础顺序 SQL DAG 执行器异步执行。
  *
  * @author DAM Platform
  */
@@ -41,6 +44,8 @@ public class SchedulerController {
     private final SchedulerService schedulerService;
 
     private final ScheduleDispatchService dispatchService;
+
+    private final ScheduleDagService dagService;
 
     /**
      * 查询调度服务状态。
@@ -65,7 +70,7 @@ public class SchedulerController {
     /**
      * 手动触发一次自动派发扫描（需登录）。
      * <p>
-     * 该接口只扫描并派发当前 due 的任务，不补发历史周期，也不执行 DAG。
+     * 该接口只扫描并派发当前 due 的任务，不补发历史周期；派发事务提交后异步执行 DAG。
      *
      * @return 本次派发数 dispatchedCount
      */
@@ -189,15 +194,60 @@ public class SchedulerController {
     }
 
     /**
-     * 查询 DAG 目录。
-     * <p>
-     * DAG 定义与编排能力后续实现，当前固定返回空列表。
+     * 查询 DAG 列表。
      *
-     * @return 空列表
+     * @return DAG 列表，datasource.password 已脱敏为 ***
      */
     @GetMapping("/dags")
-    public Result<List<Map<String, Object>>> dags() {
-        return Result.success(schedulerService.listDags());
+    public Result<List<ScheduleDagView>> dags() {
+        return Result.success(dagService.listDags());
+    }
+
+    /**
+     * 查询 DAG 详情。
+     *
+     * @param code DAG 编码
+     * @return DAG 详情，datasource.password 已脱敏为 ***
+     */
+    @GetMapping("/dags/{code}")
+    public Result<ScheduleDagView> dag(@PathVariable String code) {
+        return Result.success(dagService.getDag(code));
+    }
+
+    /**
+     * 创建 DAG。
+     *
+     * @param request DAG 定义（dagCode/dagName/definition 必填）
+     * @return 创建后的 DAG，密码已脱敏
+     */
+    @PostMapping("/dags")
+    public Result<ScheduleDagView> createDag(@RequestBody ScheduleDagRequest request) {
+        return Result.success(dagService.createDag(request));
+    }
+
+    /**
+     * 更新 DAG；dagCode 不允许修改。
+     *
+     * @param code    DAG 编码
+     * @param request 待更新字段
+     * @return 更新后的 DAG，密码已脱敏
+     */
+    @PutMapping("/dags/{code}")
+    public Result<ScheduleDagView> updateDag(@PathVariable String code,
+                                             @RequestBody ScheduleDagRequest request) {
+        return Result.success(dagService.updateDag(code, request));
+    }
+
+    /**
+     * 删除 DAG。
+     *
+     * @param code DAG 编码
+     * @return 空结果
+     */
+    @DeleteMapping("/dags/{code}")
+    public Result<Void> deleteDag(@PathVariable String code) {
+        dagService.deleteDag(code);
+        return Result.success();
     }
 
     /**

@@ -30,7 +30,8 @@ import java.util.concurrent.locks.ReentrantLock;
  * {@code CronExpression.next(lastDispatchedAt != null ? lastDispatchedAt : createdAt)}
  * 判断是否到点；到点后只插入一条 {@code PENDING} 运行记录并更新 {@code last_dispatched_at}。
  * <p>
- * 本服务只负责“派发运行实例”，不实现真实 DAG 执行引擎，也不回填执行状态。
+ * 本服务只负责“派发运行实例”：写入 PENDING 运行记录后，在派发事务提交后提交
+ * {@link ScheduleRunExecutor} 异步执行关联 DAG。
  * 多实例部署时依赖 PostgreSQL 行锁 {@code FOR UPDATE SKIP LOCKED} 保证同一个任务不会被
  * 重复派发；启动时只派发当前 due 的单次运行，不补发历史错过周期。
  *
@@ -52,6 +53,9 @@ public class ScheduleDispatchService {
     /** TaskCenter 登记客户端，派发事务提交后异步登记运行实例 */
     private final TaskCenterClient taskCenterClient;
 
+    /** DAG 执行器，派发事务提交后提交执行 */
+    private final ScheduleRunExecutor runExecutor;
+
     /** 自动派发开关，false 时仅停止定时扫描（手动扫描接口仍可显式执行） */
     private final boolean dispatchEnabled;
 
@@ -71,17 +75,20 @@ public class ScheduleDispatchService {
      * @param runMapper          运行记录 Mapper
      * @param transactionManager 事务管理器
      * @param taskCenterClient   TaskCenter 登记客户端
+     * @param runExecutor        DAG 执行器
      * @param dispatchEnabled    是否启用定时自动派发
      */
     public ScheduleDispatchService(ScheduleJobMapper jobMapper,
                                    ScheduleRunMapper runMapper,
                                    PlatformTransactionManager transactionManager,
                                    TaskCenterClient taskCenterClient,
+                                   ScheduleRunExecutor runExecutor,
                                    @Value("${dam.scheduler.dispatch-enabled:true}") boolean dispatchEnabled) {
         this.jobMapper = jobMapper;
         this.runMapper = runMapper;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.taskCenterClient = taskCenterClient;
+        this.runExecutor = runExecutor;
         this.dispatchEnabled = dispatchEnabled;
     }
 
@@ -238,6 +245,8 @@ public class ScheduleDispatchService {
             }
 
             registerToTaskCenterAfterCommit(job.getJobCode(), job.getJobName(), run.getId());
+            // 与 TaskCenter 登记一样在事务提交后提交，确保执行器能读到已提交的 PENDING 记录
+            runExecutor.submitAfterCommit(run.getId(), job.getId());
 
             log.info("调度任务自动派发成功: jobId={}, jobCode={}, nextFireTime={}, runId={}",
                     job.getId(), job.getJobCode(), next, run.getId());

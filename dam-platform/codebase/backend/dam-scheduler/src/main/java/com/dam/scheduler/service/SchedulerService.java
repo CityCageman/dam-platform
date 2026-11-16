@@ -29,8 +29,8 @@ import java.util.Set;
  * 调度任务管理服务。
  * <p>
  * 负责调度任务（schedule_job）的 CRUD、启停、一次性触发与运行记录查询。
- * 本服务不实现真实 DAG 执行引擎：触发动作只落一条 PENDING 运行记录，
- * 不伪造执行成功，后续由独立执行引擎消费并回填运行状态。
+ * 触发动作落一条 PENDING 运行记录，并在事务提交后交给
+ * {@link ScheduleRunExecutor} 异步执行关联的顺序 SQL DAG。
  *
  * @author DAM Platform
  */
@@ -66,12 +66,10 @@ public class SchedulerService {
     /** 启停接口允许的状态 */
     private static final Set<String> TOGGLE_STATUSES = Set.of("ENABLED", "DISABLED");
 
-    /** 触发接口固定提示：执行引擎尚未实现 */
-    private static final String ENGINE_NOT_IMPLEMENTED = "execution engine not implemented";
-
     private final ScheduleJobMapper jobMapper;
     private final ScheduleRunMapper runMapper;
     private final TaskCenterClient taskCenterClient;
+    private final ScheduleRunExecutor runExecutor;
 
     /**
      * 分页查询调度任务。
@@ -239,12 +237,12 @@ public class SchedulerService {
     /**
      * 手动触发一次调度任务。
      * <p>
-     * 只写入 PENDING 运行记录，不执行 DAG，也不伪造 SUCCESS；
+     * 只写入 PENDING 运行记录，事务提交后异步提交执行器；不伪造 SUCCESS。
      * 返回 accepted=true 表示触发请求已受理。
      * 手动触发不修改 {@code last_dispatched_at}，不干扰 Cron 自动派发节奏。
      * <p>
-     * 运行记录写入后尽力向 TaskCenter 登记（只登记 PENDING，不回填执行结果）；
-     * 登记失败仅记录 warn，不影响本次触发结果。
+     * 运行记录写入后尽力向 TaskCenter 登记开始（不回填执行结果）；
+     * 登记失败仅记录 warn，不影响本次触发与 DAG 执行。
      *
      * @param id 任务ID
      * @return accepted/runId/message
@@ -259,11 +257,14 @@ public class SchedulerService {
         runMapper.insert(run);
 
         registerToTaskCenter(job, run);
+        // 必须等本次 trigger 事务提交后再提交执行，避免工作线程读不到 PENDING 运行记录。
+        // 若事务回滚，afterCommit 不会触发，不会产生无运行记录的孤儿执行。
+        runExecutor.submitAfterCommit(run.getId(), job.getId());
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("accepted", true);
         result.put("runId", run.getId());
-        result.put("message", ENGINE_NOT_IMPLEMENTED);
+        result.put("message", "execution submitted");
         return result;
     }
 
@@ -301,21 +302,10 @@ public class SchedulerService {
     }
 
     /**
-     * 查询 DAG 目录。
-     * <p>
-     * DAG 定义与真实编排能力后续实现，当前固定返回空列表。
-     *
-     * @return 空列表
-     */
-    public List<Map<String, Object>> listDags() {
-        return List.of();
-    }
-
-    /**
      * 查询调度服务状态。
      * <p>
-     * executionEngine=dispatch-only：Cron 任务已能自动派发 PENDING 运行记录，
-     * 但尚未接入真实 DAG 执行器，运行状态仍需后续执行引擎回填。
+     * executionEngine=sequential-sql-dag：手动触发与 Cron 派发的 PENDING 运行记录
+     * 会由执行器异步执行关联 DAG 的 SQL 节点，并回填 SUCCESS/FAILED。
      *
      * @return 服务名、状态、角色、存储模式与执行器模式
      */
@@ -325,9 +315,9 @@ public class SchedulerService {
         status.put("status", "UP");
         status.put("role", "data scheduler");
         status.put("storage", "dam_scheduler");
-        status.put("executionEngine", "dispatch-only");
+        status.put("executionEngine", "sequential-sql-dag");
         status.put("executionEngineNote",
-                "Cron 任务已支持自动派发 PENDING 运行记录，未实现真实 DAG 执行器");
+                "支持基础顺序 SQL DAG 执行；不支持并行分支、条件分支与重试编排");
         return status;
     }
 
