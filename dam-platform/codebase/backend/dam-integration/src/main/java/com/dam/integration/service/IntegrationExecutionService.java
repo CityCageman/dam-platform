@@ -5,6 +5,7 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.dam.common.exception.BusinessException;
+import com.dam.integration.client.TaskCenterClient;
 import com.dam.integration.entity.IntegrationJob;
 import com.dam.integration.entity.IntegrationRun;
 import com.dam.integration.repository.IntegrationJobMapper;
@@ -50,6 +51,9 @@ import java.util.regex.Pattern;
  * </ul>
  * 运行记录状态由本服务维护：PENDING → RUNNING → SUCCESS/FAILED。异常信息脱敏并截断
  * 到 2000 字符，密码不会写入日志或错误信息。
+ * <p>
+ * 运行开始/结束会尽力回写统一任务中心（TaskCenter）：instanceId 仅保存在执行方法的局部变量中，
+ * 不新增数据库字段；回调失败只记录 warn，不改变集成任务的状态与成功判定。
  *
  * @author DAM Platform
  */
@@ -132,6 +136,9 @@ public class IntegrationExecutionService {
     /** 平台事务管理器，用于把状态变更做成短事务，避免长事务占用连接 */
     private final PlatformTransactionManager transactionManager;
 
+    /** 统一任务中心回调客户端（旁路能力，失败不影响集成执行） */
+    private final TaskCenterClient taskCenterClient;
+
     /** 孤儿运行判定阈值（分钟）：服务崩溃会留下 PENDING/RUNNING 记录，超时后标记 FAILED */
     @Value("${dam.integration.stale-run-minutes:30}")
     private long staleRunMinutes;
@@ -142,13 +149,16 @@ public class IntegrationExecutionService {
      * @param jobMapper         任务 Mapper
      * @param runMapper         运行记录 Mapper
      * @param transactionManager 事务管理器
+     * @param taskCenterClient  统一任务中心回调客户端
      */
     public IntegrationExecutionService(IntegrationJobMapper jobMapper,
                                        IntegrationRunMapper runMapper,
-                                       PlatformTransactionManager transactionManager) {
+                                       PlatformTransactionManager transactionManager,
+                                       TaskCenterClient taskCenterClient) {
         this.jobMapper = jobMapper;
         this.runMapper = runMapper;
         this.transactionManager = transactionManager;
+        this.taskCenterClient = taskCenterClient;
     }
 
     /**
@@ -215,6 +225,11 @@ public class IntegrationExecutionService {
             return;
         }
 
+        // 在线程内、真实同步前登记 TaskCenter：此时 trigger 事务已提交，且不阻塞 HTTP 请求。
+        // start 内部已降级处理，返回 null 表示任务中心不可用，后续 finish 自动跳过。
+        Long taskCenterInstanceId = taskCenterClient.start(
+                job.getJobCode(), job.getJobName(), runId, resolveRunNo(runId));
+
         SyncStats stats = new SyncStats();
         try {
             SyncConfig config = parseSyncConfig(job);
@@ -223,14 +238,38 @@ public class IntegrationExecutionService {
             executeSync(config, stats);
             finishRun(runId, jobId, IntegrationRun.STATUS_SUCCESS,
                     stats.rowsRead, stats.rowsWritten, null);
+            taskCenterClient.finish(taskCenterInstanceId, IntegrationRun.STATUS_SUCCESS,
+                    stats.rowsRead, stats.rowsWritten, null);
             log.info("集成 JDBC 全量同步完成: jobId={}, runId={}, rowsRead={}, rowsWritten={}",
                     jobId, runId, stats.rowsRead, stats.rowsWritten);
         } catch (Exception e) {
             String message = buildErrorMessage(e);
             finishRun(runId, jobId, IntegrationRun.STATUS_FAILED,
                     stats.rowsRead, stats.rowsWritten, message);
+            taskCenterClient.finish(taskCenterInstanceId, IntegrationRun.STATUS_FAILED,
+                    stats.rowsRead, stats.rowsWritten, message);
             log.warn("集成 JDBC 全量同步失败: jobId={}, runId={}, rowsRead={}, rowsWritten={}, error={}",
                     jobId, runId, stats.rowsRead, stats.rowsWritten, message);
+        }
+    }
+
+    /**
+     * 读取运行序号，用于 TaskCenter 标题 {@code jobName #runNo}。
+     * <p>
+     * 只是观测信息：查询失败记录 warn 并返回 null，由客户端回退使用 runId，
+     * 不允许影响集成同步执行。
+     *
+     * @param runId 运行记录 ID
+     * @return 运行序号；读取失败时返回 null
+     */
+    private Integer resolveRunNo(Long runId) {
+        try {
+            IntegrationRun run = runMapper.selectById(runId);
+            return run == null ? null : run.getRunNo();
+        } catch (RuntimeException e) {
+            log.warn("读取运行序号失败，TaskCenter 标题回退为 runId: runId={}, error={}",
+                    runId, e.toString());
+            return null;
         }
     }
 

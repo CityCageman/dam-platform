@@ -8,11 +8,11 @@ import java.time.LocalDateTime;
  * 任务回调响应。
  * <p>
  * 统一返回任务实例的当前快照。sourceService/sourceTaskCode/sourceRunId/title/payload
- * 依赖 task_instance 中不存在的来源字段，当前 start 接口未启用，因此这些字段为 null；
- * 待数据库迁移后可直接填充，不需要再改 API 契约。
+ * 由 start 在登记实例时持久化并原样回显；definitionId/taskCode 指向实际使用的
+ * 任务定义（自动登记时为新建或已存在的定义）。
  * <p>
- * created/reused 仅用于 start 幂等语义：created=true 表示新建，reused=true 表示命中
- * 已有实例。当前 start 在 v30 迁移后支持幂等复用。
+ * created/reused 仅用于 start 幂等语义：created=true 表示本次新建实例，
+ * reused=true 表示命中已有实例；finish/get 等其他接口均为 false。
  *
  * @author DAM Platform
  */
@@ -31,22 +31,22 @@ public class TaskCallbackResponse {
     /** task_instance.task_code 的实际存储值（用于排查编码/历史数据） */
     private String instanceTaskCode;
 
-    /** 来源服务（当前无存储字段，固定为 null） */
+    /** 来源服务 */
     private String sourceService;
 
-    /** 来源任务编码（当前无存储字段，固定为 null） */
+    /** 来源任务编码 */
     private String sourceTaskCode;
 
-    /** 来源运行ID（当前无存储字段，固定为 null） */
+    /** 来源运行ID */
     private String sourceRunId;
 
     /** 任务类型（INTEGRATION/SCHEDULER/DEV/QUALITY/AI） */
     private String taskType;
 
-    /** 运行标题（当前无存储字段，固定为 null） */
+    /** 运行标题 */
     private String title;
 
-    /** 运行参数（当前无存储字段，固定为 null） */
+    /** 运行参数（JSON 文本） */
     private Object payload;
 
     /** 实例状态：PENDING/RUNNING/SUCCESS/FAILED/CANCELLED */
@@ -76,10 +76,10 @@ public class TaskCallbackResponse {
     /** 实例创建时间 */
     private LocalDateTime createdAt;
 
-    /** 是否为本次 start 新建（当前 start 不可用，恒为 false） */
+    /** 是否为本次 start 新建实例 */
     private boolean created;
 
-    /** 是否命中已有实例（当前 start 不可用，恒为 false） */
+    /** 是否命中已有实例 */
     private boolean reused;
 
     /** 结果说明 */

@@ -12,6 +12,7 @@ import com.dam.taskcenter.repository.TaskDefinitionMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -145,6 +146,54 @@ public class TaskDefinitionService {
         } catch (DuplicateKeyException e) {
             // 并发创建时由数据库唯一索引兜底
             throw new BusinessException(409, "taskCode 已存在：" + taskCode);
+        }
+        return definition;
+    }
+
+    /**
+     * 回调 start 自动登记任务定义。
+     * <p>
+     * 使用独立事务（REQUIRES_NEW）：并发创建命中 taskCode 唯一索引时，内层事务回滚，
+     * 调用方可在原事务中按生成编码重新查询已提交定义，避免整个 start 事务被标记为
+     * aborted。定义状态固定为 ENABLED，创建/更新人均为 system，描述固定为
+     * “TaskCenter 自动登记”。
+     *
+     * @param taskCode      自动生成的稳定任务编码（不超过 64）
+     * @param taskName      任务名称（取回调标题，不超过 200）
+     * @param taskType      任务类型
+     * @param sourceService 来源服务
+     * @return 已创建的任务定义（含自增ID）
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public TaskDefinition autoRegister(String taskCode, String taskName,
+                                       String taskType, String sourceService) {
+        String code = requireText(taskCode, "taskCode", 64);
+        String name = requireText(taskName, "taskName", 200);
+        String type = normalizeTaskType(taskType);
+        String source = requireText(sourceService, "sourceService", 64);
+
+        // 与 create 一致：唯一性校验包含已逻辑删除记录，避免复用编码触发唯一约束
+        if (taskDefinitionMapper.countByTaskCodeIncludingDeleted(code) > 0) {
+            throw new BusinessException(409, "taskCode 已存在：" + code);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        TaskDefinition definition = new TaskDefinition();
+        definition.setTaskCode(code);
+        definition.setTaskName(name);
+        definition.setTaskType(type);
+        definition.setSourceService(source);
+        definition.setStatus("ENABLED");
+        definition.setDescription("TaskCenter 自动登记");
+        definition.setCreatedAt(now);
+        definition.setCreatedBy("system");
+        definition.setUpdatedAt(now);
+        definition.setUpdatedBy("system");
+        try {
+            taskDefinitionMapper.insert(definition);
+        } catch (DuplicateKeyException e) {
+            // 并发自动登记由数据库唯一索引兜底；内层事务回滚后由调用方重新查询
+            throw new BusinessException(409, "taskCode 已存在：" + code);
         }
         return definition;
     }

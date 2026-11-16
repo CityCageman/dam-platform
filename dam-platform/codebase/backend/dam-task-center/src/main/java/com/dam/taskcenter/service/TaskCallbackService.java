@@ -1,5 +1,6 @@
 package com.dam.taskcenter.service;
 
+import cn.hutool.crypto.digest.DigestUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -30,26 +31,21 @@ import java.util.Set;
  * 目标是为集成、调度、开发等外部执行器提供统一的运行状态回调入口：
  * start 登记/复用实例，finish 回填终态，log 追加日志，get 查询实例。
  * <p>
- * <b>start 的幂等限制（未伪造）：</b>
- * 现有 {@code dam_task.task_instance} 只有
- * id/definition_id/task_code/run_no/status/trigger_type/started_at/finished_at/
- * error_message/created_at 字段，没有 source_service、source_run_id、title、payload
- * 等来源字段；task_code 为 VARCHAR(64) 且没有唯一约束，唯一约束只有
- * (definition_id, run_no)。因此无法在不改表的前提下可靠持久化
- * sourceService + sourceTaskCode + sourceRunId 幂等键：
- * <ul>
- *     <li>task_code 长度不足以编码任意来源服务/任务/运行ID；</li>
- *     <li>task_code 无唯一索引，并发重复请求无法由数据库原子去重；</li>
- *     <li>run_no/error_message 等字段语义固定，不能挪用为幂等键。</li>
- * </ul>
- * 按任务要求，start 在确认任务定义存在后返回 501 并明确说明限制，不创建任何实例。
- * finish/log/get 复用 task_instance/task_log 正常工作。
+ * <b>start 的任务定义策略：</b>
+ * 先按 {@code sourceService + sourceTaskCode} 查找任务定义；找不到且
+ * {@code autoCreateDefinition=true}（默认）时，自动登记状态为 ENABLED 的任务定义，
+ * 编码由来源服务前缀与 sourceTaskCode 生成（超长时用 SHA-256 前 8 位截断），
+ * 再继续按 source 三元组幂等查重/创建实例。显式指定 definitionId 或
+ * {@code autoCreateDefinition=false} 时仍保持“定义不存在返回 404”的旧行为。
+ * <p>
+ * 幂等键 {@code sourceService + sourceTaskCode + sourceRunId} 由
+ * {@code dam_task.task_instance} 的来源字段与唯一索引
+ * {@code uk_task_instance_source_run} 持久化；start 在定义行锁前后各查重一次，
+ * 锁后二次查重保证并发相同请求复用已提交实例。
  * <p>
  * 由于 task_instance 没有 rows_read/rows_written 字段，finish 上报的计数会以
  * {@value #FINISH_MARKER_PREFIX} 开头的结构化日志写入 task_log，并在响应中回显；
- * 这是真实持久化，不伪造实例列。若后续允许数据库迁移，建议新增
- * {@code task_callback_ref} 表（source_service, source_task_code, source_run_id 唯一）
- * 或为 task_instance 增加来源字段与唯一索引，然后即可启用 start。
+ * 这是真实持久化，不伪造实例列。
  *
  * @author DAM Platform
  */
@@ -67,6 +63,18 @@ public class TaskCallbackService {
     /** task_log.message 最大长度（与 TaskLogService 保持一致） */
     private static final int MAX_LOG_MESSAGE_LENGTH = 10000;
 
+    /** 自动登记任务定义的 taskCode 最大长度（与 task_definition.task_code 一致） */
+    private static final int MAX_TASK_CODE_LENGTH = 64;
+
+    /** 自动登记 taskCode 超长时使用的 SHA-256 摘要长度 */
+    private static final int TASK_CODE_HASH_LENGTH = 8;
+
+    /** 自动登记 taskCode 的来源服务前缀映射 */
+    private static final String SOURCE_PREFIX_INTEGRATION = "dam-integration";
+
+    /** 调度来源服务前缀映射 */
+    private static final String SOURCE_PREFIX_SCHEDULER = "dam-scheduler";
+
     /** 允许的回调结束状态 */
     private static final Set<String> FINISH_STATUSES = Set.of(
             "SUCCESS", "FAILED", "CANCELLED");
@@ -78,8 +86,11 @@ public class TaskCallbackService {
     /** 回调结束日志前缀（用于在 task_log 中持久化 rowsRead/rowsWritten） */
     private static final String FINISH_MARKER_PREFIX = "CALLBACK_FINISH ";
 
-    /** 任务定义 Mapper（start 校验来源定义、get/finish 补充任务类型） */
+    /** 任务定义 Mapper（start 校验/查询来源定义、get/finish 补充任务类型） */
     private final TaskDefinitionMapper taskDefinitionMapper;
+
+    /** 任务定义服务（start 自动登记定义，使用独立事务处理唯一冲突） */
+    private final TaskDefinitionService taskDefinitionService;
 
     /** 任务实例 Mapper（finish 行锁更新、get 查询） */
     private final TaskInstanceMapper taskInstanceMapper;
@@ -93,14 +104,20 @@ public class TaskCallbackService {
     /**
      * 回调开始：登记或复用任务实例。
      * <p>
-     * 先按 definitionId 或 sourceService+sourceTaskCode 校验任务定义：
-     * 定义不存在返回 404，并提示先创建任务定义（不自动造假定义）。
-     * 定义存在时，由于 task_instance 无法可靠持久化
-     * sourceService+sourceTaskCode+sourceRunId 幂等键，返回 501，
-     * 不创建实例、不返回假的 instanceId。
+     * 先按 definitionId 或 sourceService+sourceTaskCode 解析任务定义：
+     * <ul>
+     *     <li>显式 definitionId：只使用该定义，定义不存在或不匹配返回 404；</li>
+     *     <li>没有 definitionId：先按来源服务与来源任务编码查找；</li>
+     *     <li>找不到且 autoCreateDefinition=true（默认）：自动登记 ENABLED 定义，
+     *         编码为“来源前缀_sourceTaskCode”，超长时用 SHA-256 前 8 位截断；</li>
+     *     <li>找不到且 autoCreateDefinition=false：返回 404，提示先创建定义。</li>
+     * </ul>
+     * 定义就绪后，继续按 sourceService+sourceTaskCode+sourceRunId 做实例幂等查重；
+     * 未命中则对定义行加锁并二次查重，再创建 PENDING 实例。start 只登记实例，
+     * 不写入执行结果，终态仍由 finish 回填。
      *
      * @param request 回调开始请求
-     * @return 不会返回；定义存在时抛出 501
+     * @return 新建或复用的任务实例快照（含正确的 definitionId/taskCode）
      */
     @Transactional
     public TaskCallbackResponse start(TaskCallbackRequest request) {
@@ -110,12 +127,13 @@ public class TaskCallbackService {
         String sourceService = requireText(request.getSourceService(), "sourceService", 64);
         String sourceTaskCode = requireText(request.getSourceTaskCode(), "sourceTaskCode", 64);
         String sourceRunId = requireText(request.getSourceRunId(), "sourceRunId", MAX_SOURCE_RUN_ID_LENGTH);
-        requireText(request.getTaskType(), "taskType", 32);
+        String taskType = requireText(request.getTaskType(), "taskType", 32);
         String title = requireText(request.getTitle(), "title", 200);
         String payload = request.getPayload() == null ? null : JSONUtil.toJsonStr(request.getPayload());
 
         TaskDefinition definition = resolveDefinition(
-                request.getDefinitionId(), sourceService, sourceTaskCode);
+                request.getDefinitionId(), sourceService, sourceTaskCode,
+                taskType, title, request.isAutoCreateDefinition());
 
         TaskInstance existing = taskInstanceMapper.selectOne(
                 new LambdaQueryWrapper<TaskInstance>()
@@ -263,8 +281,7 @@ public class TaskCallbackService {
      * 查询回调实例。
      * <p>
      * 返回 task_instance 快照；rowsRead/rowsWritten 从最近一条回调结束日志读取。
-     * sourceService/sourceTaskCode/sourceRunId/title/payload 因 task_instance 无对应
-     * 字段而为 null（start 当前未启用，不会产生这类实例）。
+     * start 登记实例时会持久化 sourceService/sourceTaskCode/sourceRunId/title/payload。
      *
      * @param instanceId 实例ID
      * @return 实例快照
@@ -284,17 +301,27 @@ public class TaskCallbackService {
     /**
      * 解析并校验回调开始对应的任务定义。
      * <p>
-     * 支持显式 definitionId，也支持按 sourceService+sourceTaskCode 查找。
-     * 找不到时返回 404 并提示先创建任务定义，不自动创建定义。
+     * 显式 definitionId 时只使用该定义并校验来源匹配；否则按
+     * sourceService+sourceTaskCode 查找（兼容手工定义的 taskCode=sourceTaskCode
+     * 与自动登记的生成 taskCode）。找不到且 autoCreateDefinition=true 时，
+     * 通过 {@link TaskDefinitionService#autoRegister} 在独立事务中自动登记；
+     * 若并发创建命中唯一索引（409），回滚后重新查询已提交定义。
      *
-     * @param definitionId    可选任务定义ID
-     * @param sourceService   来源服务
-     * @param sourceTaskCode  来源任务编码
+     * @param definitionId         可选任务定义ID
+     * @param sourceService        来源服务
+     * @param sourceTaskCode       来源任务编码
+     * @param taskType             任务类型（自动登记时写入定义）
+     * @param title                运行标题（自动登记时作为 taskName）
+     * @param autoCreateDefinition 定义不存在时是否自动登记
      * @return 任务定义
      */
     private TaskDefinition resolveDefinition(Long definitionId,
                                              String sourceService,
-                                             String sourceTaskCode) {
+                                             String sourceTaskCode,
+                                             String taskType,
+                                             String title,
+                                             boolean autoCreateDefinition) {
+        String generatedTaskCode = buildTaskCode(sourceService, sourceTaskCode);
         if (definitionId != null) {
             if (definitionId <= 0) {
                 throw new BusinessException(400, "definitionId 不合法：" + definitionId);
@@ -304,8 +331,9 @@ public class TaskCallbackService {
                 throw new BusinessException(404,
                         "任务定义不存在：" + definitionId + "，请先创建任务定义");
             }
-            if (!sourceTaskCode.equals(definition.getTaskCode())
-                    || !sourceService.equals(definition.getSourceService())) {
+            if (!sourceService.equals(definition.getSourceService())
+                    || !matchesSourceTask(definition.getTaskCode(),
+                    sourceService, sourceTaskCode)) {
                 throw new BusinessException(404,
                         "未找到匹配 sourceService=" + sourceService
                                 + "、sourceTaskCode=" + sourceTaskCode
@@ -314,17 +342,150 @@ public class TaskCallbackService {
             return definition;
         }
 
-        TaskDefinition definition = taskDefinitionMapper.selectOne(
-                new LambdaQueryWrapper<TaskDefinition>()
-                        .eq(TaskDefinition::getTaskCode, sourceTaskCode)
-                        .last("LIMIT 1"));
-        if (definition == null || !sourceService.equals(definition.getSourceService())) {
+        TaskDefinition definition = findBySourceTask(
+                sourceService, sourceTaskCode, generatedTaskCode);
+        if (definition != null) {
+            return definition;
+        }
+        if (!autoCreateDefinition) {
             throw new BusinessException(404,
                     "未找到匹配 sourceService=" + sourceService
                             + "、sourceTaskCode=" + sourceTaskCode
-                            + " 的任务定义，请先创建任务定义");
+                            + " 的任务定义，请先创建任务定义（或允许自动登记）");
+        }
+
+        try {
+            TaskDefinition created = taskDefinitionService.autoRegister(
+                    generatedTaskCode, title, taskType, sourceService);
+            log.info("回调自动登记任务定义: taskCode={}, sourceService={}, sourceTaskCode={}",
+                    created.getTaskCode(), sourceService, sourceTaskCode);
+            return created;
+        } catch (BusinessException e) {
+            if (e.getCode() != 409) {
+                throw e;
+            }
+            // 并发登记时内层事务已回滚，原事务可安全重查已提交定义
+            TaskDefinition concurrent = findBySourceTask(
+                    sourceService, sourceTaskCode, generatedTaskCode);
+            if (concurrent != null) {
+                log.info("并发自动登记命中已有定义: taskCode={}", concurrent.getTaskCode());
+                return concurrent;
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * 按来源服务与来源任务编码查找未删除的任务定义。
+     * <p>
+     * 先匹配历史约定 {@code taskCode = sourceTaskCode}，再匹配自动登记的生成编码，
+     * 保证自动登记后后续相同回调可直接复用定义。
+     *
+     * @param sourceService     来源服务
+     * @param sourceTaskCode    来源任务编码
+     * @param generatedTaskCode 自动登记生成的任务编码
+     * @return 任务定义；不存在时返回 null
+     */
+    private TaskDefinition findBySourceTask(String sourceService,
+                                            String sourceTaskCode,
+                                            String generatedTaskCode) {
+        TaskDefinition definition = findBySourceAndCode(sourceService, sourceTaskCode);
+        if (definition != null) {
+            return definition;
+        }
+        if (!generatedTaskCode.equals(sourceTaskCode)) {
+            definition = findBySourceAndCode(sourceService, generatedTaskCode);
         }
         return definition;
+    }
+
+    /**
+     * 按来源服务与任务编码查询未删除定义。
+     * <p>
+     * ID 查询显式 flushCache，确保并发自动登记在独立事务提交后，能绕过当前
+     * 事务 SqlSession 的本地缓存重新读取。
+     *
+     * @param sourceService 来源服务
+     * @param taskCode      任务编码
+     * @return 任务定义；不存在时返回 null
+     */
+    private TaskDefinition findBySourceAndCode(String sourceService, String taskCode) {
+        Long definitionId = taskDefinitionMapper.selectIdBySourceAndTaskCode(
+                sourceService, taskCode);
+        return definitionId == null ? null : taskDefinitionMapper.selectById(definitionId);
+    }
+
+    /**
+     * 判断任务定义的 taskCode 是否对应当前来源任务。
+     * <p>
+     * 同时接受手工定义的 {@code taskCode=sourceTaskCode} 与自动登记的生成编码。
+     *
+     * @param taskCode       任务定义编码
+     * @param sourceService  来源服务
+     * @param sourceTaskCode 来源任务编码
+     * @return 是否匹配
+     */
+    private static boolean matchesSourceTask(String taskCode,
+                                             String sourceService,
+                                             String sourceTaskCode) {
+        return sourceTaskCode.equals(taskCode)
+                || buildTaskCode(sourceService, sourceTaskCode).equals(taskCode);
+    }
+
+    /**
+     * 生成自动登记使用的稳定任务编码。
+     * <p>
+     * 编码格式为 {@code 来源服务前缀_sourceTaskCode}；超过 64 时保留前缀与可读部分，
+     * 并以完整编码的 SHA-256 前 8 位作为后缀截断，保证长度不超过 64 且稳定可重算。
+     *
+     * @param sourceService  来源服务
+     * @param sourceTaskCode 来源任务编码
+     * @return 不超过 64 的任务编码
+     */
+    private static String buildTaskCode(String sourceService, String sourceTaskCode) {
+        String prefix = sourcePrefix(sourceService);
+        String base = prefix + "_" + sourceTaskCode;
+        if (base.length() <= MAX_TASK_CODE_LENGTH) {
+            return base;
+        }
+        String hash = DigestUtil.sha256Hex(base)
+                .substring(0, TASK_CODE_HASH_LENGTH);
+        int keep = MAX_TASK_CODE_LENGTH - prefix.length() - 2 - TASK_CODE_HASH_LENGTH;
+        if (keep <= 0) {
+            String hashed = prefix + "_" + hash;
+            return hashed.length() <= MAX_TASK_CODE_LENGTH
+                    ? hashed : hashed.substring(0, MAX_TASK_CODE_LENGTH);
+        }
+        int end = Math.min(keep, sourceTaskCode.length());
+        return prefix + "_" + sourceTaskCode.substring(0, end) + "_" + hash;
+    }
+
+    /**
+     * 解析来源服务前缀。
+     * <p>
+     * dam-integration → INT，dam-scheduler → SCH；其他取大写后的前 3 个字母/数字，
+     * 不足 3 位时使用全部可用字符。
+     *
+     * @param sourceService 来源服务
+     * @return 任务编码前缀
+     */
+    private static String sourcePrefix(String sourceService) {
+        String lower = sourceService.toLowerCase(Locale.ROOT);
+        if (SOURCE_PREFIX_INTEGRATION.equals(lower)) {
+            return "INT";
+        }
+        if (SOURCE_PREFIX_SCHEDULER.equals(lower)) {
+            return "SCH";
+        }
+        String upper = sourceService.toUpperCase(Locale.ROOT);
+        StringBuilder prefix = new StringBuilder(3);
+        for (int i = 0; i < upper.length() && prefix.length() < 3; i++) {
+            char c = upper.charAt(i);
+            if (Character.isLetterOrDigit(c)) {
+                prefix.append(c);
+            }
+        }
+        return prefix.length() == 0 ? "TSK" : prefix.toString();
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.dam.scheduler.service;
 
+import com.dam.scheduler.client.TaskCenterClient;
 import com.dam.scheduler.entity.ScheduleJob;
 import com.dam.scheduler.entity.ScheduleRun;
 import com.dam.scheduler.repository.ScheduleJobMapper;
@@ -10,6 +11,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
@@ -46,6 +49,9 @@ public class ScheduleDispatchService {
     /** 单任务派发事务模板：锁定任务、写运行记录、更新派发时间在同一事务内完成 */
     private final TransactionTemplate transactionTemplate;
 
+    /** TaskCenter 登记客户端，派发事务提交后异步登记运行实例 */
+    private final TaskCenterClient taskCenterClient;
+
     /** 自动派发开关，false 时仅停止定时扫描（手动扫描接口仍可显式执行） */
     private final boolean dispatchEnabled;
 
@@ -61,18 +67,21 @@ public class ScheduleDispatchService {
     /**
      * 构造自动派发服务。
      *
-     * @param jobMapper         调度任务 Mapper
-     * @param runMapper         运行记录 Mapper
+     * @param jobMapper          调度任务 Mapper
+     * @param runMapper          运行记录 Mapper
      * @param transactionManager 事务管理器
-     * @param dispatchEnabled   是否启用定时自动派发
+     * @param taskCenterClient   TaskCenter 登记客户端
+     * @param dispatchEnabled    是否启用定时自动派发
      */
     public ScheduleDispatchService(ScheduleJobMapper jobMapper,
                                    ScheduleRunMapper runMapper,
                                    PlatformTransactionManager transactionManager,
+                                   TaskCenterClient taskCenterClient,
                                    @Value("${dam.scheduler.dispatch-enabled:true}") boolean dispatchEnabled) {
         this.jobMapper = jobMapper;
         this.runMapper = runMapper;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.taskCenterClient = taskCenterClient;
         this.dispatchEnabled = dispatchEnabled;
     }
 
@@ -180,6 +189,9 @@ public class ScheduleDispatchService {
      * <p>
      * 重新读取行锁内的最新 {@code last_dispatched_at} 是关键：其他实例可能已经派发并提交，
      * 本实例拿到锁后会基于新值计算下一次触发点，自然跳过重复派发。
+     * <p>
+     * TaskCenter 登记安排在事务提交之后异步执行：只有运行记录与
+     * {@code last_dispatched_at} 都成功提交才登记，登记失败也不会回滚派发。
      *
      * @param jobId 任务ID
      * @return true 表示本次插入了一条 PENDING 运行记录
@@ -225,10 +237,42 @@ public class ScheduleDispatchService {
                 throw new IllegalStateException("更新 last_dispatched_at 失败: jobId=" + job.getId());
             }
 
+            registerToTaskCenterAfterCommit(job.getJobCode(), job.getJobName(), run.getId());
+
             log.info("调度任务自动派发成功: jobId={}, jobCode={}, nextFireTime={}, runId={}",
                     job.getId(), job.getJobCode(), next, run.getId());
             return true;
         });
         return Boolean.TRUE.equals(dispatched);
+    }
+
+    /**
+     * 在当前派发事务提交后异步登记 TaskCenter。
+     * <p>
+     * 事务回滚（例如更新 last_dispatched_at 失败）时不会触发 afterCommit，
+     * 因此不会产生 TaskCenter 有实例而本地无运行记录的孤儿数据。
+     * 登记动作本身已由客户端内部捕获异常并 warn，不影响派发与事务提交。
+     *
+     * @param jobCode 调度任务编码
+     * @param jobName 调度任务名称
+     * @param runId   已写入的运行记录ID
+     */
+    private void registerToTaskCenterAfterCommit(String jobCode, String jobName, Long runId) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            taskCenterClient.registerStartAsync(jobCode, jobName, runId);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    taskCenterClient.registerStartAsync(jobCode, jobName, runId);
+                } catch (Exception e) {
+                    // 双重兜底：登记失败绝不能影响已提交的派发或调度线程
+                    log.warn("Cron 派发登记 TaskCenter 失败，不影响调度派发: jobCode={}, runId={}, error={}",
+                            jobCode, runId, e.toString());
+                }
+            }
+        });
     }
 }

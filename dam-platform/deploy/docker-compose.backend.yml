@@ -360,6 +360,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *pg-env
+      DAM_TASK_CENTER_URL: http://dam-task-center:8099
       NACOS_SERVER_ADDR: nacos:8848
       SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
     depends_on:
@@ -379,6 +380,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *pg-env
+      DAM_TASK_CENTER_URL: http://dam-task-center:8099
       NACOS_SERVER_ADDR: nacos:8848
       SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
     depends_on:

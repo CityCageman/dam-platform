@@ -37,7 +37,7 @@ import java.util.Map;
  * 提供任务定义 CRUD、手动触发、任务实例查询/状态流转、日志追加与统一执行回调。
  * 本服务只提供数据库支撑，不实现任务执行器：触发接口只创建 PENDING 实例，
  * 返回 message=executor not implemented，不伪造执行成功。
- * 回调 start 因 task_instance 缺少来源字段且 task_code 无唯一约束，返回 501；
+ * 回调 start 支持按来源三元组幂等登记实例，并按需自动登记任务定义；
  * 回调 finish/log/get 复用 task_instance/task_log 正常工作。
  * 所有响应统一使用 {@link Result} 包装。
  *
@@ -236,14 +236,13 @@ public class TaskCenterController {
     /**
      * 回调开始：登记/复用任务实例。
      * <p>
-     * 先校验任务定义：不存在返回 404 并提示先创建任务定义。
-     * 由于现有 task_instance 缺少 source_service/source_run_id 字段、task_code
-     * 长度仅 64 且无唯一约束，无法可靠持久化
-     * sourceService+sourceTaskCode+sourceRunId 幂等键；定义存在时统一返回 501，
-     * 不创建实例，不伪造幂等成功。数据库迁移后可在此启用。
+     * 先按 definitionId 或 sourceService+sourceTaskCode 解析任务定义；
+     * 未找到时默认自动登记 ENABLED 定义（autoCreateDefinition=false 则返回 404）。
+     * 定义就绪后按 sourceService+sourceTaskCode+sourceRunId 幂等查重/创建
+     * PENDING 实例，不写入执行结果。
      *
      * @param request 回调开始请求
-     * @return 定义不存在 404；v30 迁移后支持幂等创建/复用
+     * @return 新建或复用的任务实例快照（含 definitionId/taskCode，created/reused 标识）
      */
     @PostMapping("/callbacks/start")
     public Result<TaskCallbackResponse> startCallback(

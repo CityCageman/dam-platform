@@ -5,11 +5,13 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dam.common.exception.BusinessException;
 import com.dam.common.vo.PageResult;
+import com.dam.scheduler.client.TaskCenterClient;
 import com.dam.scheduler.entity.ScheduleJob;
 import com.dam.scheduler.entity.ScheduleRun;
 import com.dam.scheduler.repository.ScheduleJobMapper;
 import com.dam.scheduler.repository.ScheduleRunMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
@@ -32,6 +34,7 @@ import java.util.Set;
  *
  * @author DAM Platform
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SchedulerService {
@@ -68,6 +71,7 @@ public class SchedulerService {
 
     private final ScheduleJobMapper jobMapper;
     private final ScheduleRunMapper runMapper;
+    private final TaskCenterClient taskCenterClient;
 
     /**
      * 分页查询调度任务。
@@ -238,6 +242,9 @@ public class SchedulerService {
      * 只写入 PENDING 运行记录，不执行 DAG，也不伪造 SUCCESS；
      * 返回 accepted=true 表示触发请求已受理。
      * 手动触发不修改 {@code last_dispatched_at}，不干扰 Cron 自动派发节奏。
+     * <p>
+     * 运行记录写入后尽力向 TaskCenter 登记（只登记 PENDING，不回填执行结果）；
+     * 登记失败仅记录 warn，不影响本次触发结果。
      *
      * @param id 任务ID
      * @return accepted/runId/message
@@ -251,11 +258,31 @@ public class SchedulerService {
         run.setCreatedAt(LocalDateTime.now());
         runMapper.insert(run);
 
+        registerToTaskCenter(job, run);
+
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("accepted", true);
         result.put("runId", run.getId());
         result.put("message", ENGINE_NOT_IMPLEMENTED);
         return result;
+    }
+
+    /**
+     * 向 TaskCenter 登记本次运行（失败只 warn，不影响本地触发）。
+     * <p>
+     * 只调用 start 回调，TaskCenter 侧实例保持 PENDING；本服务不调用 finish，
+     * 不伪造执行成功。
+     *
+     * @param job 调度任务
+     * @param run 已写入的运行记录
+     */
+    private void registerToTaskCenter(ScheduleJob job, ScheduleRun run) {
+        try {
+            taskCenterClient.registerStart(job.getJobCode(), job.getJobName(), run.getId());
+        } catch (Exception e) {
+            log.warn("手动触发登记 TaskCenter 失败，不影响调度触发: jobId={}, jobCode={}, runId={}, error={}",
+                    job.getId(), job.getJobCode(), run.getId(), e.toString());
+        }
     }
 
     /**

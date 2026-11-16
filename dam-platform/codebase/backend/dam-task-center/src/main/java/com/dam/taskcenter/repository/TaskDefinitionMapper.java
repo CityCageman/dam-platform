@@ -3,6 +3,7 @@ package com.dam.taskcenter.repository;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.dam.taskcenter.entity.TaskDefinition;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
@@ -41,4 +42,21 @@ public interface TaskDefinitionMapper extends BaseMapper<TaskDefinition> {
     @Select("SELECT id FROM dam_task.task_definition "
             + "WHERE id = #{id} AND deleted_at IS NULL FOR UPDATE")
     Long lockById(@Param("id") Long id);
+
+    /**
+     * 按来源服务与任务编码查询未删除定义的ID。
+     * <p>
+     * 回调 start 在并发自动登记（独立事务提交）后需要重新读取刚提交的定义；
+     * 这里显式 flushCache，避免同一事务 SqlSession 的本地缓存返回登记前的 null。
+     *
+     * @param sourceService 来源服务
+     * @param taskCode      任务编码
+     * @return 任务定义ID；不存在时返回 null
+     */
+    @Select("SELECT id FROM dam_task.task_definition "
+            + "WHERE source_service = #{sourceService} "
+            + "AND task_code = #{taskCode} AND deleted_at IS NULL LIMIT 1")
+    @Options(flushCache = Options.FlushCachePolicy.TRUE)
+    Long selectIdBySourceAndTaskCode(@Param("sourceService") String sourceService,
+                                     @Param("taskCode") String taskCode);
 }

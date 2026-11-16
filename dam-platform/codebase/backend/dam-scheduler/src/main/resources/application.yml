@@ -27,6 +27,8 @@ spring:
       fetch-size: 100
 
 dam:
+  # 统一任务中心地址，用于登记调度运行实例（失败只告警，不影响调度）
+  task-center-url: ${DAM_TASK_CENTER_URL:http://127.0.0.1:8099}
   scheduler:
     # Cron 自动派发开关；关闭后不再定时扫描，仍可通过 POST /api/scheduler/dispatch/run 手动扫描
     dispatch-enabled: ${DAM_SCHEDULER_DISPATCH_ENABLED:true}

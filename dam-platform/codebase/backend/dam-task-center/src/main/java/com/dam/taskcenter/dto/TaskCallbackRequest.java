@@ -11,8 +11,10 @@ import lombok.Data;
  * {@code sourceService + sourceTaskCode + sourceRunId} 作为幂等键登记运行实例。
  * {@code payload} 支持直接传 JSON 对象/数组，也支持传 JSON 字符串。
  * <p>
- * 注意：当前 {@code dam_task.task_instance} 没有 source_service/source_run_id 字段，
- * 且 task_code 没有唯一约束，无法可靠持久化该幂等键；v30 迁移已补齐来源字段与唯一索引，start 支持幂等登记。详见 {@code TaskCallbackService#start} 的说明。
+ * 任务定义默认自动登记：先按 {@code sourceService + sourceTaskCode} 查找，
+ * 找不到时自动创建 ENABLED 定义并继续登记实例；显式传
+ * {@code autoCreateDefinition=false} 可恢复“找不到定义即返回 404”的行为。
+ * 详见 {@code TaskCallbackService#start} 的说明。
  *
  * @author DAM Platform
  */
@@ -49,4 +51,12 @@ public class TaskCallbackRequest {
 
     /** 可选：直接指定任务定义ID；不传时按 sourceService + sourceTaskCode 查找 */
     private Long definitionId;
+
+    /**
+     * 定义不存在时是否自动登记任务定义，默认 true。
+     * <p>
+     * 自动登记使用 {@code sourceService + sourceTaskCode} 生成稳定 taskCode，
+     * 状态为 ENABLED；显式传 false 时定义不存在将返回 404。
+     */
+    private boolean autoCreateDefinition = true;
 }

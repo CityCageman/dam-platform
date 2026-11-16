@@ -25,6 +25,10 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
 
+dam:
+  # 统一任务中心地址：回调仅用于运行观测，不可用时只记录 warn，不影响集成任务执行与成功判定
+  task-center-url: ${DAM_TASK_CENTER_URL:http://127.0.0.1:8099}
+
 mybatis-plus:
   configuration:
     # 数据库下划线列名映射到 Java 驼峰属性（如 job_code -> jobCode）
