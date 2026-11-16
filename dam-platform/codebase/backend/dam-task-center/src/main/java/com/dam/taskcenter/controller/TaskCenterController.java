@@ -243,7 +243,7 @@ public class TaskCenterController {
      * 不创建实例，不伪造幂等成功。数据库迁移后可在此启用。
      *
      * @param request 回调开始请求
-     * @return 不返回成功结果；定义不存在 404，定义存在但暂不支持幂等 501
+     * @return 定义不存在 404；v30 迁移后支持幂等创建/复用
      */
     @PostMapping("/callbacks/start")
     public Result<TaskCallbackResponse> startCallback(

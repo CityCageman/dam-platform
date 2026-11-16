@@ -132,6 +132,18 @@ public class TaskCallbackService {
         if (taskDefinitionMapper.lockById(definition.getId()) == null) {
             throw new BusinessException(404, "任务定义不存在：" + definition.getId());
         }
+        // 加锁后必须二次查重：两个并发相同请求可能都在锁前查不到，
+        // 锁内复查可让后到请求直接复用已提交实例，避免唯一键异常导致的 aborted transaction。
+        TaskInstance lockedExisting = taskInstanceMapper.selectOne(
+                new LambdaQueryWrapper<TaskInstance>()
+                        .eq(TaskInstance::getSourceService, sourceService)
+                        .eq(TaskInstance::getSourceTaskCode, sourceTaskCode)
+                        .eq(TaskInstance::getSourceRunId, sourceRunId)
+                        .last("LIMIT 1"));
+        if (lockedExisting != null) {
+            return toResponse(lockedExisting, null, null, false, true,
+                    "相同来源运行已登记，返回已有实例");
+        }
         Integer maxRunNo = taskInstanceMapper.selectMaxRunNo(definition.getId());
         int runNo = maxRunNo == null ? 0 : maxRunNo;
         TaskInstance instance = new TaskInstance();
@@ -149,16 +161,8 @@ public class TaskCallbackService {
         try {
             taskInstanceMapper.insert(instance);
         } catch (org.springframework.dao.DuplicateKeyException e) {
-            TaskInstance concurrent = taskInstanceMapper.selectOne(
-                    new LambdaQueryWrapper<TaskInstance>()
-                            .eq(TaskInstance::getSourceService, sourceService)
-                            .eq(TaskInstance::getSourceTaskCode, sourceTaskCode)
-                            .eq(TaskInstance::getSourceRunId, sourceRunId)
-                            .last("LIMIT 1"));
-            if (concurrent != null) {
-                return toResponse(concurrent, null, null, false, true,
-                        "并发请求命中已有实例");
-            }
+            // 幂等键冲突发生在极小概率的跨定义并发场景；当前事务已 aborted，
+            // 不能再查库，直接返回 409 让调用方重试（重试会命中已有实例）。
             throw new BusinessException(409, "来源运行已登记，请重试");
         }
         return toResponse(instance, null, null, true, false, "回调开始已登记");

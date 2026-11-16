@@ -12,8 +12,7 @@ import lombok.Data;
  * {@code payload} 支持直接传 JSON 对象/数组，也支持传 JSON 字符串。
  * <p>
  * 注意：当前 {@code dam_task.task_instance} 没有 source_service/source_run_id 字段，
- * 且 task_code 没有唯一约束，无法可靠持久化该幂等键；因此 start 接口会返回 501，
- * 不会创建实例。详见 {@code TaskCallbackService#start} 的说明。
+ * 且 task_code 没有唯一约束，无法可靠持久化该幂等键；v30 迁移已补齐来源字段与唯一索引，start 支持幂等登记。详见 {@code TaskCallbackService#start} 的说明。
  *
  * @author DAM Platform
  */

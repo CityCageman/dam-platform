@@ -946,15 +946,16 @@ public class IntegrationExecutionService {
     }
 
     /**
-     * 脱敏：移除连接串/错误信息中的 password、pwd 参数值
+     * 脱敏：移除连接串/错误信息中的 password、pwd 参数值及 URL userinfo 中的密码
      */
     private static String sanitize(String message) {
         if (message == null) {
             return null;
         }
         return message
-                .replaceAll("(?i)(password\\s*=\\s*)([^&;\\s,]+)", "$1***")
-                .replaceAll("(?i)(pwd\\s*=\\s*)([^&;\\s,]+)", "$1***");
+                .replaceAll("(?i)(password\\s*[=:]\\s*)([^&;\\s,]+)", "$1***")
+                .replaceAll("(?i)(pwd\\s*[=:]\\s*)([^&;\\s,]+)", "$1***")
+                .replaceAll("(?i)(//[^/@\\s:]+:)([^@/\\s]+)(@)", "$1***$3");
     }
 
     /**

@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  * 待数据库迁移后可直接填充，不需要再改 API 契约。
  * <p>
  * created/reused 仅用于 start 幂等语义：created=true 表示新建，reused=true 表示命中
- * 已有实例。当前 start 返回 501，不会产生这两种成功响应。
+ * 已有实例。当前 start 在 v30 迁移后支持幂等复用。
  *
  * @author DAM Platform
  */
