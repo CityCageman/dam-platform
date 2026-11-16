@@ -2,7 +2,6 @@ package com.dam.scheduler.client;
 
 import cn.dev33.satoken.context.SaHolder;
 import cn.dev33.satoken.stp.StpUtil;
-import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -15,27 +14,23 @@ import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * TaskCenter 回调客户端。
  * <p>
- * 调度服务在手动触发与 Cron 自动派发写入 PENDING 运行记录后，调用
- * {@code POST /api/task-center/callbacks/start} 把本次运行登记到统一任务中心。
- * 只登记开始（TaskCenter 侧实例状态为 PENDING），暂不调用 finish：
- * DAG 执行完成后不要求回调 TaskCenter finish，避免提前耦合。
+ * 顺序 SQL DAG 执行器在开始执行前调用 {@code POST /api/task-center/callbacks/start}
+ * 登记运行实例（TaskCenter 侧为 PENDING），执行结束后调用
+ * {@code POST /api/task-center/callbacks/{instanceId}/finish} 回写 SUCCESS/FAILED。
+ * 登记与回写统一归口在 {@code ScheduleRunExecutor}，手动触发与 Cron 派发不再各自登记，
+ * 避免同一个 run 在 TaskCenter 产生重复实例。
  * <p>
- * 调度可用性优先：连接/读取超时设置得较短，调用失败只记录 warn，不向上抛出；
- * TaskCenter 不可用不会阻塞或回滚调度派发。Cron 派发使用 {@link #registerStartAsync}
- * 在事务提交后异步登记，避免慢调用拖慢扫描。
+ * 调度可用性优先：连接/读取超时设置得较短，任何调用失败只记录 warn，不向上抛出；
+ * TaskCenter 不可用不会阻塞、回滚或改变本地 schedule_run 的运行状态。
+ * {@link #start} 在登记失败时返回 {@code null}，调用方据此跳过随后的 finish。
  * <p>
  * 鉴权沿用调用方 Sa-Token：优先读取当前请求的 {@code token} 请求头，
- * 定时任务线程没有请求上下文时退化为无 token 的内部调用。
+ * 定时任务线程没有请求上下文时退化为无 token 的内部调用；异步执行线程可通过
+ * {@link #captureToken()} 在提交前捕获 token 并显式透传。
  *
  * @author DAM Platform
  */
@@ -52,14 +47,23 @@ public class TaskCenterClient {
     /** 回调开始接口路径 */
     private static final String START_PATH = "/api/task-center/callbacks/start";
 
+    /** 回调结束接口路径前缀 */
+    private static final String FINISH_PATH_PREFIX = "/api/task-center/callbacks/";
+
+    /** 回调结束接口路径后缀 */
+    private static final String FINISH_PATH_SUFFIX = "/finish";
+
+    /** 结束回调允许的终态 */
+    private static final String STATUS_SUCCESS = "SUCCESS";
+
+    /** 结束回调允许的终态 */
+    private static final String STATUS_FAILED = "FAILED";
+
     /** TaskCenter title 字段最大长度 */
     private static final int MAX_TITLE_LENGTH = 200;
 
-    /** 异步登记队列容量，满时直接丢弃并 warn，避免阻塞调度线程 */
-    private static final int REGISTRATION_QUEUE_CAPACITY = 512;
-
-    /** 登记线程池 */
-    private final ExecutorService registrationExecutor;
+    /** TaskCenter errorMessage 字段最大长度 */
+    private static final int MAX_ERROR_MESSAGE_LENGTH = 2000;
 
     /** TaskCenter HTTP 客户端 */
     private final RestClient restClient;
@@ -82,109 +86,157 @@ public class TaskCenterClient {
                 .baseUrl(taskCenterUrl)
                 .requestFactory(requestFactory)
                 .build();
-
-        AtomicInteger threadSeq = new AtomicInteger();
-        this.registrationExecutor = new ThreadPoolExecutor(
-                1, 1, 0L, TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<>(REGISTRATION_QUEUE_CAPACITY),
-                runnable -> {
-                    Thread thread = new Thread(runnable,
-                            "task-center-registrar-" + threadSeq.incrementAndGet());
-                    thread.setDaemon(true);
-                    return thread;
-                },
-                new ThreadPoolExecutor.AbortPolicy());
     }
 
     /**
-     * 同步登记一次运行实例（手动触发路径）。
-     * <p>
-     * 调用失败会抛出运行时异常，由调用方转换为 warn 日志，不影响本地触发结果。
+     * 登记一次运行实例，token 取自当前线程上下文。
      *
      * @param jobCode 调度任务编码，作为 sourceTaskCode
      * @param jobName 调度任务名称，用于拼接 title
      * @param runId   本地 schedule_run 主键，作为 sourceRunId
+     * @return TaskCenter 实例ID；登记失败或未返回实例ID时返回 {@code null}
      */
-    public void registerStart(String jobCode, String jobName, Long runId) {
-        registerStart(jobCode, jobName, runId, currentToken());
+    public Long start(String jobCode, String jobName, Long runId) {
+        return start(jobCode, jobName, runId, captureToken());
     }
 
     /**
-     * 异步登记一次运行实例（Cron 自动派发路径）。
+     * 登记一次运行实例，并显式传入调用线程捕获的 token。
      * <p>
-     * 在调用线程捕获 Sa-Token（事务提交回调仍处于请求线程），再交给单线程池执行，
-     * 避免 TaskCenter 慢调用拖慢派发扫描；任何异常只记录 warn。
+     * 所有异常（参数缺失、TaskCenter 不可用、返回非 200、响应缺少 instanceId）都只记录
+     * warn 并返回 {@code null}，不向上抛出，不影响本地 DAG 执行。
      *
      * @param jobCode 调度任务编码，作为 sourceTaskCode
      * @param jobName 调度任务名称，用于拼接 title
      * @param runId   本地 schedule_run 主键，作为 sourceRunId
-     */
-    public void registerStartAsync(String jobCode, String jobName, Long runId) {
-        String token = currentToken();
-        try {
-            registrationExecutor.execute(() -> {
-                try {
-                    registerStart(jobCode, jobName, runId, token);
-                } catch (Exception e) {
-                    log.warn("TaskCenter 异步登记失败，不影响调度派发: jobCode={}, runId={}, error={}",
-                            jobCode, runId, e.toString());
-                }
-            });
-        } catch (RejectedExecutionException e) {
-            log.warn("TaskCenter 登记队列已满，跳过本次登记，不影响调度派发: jobCode={}, runId={}",
-                    jobCode, runId);
-        }
-    }
-
-    /**
-     * 执行回调开始请求。
-     *
-     * @param jobCode 调度任务编码
-     * @param jobName 调度任务名称
-     * @param runId   本地运行记录ID
      * @param token   透传的 Sa-Token，可为空
+     * @return TaskCenter 实例ID；失败时返回 {@code null}
      */
     @SuppressWarnings("unchecked")
-    private void registerStart(String jobCode, String jobName, Long runId, String token) {
+    public Long start(String jobCode, String jobName, Long runId, String token) {
         if (!StringUtils.hasText(jobCode) || runId == null) {
-            throw new IllegalArgumentException("登记 TaskCenter 需要 jobCode 与 runId");
+            log.warn("TaskCenter 开始回调参数不完整，跳过登记: jobCode={}, runId={}", jobCode, runId);
+            return null;
         }
 
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("sourceService", SOURCE_SERVICE);
-        body.put("sourceTaskCode", jobCode);
-        body.put("sourceRunId", String.valueOf(runId));
-        body.put("taskType", TASK_TYPE);
-        body.put("title", buildTitle(jobName, runId));
-        // 任务定义缺失时由 TaskCenter 自动登记 ENABLED 定义并继续创建实例
-        body.put("autoCreateDefinition", true);
+        try {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("sourceService", SOURCE_SERVICE);
+            body.put("sourceTaskCode", jobCode);
+            body.put("sourceRunId", String.valueOf(runId));
+            body.put("taskType", TASK_TYPE);
+            body.put("title", buildTitle(jobName, runId));
+            // 任务定义缺失时由 TaskCenter 自动登记 ENABLED 定义并继续创建实例
+            body.put("autoCreateDefinition", true);
 
-        Map<String, Object> response = restClient.post()
-                .uri(START_PATH)
-                .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON)
-                .headers(headers -> {
-                    if (StringUtils.hasText(token)) {
-                        headers.set("token", token);
-                    }
-                })
-                .body(body)
-                .retrieve()
-                .body(Map.class);
+            Map<String, Object> response = restClient.post()
+                    .uri(START_PATH)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .headers(headers -> {
+                        if (StringUtils.hasText(token)) {
+                            headers.set("token", token);
+                        }
+                    })
+                    .body(body)
+                    .retrieve()
+                    .body(Map.class);
 
-        int code = response != null && response.get("code") instanceof Number number
-                ? number.intValue() : 0;
-        if (code != 200) {
-            throw new IllegalStateException("TaskCenter start 返回失败: code=" + code
-                    + ", message=" + (response == null ? null : response.get("message")));
+            int code = response != null && response.get("code") instanceof Number number
+                    ? number.intValue() : 0;
+            if (code != 200) {
+                log.warn("TaskCenter 登记运行开始返回失败，本地继续执行: jobCode={}, runId={}, "
+                                + "code={}, message={}",
+                        jobCode, runId, code, response == null ? null : response.get("message"));
+                return null;
+            }
+
+            Long instanceId = extractInstanceId(response);
+            if (instanceId == null) {
+                log.warn("TaskCenter 开始回调响应缺少 instanceId，本地继续执行: jobCode={}, runId={}, "
+                        + "response={}", jobCode, runId, response);
+                return null;
+            }
+            log.info("TaskCenter 运行登记成功: jobCode={}, runId={}, instanceId={}",
+                    jobCode, runId, instanceId);
+            return instanceId;
+        } catch (Exception e) {
+            log.warn("TaskCenter 登记运行开始异常，本地继续执行: jobCode={}, runId={}, error={}",
+                    jobCode, runId, e.toString());
+            return null;
         }
+    }
 
-        Long instanceId = extractInstanceId(response);
+    /**
+     * 回填运行结束，token 取自当前线程上下文。
+     *
+     * @param instanceId   TaskCenter 实例ID，为 {@code null} 时直接跳过
+     * @param status       终态，仅支持 SUCCESS/FAILED
+     * @param errorMessage 失败原因，成功时传 {@code null}
+     */
+    public void finish(Long instanceId, String status, String errorMessage) {
+        finish(instanceId, status, errorMessage, captureToken());
+    }
+
+    /**
+     * 回填运行结束，并显式传入调用线程捕获的 token。
+     * <p>
+     * 仅在 start 成功拿到 instanceId 后调用；任何异常只记录 warn，不向上抛出，
+     * 不影响本地 schedule_run 的终态与调度线程。
+     *
+     * @param instanceId   TaskCenter 实例ID，为 {@code null} 时直接跳过
+     * @param status       终态，仅支持 SUCCESS/FAILED
+     * @param errorMessage 失败原因，成功时传 {@code null}
+     * @param token        透传的 Sa-Token，可为空
+     */
+    @SuppressWarnings("unchecked")
+    public void finish(Long instanceId, String status, String errorMessage, String token) {
         if (instanceId == null) {
-            throw new IllegalStateException("TaskCenter start 响应缺少 instanceId: " + response);
+            return;
         }
-        log.info("TaskCenter 运行登记成功: jobCode={}, runId={}, instanceId={}",
-                jobCode, runId, instanceId);
+        if (!STATUS_SUCCESS.equals(status) && !STATUS_FAILED.equals(status)) {
+            log.warn("TaskCenter 结束回调状态非法，仅支持 SUCCESS/FAILED: instanceId={}, status={}",
+                    instanceId, status);
+            return;
+        }
+
+        try {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("status", status);
+            if (STATUS_FAILED.equals(status)) {
+                String safeError = truncateError(errorMessage);
+                if (safeError != null) {
+                    body.put("errorMessage", safeError);
+                }
+            }
+
+            Map<String, Object> response = restClient.post()
+                    .uri(FINISH_PATH_PREFIX + instanceId + FINISH_PATH_SUFFIX)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .headers(headers -> {
+                        if (StringUtils.hasText(token)) {
+                            headers.set("token", token);
+                        }
+                    })
+                    .body(body)
+                    .retrieve()
+                    .body(Map.class);
+
+            int code = response != null && response.get("code") instanceof Number number
+                    ? number.intValue() : 0;
+            if (code != 200) {
+                log.warn("TaskCenter 回填运行结束返回失败，不影响本地运行状态: instanceId={}, "
+                                + "status={}, code={}, message={}",
+                        instanceId, status, code,
+                        response == null ? null : response.get("message"));
+                return;
+            }
+            log.info("TaskCenter 运行结束回写成功: instanceId={}, status={}", instanceId, status);
+        } catch (Exception e) {
+            log.warn("TaskCenter 回填运行结束异常，不影响本地运行状态: instanceId={}, status={}, error={}",
+                    instanceId, status, e.toString());
+        }
     }
 
     /**
@@ -230,11 +282,31 @@ public class TaskCenterClient {
     }
 
     /**
-     * 读取当前请求的 token 请求头；无请求上下文或无登录态时返回 null。
+     * 裁剪失败原因到 TaskCenter errorMessage 上限。
+     *
+     * @param errorMessage 原始失败原因
+     * @return 不超过 2000 字符的失败原因；空白时返回 null
+     */
+    private static String truncateError(String errorMessage) {
+        if (errorMessage == null) {
+            return null;
+        }
+        String value = errorMessage.trim();
+        if (value.isEmpty()) {
+            return null;
+        }
+        return value.length() > MAX_ERROR_MESSAGE_LENGTH
+                ? value.substring(0, MAX_ERROR_MESSAGE_LENGTH) : value;
+    }
+
+    /**
+     * 捕获当前线程的 Sa-Token，供异步执行线程显式透传。
+     * <p>
+     * 优先读取当前请求的 {@code token} 请求头，无请求上下文或无登录态时返回 null。
      *
      * @return Sa-Token 值，可为 null
      */
-    private static String currentToken() {
+    public static String captureToken() {
         try {
             String token = SaHolder.getRequest().getHeader("token");
             if (StringUtils.hasText(token)) {
@@ -252,13 +324,5 @@ public class TaskCenterClient {
             // 无登录会话：按内部调用处理，不携带 token
         }
         return null;
-    }
-
-    /**
-     * 关闭异步登记线程池。
-     */
-    @PreDestroy
-    public void shutdown() {
-        registrationExecutor.shutdownNow();
     }
 }

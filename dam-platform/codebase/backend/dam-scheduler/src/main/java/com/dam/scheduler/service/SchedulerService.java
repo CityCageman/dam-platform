@@ -5,13 +5,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dam.common.exception.BusinessException;
 import com.dam.common.vo.PageResult;
-import com.dam.scheduler.client.TaskCenterClient;
 import com.dam.scheduler.entity.ScheduleJob;
 import com.dam.scheduler.entity.ScheduleRun;
 import com.dam.scheduler.repository.ScheduleJobMapper;
 import com.dam.scheduler.repository.ScheduleRunMapper;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
@@ -30,11 +28,11 @@ import java.util.Set;
  * <p>
  * 负责调度任务（schedule_job）的 CRUD、启停、一次性触发与运行记录查询。
  * 触发动作落一条 PENDING 运行记录，并在事务提交后交给
- * {@link ScheduleRunExecutor} 异步执行关联的顺序 SQL DAG。
+ * {@link ScheduleRunExecutor} 异步执行关联的顺序 SQL DAG；运行开始/结束的
+ * TaskCenter 回调也统一由执行器负责，本服务不重复登记。
  *
  * @author DAM Platform
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SchedulerService {
@@ -68,7 +66,6 @@ public class SchedulerService {
 
     private final ScheduleJobMapper jobMapper;
     private final ScheduleRunMapper runMapper;
-    private final TaskCenterClient taskCenterClient;
     private final ScheduleRunExecutor runExecutor;
 
     /**
@@ -241,8 +238,8 @@ public class SchedulerService {
      * 返回 accepted=true 表示触发请求已受理。
      * 手动触发不修改 {@code last_dispatched_at}，不干扰 Cron 自动派发节奏。
      * <p>
-     * 运行记录写入后尽力向 TaskCenter 登记开始（不回填执行结果）；
-     * 登记失败仅记录 warn，不影响本次触发与 DAG 执行。
+     * TaskCenter 的开始/结束回调由 {@link ScheduleRunExecutor} 在执行时统一登记，
+     * 本方法不再提前登记，避免同一 run 产生重复实例。
      *
      * @param id 任务ID
      * @return accepted/runId/message
@@ -256,7 +253,6 @@ public class SchedulerService {
         run.setCreatedAt(LocalDateTime.now());
         runMapper.insert(run);
 
-        registerToTaskCenter(job, run);
         // 必须等本次 trigger 事务提交后再提交执行，避免工作线程读不到 PENDING 运行记录。
         // 若事务回滚，afterCommit 不会触发，不会产生无运行记录的孤儿执行。
         runExecutor.submitAfterCommit(run.getId(), job.getId());
@@ -266,24 +262,6 @@ public class SchedulerService {
         result.put("runId", run.getId());
         result.put("message", "execution submitted");
         return result;
-    }
-
-    /**
-     * 向 TaskCenter 登记本次运行（失败只 warn，不影响本地触发）。
-     * <p>
-     * 只调用 start 回调，TaskCenter 侧实例保持 PENDING；本服务不调用 finish，
-     * 不伪造执行成功。
-     *
-     * @param job 调度任务
-     * @param run 已写入的运行记录
-     */
-    private void registerToTaskCenter(ScheduleJob job, ScheduleRun run) {
-        try {
-            taskCenterClient.registerStart(job.getJobCode(), job.getJobName(), run.getId());
-        } catch (Exception e) {
-            log.warn("手动触发登记 TaskCenter 失败，不影响调度触发: jobId={}, jobCode={}, runId={}, error={}",
-                    job.getId(), job.getJobCode(), run.getId(), e.toString());
-        }
     }
 
     /**

@@ -2,6 +2,7 @@ package com.dam.scheduler.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.dam.scheduler.client.TaskCenterClient;
 import com.dam.scheduler.entity.ScheduleDag;
 import com.dam.scheduler.entity.ScheduleJob;
 import com.dam.scheduler.entity.ScheduleRun;
@@ -45,6 +46,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  *   <li>按 definition.nodes 顺序逐个 JDBC 执行单条只读 SELECT/WITH；节点失败立即停止，
  *       错误包含节点 code；每节点最多消费 100 行，不保存结果集；</li>
  *   <li>线程池 core=2/max=4/queue=100，拒绝时 PENDING 直接置 FAILED；</li>
+ *   <li>TaskCenter 回调统一归口在本执行器：开始 DAG 前登记 start 并拿到 instanceId，
+ *       执行结束回写 SUCCESS/FAILED；回调失败只 warn，不改变本地运行状态；</li>
  *   <li>连接、查询设有超时，连接强制只读事务；密码只用于 JDBC 属性，日志与
  *       error_message 均做脱敏；</li>
  *   <li>定时回收超过 180 分钟的 RUNNING 记录（服务重启遗留），标记 FAILED。</li>
@@ -108,6 +111,9 @@ public class ScheduleRunExecutor {
     /** DAG 定义 Mapper */
     private final ScheduleDagMapper dagMapper;
 
+    /** TaskCenter 回调客户端，统一负责运行开始/结束回写 */
+    private final TaskCenterClient taskCenterClient;
+
     /** 执行线程池 */
     private final ThreadPoolExecutor executor;
 
@@ -123,17 +129,20 @@ public class ScheduleRunExecutor {
      * @param runMapper          运行记录 Mapper
      * @param jobMapper          调度任务 Mapper
      * @param dagMapper          DAG 定义 Mapper
+     * @param taskCenterClient   TaskCenter 回调客户端
      * @param transactionManager 平台事务管理器
      * @param staleRunMinutes    遗留 RUNNING 阈值，默认 180 分钟
      */
     public ScheduleRunExecutor(ScheduleRunMapper runMapper,
                                ScheduleJobMapper jobMapper,
                                ScheduleDagMapper dagMapper,
+                               TaskCenterClient taskCenterClient,
                                PlatformTransactionManager transactionManager,
                                @Value("${dam.scheduler.stale-run-minutes:180}") long staleRunMinutes) {
         this.runMapper = runMapper;
         this.jobMapper = jobMapper;
         this.dagMapper = dagMapper;
+        this.taskCenterClient = taskCenterClient;
         this.staleRunMinutes = Math.max(1, staleRunMinutes);
         this.requiresNewTemplate = new TransactionTemplate(transactionManager);
         this.requiresNewTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -158,7 +167,8 @@ public class ScheduleRunExecutor {
      * 在当前事务提交后提交执行；没有事务时立即提交。
      * <p>
      * 触发/派发方法在事务内调用本方法，避免工作线程先于运行记录提交而读不到 PENDING。
-     * 事务回滚时 afterCommit 不触发，不会产生孤儿执行。
+     * 事务回滚时 afterCommit 不触发，不会产生孤儿执行。提交线程（手动触发的请求线程或
+     * Cron 派发线程）在此捕获 Sa-Token，随后由执行线程显式透传给 TaskCenter 回调。
      *
      * @param runId 运行记录ID
      * @param jobId 调度任务ID
@@ -168,27 +178,32 @@ public class ScheduleRunExecutor {
             log.warn("提交 DAG 执行参数不完整: runId={}, jobId={}", runId, jobId);
             return;
         }
+        String token = TaskCenterClient.captureToken();
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    submit(runId, jobId);
+                    submit(runId, jobId, token);
                 }
             });
         } else {
-            submit(runId, jobId);
+            submit(runId, jobId, token);
         }
     }
 
     /**
      * 提交到有界线程池；拒绝时把运行记录置为 FAILED。
+     * <p>
+     * 被拒绝的运行没有进入执行线程，也就没有登记 TaskCenter、拿不到 instanceId，
+     * 因此只回填本地 FAILED，不需要（也无法）调用 finish。
      *
      * @param runId 运行记录ID
      * @param jobId 调度任务ID
+     * @param token 提交线程捕获的 Sa-Token，可为空
      */
-    private void submit(Long runId, Long jobId) {
+    private void submit(Long runId, Long jobId, String token) {
         try {
-            executor.execute(() -> executeRun(runId, jobId));
+            executor.execute(() -> executeRun(runId, jobId, token));
         } catch (RejectedExecutionException e) {
             String error = "DAG 执行线程池已满，运行未执行";
             markFailedBeforeStart(runId, error);
@@ -199,14 +214,19 @@ public class ScheduleRunExecutor {
     /**
      * 异步执行一条运行记录。
      * <p>
-     * 该方法只在线程池线程中运行。任何异常都会尽力回填 FAILED，且日志/error_message
-     * 只使用脱敏后的消息，不输出 DAG 定义或密码。
+     * 该方法只在线程池线程中运行。拿到 ScheduleJob 后先向 TaskCenter 登记开始，
+     * 随后无论 DAG 成功、失败还是异常终止，都在 finally 中回写对应终态；
+     * 登记失败时 instanceId 为 null，finish 自动跳过。本地运行状态不受回调影响。
+     * 任何异常都会尽力回填 FAILED，且日志/error_message 只使用脱敏后的消息，
+     * 不输出 DAG 定义或密码。
      *
      * @param runId 运行记录ID
      * @param jobId 调度任务ID
+     * @param token 提交线程捕获的 Sa-Token，可为空
      */
-    private void executeRun(Long runId, Long jobId) {
+    private void executeRun(Long runId, Long jobId, String token) {
         List<ScheduleDagValidator.SqlNode> nodes = List.of();
+        ScheduleJob job = null;
         try {
             ScheduleRun run = runMapper.selectById(runId);
             if (run == null) {
@@ -218,15 +238,30 @@ public class ScheduleRunExecutor {
                 return;
             }
 
-            ScheduleJob job = jobMapper.selectById(jobId);
+            job = jobMapper.selectById(jobId);
             if (job == null) {
                 failRun(runId, "调度任务不存在或已删除: " + jobId);
                 log.warn("DAG 执行失败：调度任务不存在或已删除: runId={}, jobId={}", runId, jobId);
                 return;
             }
+        } catch (Exception e) {
+            String message = "执行器异常: " + sanitize(e, nodes);
+            failRun(runId, message);
+            log.error("DAG 执行器异常: runId={}, jobId={}, errorClass={}, error={}",
+                    runId, jobId, e.getClass().getSimpleName(), message);
+            return;
+        }
+
+        // 开始 DAG 前统一登记 TaskCenter；失败返回 null，本地继续执行且不影响终态
+        Long instanceId = taskCenterClient.start(
+                job.getJobCode(), job.getJobName(), runId, token);
+        String status = STATUS_FAILED;
+        String error = "DAG 执行未完成";
+        try {
             String dagCode = trimToNull(job.getDagCode());
             if (dagCode == null) {
-                failRun(runId, "调度任务未关联 DAG（job.dagCode 为空）");
+                error = "调度任务未关联 DAG（job.dagCode 为空）";
+                failRun(runId, error);
                 log.warn("DAG 执行失败：任务未关联 DAG: runId={}, jobId={}, jobCode={}",
                         runId, jobId, job.getJobCode());
                 return;
@@ -234,7 +269,8 @@ public class ScheduleRunExecutor {
 
             ScheduleDag dag = dagMapper.selectById(dagCode);
             if (dag == null) {
-                failRun(runId, "关联的 DAG 不存在: " + dagCode);
+                error = "关联的 DAG 不存在: " + dagCode;
+                failRun(runId, error);
                 log.warn("DAG 执行失败：关联 DAG 不存在: runId={}, jobId={}, dagCode={}",
                         runId, jobId, dagCode);
                 return;
@@ -243,10 +279,10 @@ public class ScheduleRunExecutor {
             try {
                 nodes = ScheduleDagValidator.readNodes(dag.getDefinition());
             } catch (Exception e) {
-                String message = "DAG 定义不合法: " + sanitize(e, List.of());
-                failRun(runId, message);
+                error = "DAG 定义不合法: " + sanitize(e, List.of());
+                failRun(runId, error);
                 log.warn("DAG 执行失败：定义不合法: runId={}, jobId={}, dagCode={}, error={}",
-                        runId, jobId, dagCode, message);
+                        runId, jobId, dagCode, error);
                 return;
             }
 
@@ -258,23 +294,27 @@ public class ScheduleRunExecutor {
                     log.info("DAG 节点执行成功: runId={}, dagCode={}, nodeCode={}, consumedRows={}",
                             runId, dagCode, node.code(), rows);
                 } catch (Exception e) {
-                    String message = "节点[" + node.code() + "]执行失败: "
+                    error = "节点[" + node.code() + "]执行失败: "
                             + sanitize(e, List.of(node));
-                    failRun(runId, message);
+                    failRun(runId, error);
                     log.warn("DAG 节点执行失败: runId={}, jobId={}, dagCode={}, nodeCode={}, error={}",
-                            runId, jobId, dagCode, node.code(), message);
+                            runId, jobId, dagCode, node.code(), error);
                     return;
                 }
             }
 
             finishRun(runId, STATUS_SUCCESS, null);
+            status = STATUS_SUCCESS;
+            error = null;
             log.info("DAG 顺序执行成功: runId={}, jobId={}, dagCode={}, nodeCount={}",
                     runId, jobId, dagCode, nodes.size());
         } catch (Exception e) {
-            String message = "执行器异常: " + sanitize(e, nodes);
-            failRun(runId, message);
+            error = "执行器异常: " + sanitize(e, nodes);
+            failRun(runId, error);
             log.error("DAG 执行器异常: runId={}, jobId={}, errorClass={}, error={}",
-                    runId, jobId, e.getClass().getSimpleName(), message);
+                    runId, jobId, e.getClass().getSimpleName(), error);
+        } finally {
+            taskCenterClient.finish(instanceId, status, error, token);
         }
     }
 
