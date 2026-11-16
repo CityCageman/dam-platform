@@ -15,12 +15,35 @@ services:
       TZ: Asia/Shanghai
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # 首次初始化：先建表结构，再灌种子数据（文件名前缀保证执行顺序）
+      # 首次初始化：基础结构 → 种子数据 → 历史增量 v2~v20 → 本次新 schema v21~v25（按文件名前缀顺序执行）
+      # 说明：01/02 不含 v10/v11 等历史表，故 v2~v20 一并挂载；v21/v22 依赖这些基础表已存在。
+      # 已有库/非空 pgdata 卷不会重跑 initdb，请用 db/release/apply_new_schemas.sh 手工升级（见 db/release/README.md）。
       - ../db/create_schema_doc.sql:/docker-entrypoint-initdb.d/01_create_schema.sql:ro
       - ../db/初始化.sql:/docker-entrypoint-initdb.d/02_init_data.sql:ro
-    ports:
-      # 暴露 5432 供应用集群服务器（台2）连接；仅内网访问，勿对公网开放
-      - "5432:5432"
+      - ../db/v2_subject_domain.sql:/docker-entrypoint-initdb.d/03_v2_subject_domain.sql:ro
+      - ../db/v3_report_system.sql:/docker-entrypoint-initdb.d/04_v3_report_system.sql:ro
+      - ../db/v4_lineage_layers.sql:/docker-entrypoint-initdb.d/05_v4_lineage_layers.sql:ro
+      - ../db/v5_ai_tasks.sql:/docker-entrypoint-initdb.d/06_v5_ai_tasks.sql:ro
+      - ../db/v6_lineage_identity.sql:/docker-entrypoint-initdb.d/07_v6_lineage_identity.sql:ro
+      - ../db/v7_lifecycle_execution.sql:/docker-entrypoint-initdb.d/08_v7_lifecycle_execution.sql:ro
+      - ../db/v8_schema_backfill.sql:/docker-entrypoint-initdb.d/09_v8_schema_backfill.sql:ro
+      - ../db/v9_rename_ai_menu.sql:/docker-entrypoint-initdb.d/10_v9_rename_ai_menu.sql:ro
+      - ../db/v10_metric_definition.sql:/docker-entrypoint-initdb.d/11_v10_metric_definition.sql:ro
+      - ../db/v11_knowledge_base.sql:/docker-entrypoint-initdb.d/12_v11_knowledge_base.sql:ro
+      - ../db/v12_weknora_sync.sql:/docker-entrypoint-initdb.d/13_v12_weknora_sync.sql:ro
+      - ../db/v13_weknora_field_sync.sql:/docker-entrypoint-initdb.d/14_v13_weknora_field_sync.sql:ro
+      - ../db/v14_knowledge_category_tree.sql:/docker-entrypoint-initdb.d/15_v14_knowledge_category_tree.sql:ro
+      - ../db/v15_knowledge_entry_fields.sql:/docker-entrypoint-initdb.d/16_v15_knowledge_entry_fields.sql:ro
+      - ../db/v16_report_drill.sql:/docker-entrypoint-initdb.d/17_v16_report_drill.sql:ro
+      - ../db/v17_knowledge_sql_example.sql:/docker-entrypoint-initdb.d/18_v17_knowledge_sql_example.sql:ro
+      - ../db/v18_knowledge_report_spec.sql:/docker-entrypoint-initdb.d/19_v18_knowledge_report_spec.sql:ro
+      - ../db/v19_ai_tasks_schema.sql:/docker-entrypoint-initdb.d/20_v19_ai_tasks_schema.sql:ro
+      - ../db/v20_knowledge_metric_boundary.sql:/docker-entrypoint-initdb.d/21_v20_knowledge_metric_boundary.sql:ro
+      - ../db/v21_metric_report_knowledge_schema.sql:/docker-entrypoint-initdb.d/22_v21_metric_report_knowledge_schema.sql:ro
+      - ../db/v22_quality_lineage_lifecycle_schema.sql:/docker-entrypoint-initdb.d/23_v22_quality_lineage_lifecycle_schema.sql:ro
+      - ../db/v23_integration_management.sql:/docker-entrypoint-initdb.d/24_v23_integration_management.sql:ro
+      - ../db/v24_scheduler_management.sql:/docker-entrypoint-initdb.d/25_v24_scheduler_management.sql:ro
+      - ../db/v25_data_service_management.sql:/docker-entrypoint-initdb.d/26_v25_data_service_management.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dam -d damplatform"]
       interval: 5s

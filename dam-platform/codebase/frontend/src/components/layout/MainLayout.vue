@@ -26,6 +26,25 @@
           <span>统一门户</span>
         </el-menu-item>
 
+        <!-- 固定入口：数据工程 / 数据服务 / 知识中心，保证已上线管理页始终可达 -->
+        <div class="nav-group">数据工程</div>
+        <el-menu-item index="/integration">
+          <el-icon><Connection /></el-icon>
+          <span>数据集成</span>
+        </el-menu-item>
+        <el-menu-item index="/scheduler">
+          <el-icon><Timer /></el-icon>
+          <span>调度中心</span>
+        </el-menu-item>
+        <el-menu-item index="/data-service">
+          <el-icon><Link /></el-icon>
+          <span>数据服务</span>
+        </el-menu-item>
+        <el-menu-item index="/knowledge">
+          <el-icon><Reading /></el-icon>
+          <span>知识中心</span>
+        </el-menu-item>
+
         <template v-for="g in moduleGroups" :key="g.title">
           <div class="nav-group">{{ g.title }}</div>
           <template v-for="item in g.items" :key="item.configCode">
@@ -105,7 +124,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Search, ArrowRight, ArrowDown, User, Setting, SwitchButton, Bell, Grid } from '@element-plus/icons-vue'
+import { Search, ArrowRight, ArrowDown, User, Setting, SwitchButton, Bell, Grid, Connection, Timer, Link, Reading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { authApi, catalogApi } from '@/api'

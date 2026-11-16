@@ -1,5 +1,7 @@
-# 数据资产管理平台 - Docker Compose 一键部署
+# 数据资产管理平台 - Docker Compose 一键部署（PostgreSQL + 16 个业务服务 + 网关 + 前端）
 # 前置：先执行 deploy/build.sh 完成前后端编译，再 `docker compose up -d --build`
+# 用法：cd deploy && docker compose -f docker-compose.yml up -d --build
+# 数据库：01/02/03~26 初始化脚本（含 v2~v25 增量）只在 pgdata 卷为空时执行一次；已有库升级见 db/release/README.md。
 name: dam-platform
 
 # 连库服务的通用数据库连接（PostgreSQL 容器内部地址）
@@ -22,9 +24,35 @@ services:
       TZ: Asia/Shanghai
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # 首次初始化：先建表结构，再灌种子数据（文件名前缀保证执行顺序）
+      # 首次初始化：基础结构 → 种子数据 → 历史增量 v2~v20 → 本次新 schema v21~v25（按文件名前缀顺序执行）
+      # 说明：01/02 不含 v10/v11 等历史表，故 v2~v20 一并挂载；v21/v22 依赖这些基础表已存在。
+      # 已有库/非空 pgdata 卷不会重跑 initdb，请用 db/release/apply_new_schemas.sh 手工升级（见 db/release/README.md）。
       - ../db/create_schema_doc.sql:/docker-entrypoint-initdb.d/01_create_schema.sql:ro
       - ../db/初始化.sql:/docker-entrypoint-initdb.d/02_init_data.sql:ro
+      - ../db/v2_subject_domain.sql:/docker-entrypoint-initdb.d/03_v2_subject_domain.sql:ro
+      - ../db/v3_report_system.sql:/docker-entrypoint-initdb.d/04_v3_report_system.sql:ro
+      - ../db/v4_lineage_layers.sql:/docker-entrypoint-initdb.d/05_v4_lineage_layers.sql:ro
+      - ../db/v5_ai_tasks.sql:/docker-entrypoint-initdb.d/06_v5_ai_tasks.sql:ro
+      - ../db/v6_lineage_identity.sql:/docker-entrypoint-initdb.d/07_v6_lineage_identity.sql:ro
+      - ../db/v7_lifecycle_execution.sql:/docker-entrypoint-initdb.d/08_v7_lifecycle_execution.sql:ro
+      - ../db/v8_schema_backfill.sql:/docker-entrypoint-initdb.d/09_v8_schema_backfill.sql:ro
+      - ../db/v9_rename_ai_menu.sql:/docker-entrypoint-initdb.d/10_v9_rename_ai_menu.sql:ro
+      - ../db/v10_metric_definition.sql:/docker-entrypoint-initdb.d/11_v10_metric_definition.sql:ro
+      - ../db/v11_knowledge_base.sql:/docker-entrypoint-initdb.d/12_v11_knowledge_base.sql:ro
+      - ../db/v12_weknora_sync.sql:/docker-entrypoint-initdb.d/13_v12_weknora_sync.sql:ro
+      - ../db/v13_weknora_field_sync.sql:/docker-entrypoint-initdb.d/14_v13_weknora_field_sync.sql:ro
+      - ../db/v14_knowledge_category_tree.sql:/docker-entrypoint-initdb.d/15_v14_knowledge_category_tree.sql:ro
+      - ../db/v15_knowledge_entry_fields.sql:/docker-entrypoint-initdb.d/16_v15_knowledge_entry_fields.sql:ro
+      - ../db/v16_report_drill.sql:/docker-entrypoint-initdb.d/17_v16_report_drill.sql:ro
+      - ../db/v17_knowledge_sql_example.sql:/docker-entrypoint-initdb.d/18_v17_knowledge_sql_example.sql:ro
+      - ../db/v18_knowledge_report_spec.sql:/docker-entrypoint-initdb.d/19_v18_knowledge_report_spec.sql:ro
+      - ../db/v19_ai_tasks_schema.sql:/docker-entrypoint-initdb.d/20_v19_ai_tasks_schema.sql:ro
+      - ../db/v20_knowledge_metric_boundary.sql:/docker-entrypoint-initdb.d/21_v20_knowledge_metric_boundary.sql:ro
+      - ../db/v21_metric_report_knowledge_schema.sql:/docker-entrypoint-initdb.d/22_v21_metric_report_knowledge_schema.sql:ro
+      - ../db/v22_quality_lineage_lifecycle_schema.sql:/docker-entrypoint-initdb.d/23_v22_quality_lineage_lifecycle_schema.sql:ro
+      - ../db/v23_integration_management.sql:/docker-entrypoint-initdb.d/24_v23_integration_management.sql:ro
+      - ../db/v24_scheduler_management.sql:/docker-entrypoint-initdb.d/25_v24_scheduler_management.sql:ro
+      - ../db/v25_data_service_management.sql:/docker-entrypoint-initdb.d/26_v25_data_service_management.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dam -d damplatform"]
       interval: 5s
@@ -34,7 +62,7 @@ services:
     # ports:
     #   - "5432:5432"
 
-  # ==================== 后端微服务 ====================
+  # ==================== 既有后端微服务 ====================
   dam-auth:
     build:
       context: ../codebase/backend
@@ -45,6 +73,8 @@ services:
     restart: unless-stopped
     environment:
       <<: *pg-env
+      # 各服务验签必须与网关使用同一 JWT 密钥，否则跨服务调用返回 401
+      SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
     depends_on:
       postgres:
         condition: service_healthy
@@ -59,10 +89,15 @@ services:
     restart: unless-stopped
     environment:
       <<: *pg-env
+      SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
       # 外键血缘自动落库调用 lineage 服务（容器网络内用服务名）
       DAM_LINEAGE_URL: http://dam-lineage:8093
       # 报表 SQL 生成调用编码智能体（容器网络内用服务名）
       DAM_MODEL_GATEWAY_URL: http://dam-model-gateway:8089
+      # 指标/知识/质量只读接口均走容器服务名，避免默认 127.0.0.1
+      DAM_METRIC_URL: http://dam-metric:8094
+      DAM_KNOWLEDGE_URL: http://dam-knowledge:8098
+      DAM_QUALITY_URL: http://dam-quality:8085
     depends_on:
       postgres:
         condition: service_healthy
@@ -77,6 +112,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *pg-env
+      SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
     depends_on:
       postgres:
         condition: service_healthy
@@ -91,6 +127,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *pg-env
+      SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
     depends_on:
       postgres:
         condition: service_healthy
@@ -105,6 +142,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *pg-env
+      SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
     depends_on:
       postgres:
         condition: service_healthy
@@ -119,6 +157,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *pg-env
+      SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
     depends_on:
       postgres:
         condition: service_healthy
@@ -133,6 +172,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *pg-env
+      SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
     depends_on:
       postgres:
         condition: service_healthy
@@ -147,6 +187,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *pg-env
+      SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
     depends_on:
       postgres:
         condition: service_healthy
@@ -162,11 +203,123 @@ services:
     restart: unless-stopped
     environment:
       TZ: Asia/Shanghai
+      SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
       DAM_MODEL_GATEWAY_CODE_BASE_URL: ${DAM_MODEL_GATEWAY_CODE_BASE_URL}
       DAM_MODEL_GATEWAY_CODE_API_KEY: ${DAM_MODEL_GATEWAY_CODE_API_KEY}
       DAM_MODEL_GATEWAY_CODE_MODEL: ${DAM_MODEL_GATEWAY_CODE_MODEL:-qwen3-coder-30b-a3b}
 
-  # 网关：对外唯一 API 入口，路由地址覆盖为容器服务名
+  # ==================== 新增服务（按数据中台边界拆分） ====================
+  # AI 工作台：AI 编排，模型调用走 model-gateway，元数据工具走 catalog，不直连数据库
+  dam-ai-workbench:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-ai-workbench/target/dam-ai-workbench-1.0.0-exec.jar
+    container_name: dam-ai-workbench
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
+      DAM_MODEL_GATEWAY_URL: http://dam-model-gateway:8089
+      DAM_CATALOG_URL: http://dam-catalog:8092
+
+  # 统一门户 BFF：静态目录配置，不连库
+  dam-portal:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-portal/target/dam-portal-1.0.0-exec.jar
+    container_name: dam-portal
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+
+  # 指标中心：dam_metric schema（v21）
+  dam-metric:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-metric/target/dam-metric-1.0.0-exec.jar
+    container_name: dam-metric
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+      SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
+      DAM_CATALOG_URL: http://dam-catalog:8092
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # 知识库：dam_knowledge schema（v21），指标口径通过 HTTP 读取 metric
+  dam-knowledge:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-knowledge/target/dam-knowledge-1.0.0-exec.jar
+    container_name: dam-knowledge
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+      SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
+      DAM_METRIC_URL: http://dam-metric:8094
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # 数据集成：dam_integration schema（v23）
+  dam-integration:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-integration/target/dam-integration-1.0.0-exec.jar
+    container_name: dam-integration
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+      SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # 调度中心：dam_scheduler schema（v24）
+  dam-scheduler:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-scheduler/target/dam-scheduler-1.0.0-exec.jar
+    container_name: dam-scheduler
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+      SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # 数据服务：dam_data_service schema（v25）
+  dam-data-service:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-data-service/target/dam-data-service-1.0.0-exec.jar
+    container_name: dam-data-service
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+      SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ==================== 网关 ====================
+  # 网关：对外唯一 API 入口；容器内路由必须显式指向服务名，默认 localhost 会指向网关自身。
   dam-gateway:
     build:
       context: ../codebase/backend
@@ -177,6 +330,10 @@ services:
     restart: unless-stopped
     environment:
       TZ: Asia/Shanghai
+      # 网关门禁：JWT 验签密钥，必须与各业务服务一致
+      SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
+      DAM_CORS_ORIGINS: ${DAM_CORS_ORIGINS:-http://localhost:5173}
+      # 路由地址：全部改为容器服务名
       DAM_ROUTE_AUTH: http://dam-auth:8081
       DAM_ROUTE_CATALOG: http://dam-catalog:8092
       DAM_ROUTE_LINEAGE: http://dam-lineage:8093
@@ -186,6 +343,13 @@ services:
       DAM_ROUTE_LIFECYCLE: http://dam-lifecycle:8087
       DAM_ROUTE_OPERATIONS: http://dam-operations:8088
       DAM_ROUTE_MODEL_GATEWAY: http://dam-model-gateway:8089
+      DAM_ROUTE_AI_WORKBENCH: http://dam-ai-workbench:8090
+      DAM_ROUTE_PORTAL: http://dam-portal:8091
+      DAM_ROUTE_METRIC: http://dam-metric:8094
+      DAM_ROUTE_KNOWLEDGE: http://dam-knowledge:8098
+      DAM_ROUTE_INTEGRATION: http://dam-integration:8095
+      DAM_ROUTE_SCHEDULER: http://dam-scheduler:8096
+      DAM_ROUTE_DATA_SERVICE: http://dam-data-service:8097
     ports:
       - "8080:8080"
     depends_on:
@@ -198,6 +362,13 @@ services:
       - dam-lifecycle
       - dam-operations
       - dam-model-gateway
+      - dam-ai-workbench
+      - dam-portal
+      - dam-metric
+      - dam-knowledge
+      - dam-integration
+      - dam-scheduler
+      - dam-data-service
 
   # ==================== 前端（Nginx） ====================
   frontend:

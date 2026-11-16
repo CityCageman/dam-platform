@@ -442,6 +442,128 @@ export const metricApi = {
   removeValue(id: number, valueId: number) { return request.delete(`/metrics/${id}/values/${valueId}`) }
 }
 
+// ==================== 数据集成 / 调度 / 数据服务 ====================
+/** 统一分页响应（dam-common PageResult） */
+export interface PageResult<T> {
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+  records: T[]
+}
+
+/** 统一响应包装（dam-common Result） */
+export interface ApiResult<T> {
+  code: number
+  message?: string
+  data: T
+}
+
+/** 列表通用查询参数 */
+export interface PageQuery {
+  keyword?: string
+  status?: string
+  page?: number
+  pageSize?: number
+}
+
+/** 数据集成任务（dam_integration.integration_job） */
+export interface IntegrationJob {
+  id: number
+  jobCode: string
+  jobName: string
+  sourceType?: string
+  targetType?: string
+  syncMode?: string
+  status: string
+  lastRunAt?: string
+  lastError?: string
+  createdAt?: string
+  createdBy?: string
+  updatedAt?: string
+}
+
+/** 调度任务（dam_scheduler.schedule_job） */
+export interface SchedulerJob {
+  id: number
+  jobCode: string
+  jobName: string
+  cronExpression?: string
+  dagCode?: string
+  status: string
+  description?: string
+  createdAt?: string
+  createdBy?: string
+  updatedAt?: string
+}
+
+/** 数据 API 定义（dam_data_service.data_api） */
+export interface DataApiDefinition {
+  id: number
+  apiCode: string
+  apiName: string
+  path: string
+  method: string
+  status: string
+  description?: string
+  upstreamType?: string
+  createdAt?: string
+  createdBy?: string
+  updatedAt?: string
+}
+
+export const integrationApi = {
+  /** 分页查询集成任务 */
+  listJobs(params: PageQuery = {}) {
+    return request.get<unknown, ApiResult<PageResult<IntegrationJob>>>('/integration/jobs', { params })
+  },
+  getJob(id: number) {
+    return request.get<unknown, ApiResult<IntegrationJob>>(`/integration/jobs/${id}`)
+  },
+  /** 启用/停用集成任务 */
+  changeJobStatus(id: number, status: string) {
+    return request.post<unknown, ApiResult<IntegrationJob>>(`/integration/jobs/${id}/status`, { status })
+  },
+  /** 触发集成任务（后端当前仅标记 RUNNING） */
+  triggerJob(id: number) {
+    return request.post<unknown, ApiResult<Record<string, unknown>>>(`/integration/jobs/${id}/trigger`)
+  }
+}
+
+export const schedulerApi = {
+  /** 分页查询调度任务 */
+  listJobs(params: PageQuery = {}) {
+    return request.get<unknown, ApiResult<PageResult<SchedulerJob>>>('/scheduler/jobs', { params })
+  },
+  getJob(id: number) {
+    return request.get<unknown, ApiResult<SchedulerJob>>(`/scheduler/jobs/${id}`)
+  },
+  /** 启用/停用调度任务 */
+  changeJobStatus(id: number, status: string) {
+    return request.post<unknown, ApiResult<SchedulerJob>>(`/scheduler/jobs/${id}/status`, { status })
+  },
+  /** 触发一次调度任务（后端当前仅落 PENDING 运行记录） */
+  triggerJob(id: number) {
+    return request.post<unknown, ApiResult<Record<string, unknown>>>(`/scheduler/jobs/${id}/trigger`)
+  }
+}
+
+export const dataServiceApi = {
+  /** 分页查询数据服务 API */
+  listApis(params: PageQuery = {}) {
+    return request.get<unknown, ApiResult<PageResult<DataApiDefinition>>>('/data-service/apis', { params })
+  },
+  getApi(id: number) {
+    return request.get<unknown, ApiResult<DataApiDefinition>>(`/data-service/apis/${id}`)
+  },
+  publishApi(id: number) {
+    return request.post<unknown, ApiResult<DataApiDefinition>>(`/data-service/apis/${id}/publish`)
+  },
+  offlineApi(id: number) {
+    return request.post<unknown, ApiResult<DataApiDefinition>>(`/data-service/apis/${id}/offline`)
+  }
+}
+
 export const modelApi = {
   // 模型
   getModels(keyword?: string, categoryId?: number) { return request.get('/catalog/models', { params: { keyword, categoryId } }) },

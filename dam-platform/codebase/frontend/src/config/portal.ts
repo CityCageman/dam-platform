@@ -152,9 +152,9 @@ export const portalDomains: PortalDomain[] = [
       {
         code: 'INT',
         name: '数据集成',
-        description: '接入多源数据源并采集表结构与字段，形成统一的技术元数据视图。',
+        description: '管理数据集成任务的源端、目标端与同步模式，跟踪任务状态与最近运行情况。',
         icon: 'Connection',
-        route: '/metadata',
+        route: '/integration',
         status: 'AVAILABLE'
       },
       {
@@ -170,8 +170,8 @@ export const portalDomains: PortalDomain[] = [
         name: '调度中心',
         description: '统一编排数据任务依赖与调度周期，监控任务运行状态与失败重试。',
         icon: 'Timer',
-        route: '/operations',
-        status: 'PLANNED'
+        route: '/scheduler',
+        status: 'AVAILABLE'
       },
       {
         code: 'STO',
@@ -261,8 +261,8 @@ export const portalDomains: PortalDomain[] = [
         name: '数据服务',
         description: '将数据能力封装为 API 或查询服务，统一管理发布、授权与调用。',
         icon: 'Link',
-        route: '/data-services',
-        status: 'PLANNED'
+        route: '/data-service',
+        status: 'AVAILABLE'
       },
       {
         code: 'MKT',
@@ -287,7 +287,7 @@ export const portalDomains: PortalDomain[] = [
         description: '沉淀数据标准、指标口径与治理经验，形成可检索的组织知识资产。',
         icon: 'Reading',
         route: '/knowledge',
-        status: 'PLANNED'
+        status: 'AVAILABLE'
       },
       {
         code: 'AI',
@@ -319,7 +319,7 @@ export const portalDomains: PortalDomain[] = [
         name: '任务中心',
         description: '集中查看 AI 与数据任务队列、执行进度和处理结果。',
         icon: 'Tickets',
-        route: '/agent',
+        route: '/agent/tasks',
         status: 'AVAILABLE'
       },
       {
