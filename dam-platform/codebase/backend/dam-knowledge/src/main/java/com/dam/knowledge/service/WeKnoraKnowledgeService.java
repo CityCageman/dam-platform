@@ -416,10 +416,10 @@ public class WeKnoraKnowledgeService {
             JsonNode node = MAPPER.readTree(json);
             if (node.isArray()) {
                 List<String> values = new ArrayList<>();
-                node.forEach(n -> values.add(n.asText()));
+                node.forEach(n -> values.add(n.asString()));
                 return values;
             }
-            return List.of(node.asText());
+            return List.of(node.asString());
         } catch (Exception e) {
             return List.of(json);
         }
@@ -598,10 +598,10 @@ public class WeKnoraKnowledgeService {
             JsonNode node = MAPPER.readTree(json);
             if (node.isArray()) {
                 sb.append("## ").append(title).append("\n");
-                for (JsonNode item : node) sb.append("- ").append(item.asText()).append("\n");
+                for (JsonNode item : node) sb.append("- ").append(item.asString()).append("\n");
                 sb.append("\n");
             } else {
-                sb.append("## ").append(title).append("\n").append(node.asText()).append("\n\n");
+                sb.append("## ").append(title).append("\n").append(node.asString()).append("\n\n");
             }
         } catch (Exception e) {
             sb.append("## ").append(title).append("\n").append(json).append("\n\n");
@@ -693,7 +693,7 @@ public class WeKnoraKnowledgeService {
 
     private String text(JsonNode node, String field) {
         if (node == null || !node.has(field) || node.get(field).isNull()) return null;
-        return node.get(field).asText();
+        return node.get(field).asString();
     }
 
     private String cut(String value, int max) {

@@ -194,7 +194,7 @@ public class WeKnoraClient {
             if (StrUtil.isBlank(json)) return null;
             JsonNode root = mapper.readTree(json);
             if (root.has("success") && !root.path("success").asBoolean(false)) {
-                throw new BusinessException("WeKnora 调用失败: " + root.path("error").path("message").asText(json));
+                throw new BusinessException("WeKnora 调用失败: " + root.path("error").path("message").asString(json));
             }
             return root.has("data") ? root.get("data") : root;
         } catch (RestClientResponseException e) {
@@ -221,7 +221,7 @@ public class WeKnoraClient {
 
     private String text(JsonNode node, String field) {
         if (node == null || !node.has(field) || node.get(field).isNull()) return null;
-        return node.get(field).asText();
+        return node.get(field).asString();
     }
 
     private String enc(String value) {

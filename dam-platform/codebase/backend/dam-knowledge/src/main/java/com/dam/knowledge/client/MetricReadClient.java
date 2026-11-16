@@ -122,7 +122,7 @@ public class MetricReadClient {
             JsonNode root = MAPPER.readTree(StrUtil.blankToDefault(raw, "{}"));
             int code = root.path("code").asInt(200);
             if (code != 200) {
-                String message = root.path("message").asText("");
+                String message = root.path("message").asString("");
                 // dam-metric 对不存在的指标返回业务错误，findById 需保留“不存在返回 null”的语义
                 if (allowNotFound && (code == 404 || message.contains("不存在"))) {
                     return null;

@@ -8,10 +8,8 @@ import com.dam.knowledge.client.MetricReadClient;
 import com.dam.knowledge.dto.MetricDefinition;
 import com.dam.knowledge.entity.KnowledgeCategory;
 import com.dam.knowledge.entity.KnowledgeEntry;
-import com.dam.knowledge.entity.KnowledgeSyncConfig;
 import com.dam.knowledge.repository.KnowledgeCategoryMapper;
 import com.dam.knowledge.repository.KnowledgeEntryMapper;
-import com.dam.knowledge.repository.KnowledgeSyncConfigMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -23,6 +21,10 @@ import java.util.stream.Collectors;
 
 /**
  * 知识库：可维护分类、条目、外部数据同步和向量索引预留接口。
+ * <p>
+ * 知识分类/条目/同步配置持久化在 {@code dam_knowledge} schema。指标口径通过
+ * {@link MetricReadClient} 调用 dam-metric 只读接口获取；元数据/标准来源候选只做
+ * {@code dam_metadata}/{@code dam_standard} 的跨 schema 只读查询，不写入这些领域。
  */
 @Service
 @RequiredArgsConstructor
@@ -289,6 +291,7 @@ public class KnowledgeService {
         } else if ("METRIC".equalsIgnoreCase(sourceType)) {
             List<MetricDefinition> metrics = metricReadClient.listActive(500);
             for (MetricDefinition m : metrics) {
+                if (m.getId() == null) continue;
                 String title = StrUtil.blankToDefault(m.getMetricName(), "");
                 String desc = StrUtil.blankToDefault(m.getDefinition(), StrUtil.blankToDefault(m.getFormula(), ""));
                 if (!kw.isEmpty() && !title.toLowerCase().contains(kw) && !desc.toLowerCase().contains(kw)) continue;
