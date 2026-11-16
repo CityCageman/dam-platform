@@ -5,6 +5,7 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.dam.common.exception.BusinessException;
+import com.dam.common.security.CredentialCipher;
 import com.dam.integration.client.TaskCenterClient;
 import com.dam.integration.entity.IntegrationJob;
 import com.dam.integration.entity.IntegrationRun;
@@ -139,6 +140,9 @@ public class IntegrationExecutionService {
     /** 统一任务中心回调客户端（旁路能力，失败不影响集成执行） */
     private final TaskCenterClient taskCenterClient;
 
+    /** 配置凭据加解密组件（执行前解密 sourceConfig/targetConfig 的 password） */
+    private final CredentialCipher credentialCipher;
+
     /** 孤儿运行判定阈值（分钟）：服务崩溃会留下 PENDING/RUNNING 记录，超时后标记 FAILED */
     @Value("${dam.integration.stale-run-minutes:30}")
     private long staleRunMinutes;
@@ -150,15 +154,18 @@ public class IntegrationExecutionService {
      * @param runMapper         运行记录 Mapper
      * @param transactionManager 事务管理器
      * @param taskCenterClient  统一任务中心回调客户端
+     * @param credentialCipher  配置凭据加解密组件
      */
     public IntegrationExecutionService(IntegrationJobMapper jobMapper,
                                        IntegrationRunMapper runMapper,
                                        PlatformTransactionManager transactionManager,
-                                       TaskCenterClient taskCenterClient) {
+                                       TaskCenterClient taskCenterClient,
+                                       CredentialCipher credentialCipher) {
         this.jobMapper = jobMapper;
         this.runMapper = runMapper;
         this.transactionManager = transactionManager;
         this.taskCenterClient = taskCenterClient;
+        this.credentialCipher = credentialCipher;
     }
 
     /**
@@ -526,7 +533,8 @@ public class IntegrationExecutionService {
             throw new SyncConfigException(label + ".url 仅支持 PostgreSQL JDBC URL（jdbc:postgresql:...）");
         }
         String username = requireEndpointText(json, "username", label, MAX_USERNAME_LENGTH);
-        String password = optionalPassword(json);
+        // 落库密码为 ENC1: 密文时解密；历史明文（无前缀）由组件原样返回
+        String password = credentialCipher.decrypt(optionalPassword(json));
         String schema = optionalEndpointText(json, "schema", label, MAX_IDENTIFIER_LENGTH);
         String table = optionalEndpointText(json, "table", label, MAX_IDENTIFIER_LENGTH);
         if (schema != null) {

@@ -3,6 +3,7 @@ package com.dam.dataservice.service;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.dam.common.exception.BusinessException;
+import com.dam.common.security.CredentialCipher;
 import com.dam.dataservice.dto.DataApiColumn;
 import com.dam.dataservice.dto.DataApiExecutionResult;
 import com.dam.dataservice.dto.DataApiSchemaResult;
@@ -52,6 +53,8 @@ import java.util.regex.Pattern;
  *       查询在只读事务中执行；</li>
  *   <li>设置连接超时、查询超时与最大返回行数 1000；</li>
  *   <li>命名参数按出现顺序替换为 {@code ?} 后绑定，不做 SQL 字符串拼接；</li>
+ *   <li>upstreamConfig.password 以 {@code ENC1:} 密文存储，运行时解密后仅用于建立
+ *       连接，兼容历史明文配置；</li>
  *   <li>异常消息脱敏（移除密码/URL）并截断，响应不包含连接配置。</li>
  * </ul>
  * 本服务为运行入口的基础实现，不承担完整网关职责（路由、限流、审计等）。
@@ -115,6 +118,9 @@ public class DataApiRuntimeService {
 
     /** 数据 API Mapper */
     private final DataApiMapper dataApiMapper;
+
+    /** 配置凭据加解密组件（运行时解密 upstreamConfig.password） */
+    private final CredentialCipher credentialCipher;
 
     /**
      * 执行已发布的数据 API
@@ -240,7 +246,9 @@ public class DataApiRuntimeService {
         String query = config.getStr("query");
         ParsedQuery parsedQuery = parseAndValidateQuery(query);
         String username = config.getStr("username");
-        String password = config.getStr("password");
+        // 新数据为 ENC1: 密文，历史明文或解密失败时按原值返回，保证旧配置仍可执行；
+        // 明文仅用于建立连接，不会写入日志或响应
+        String password = credentialCipher.decrypt(config.getStr("password"));
         int connectTimeout = resolveTimeout(config, "connectTimeoutSeconds",
                 DEFAULT_CONNECT_TIMEOUT_SECONDS, MAX_CONNECT_TIMEOUT_SECONDS);
         int queryTimeout = resolveTimeout(config, "queryTimeoutSeconds",

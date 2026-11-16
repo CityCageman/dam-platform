@@ -294,6 +294,7 @@ services:
     environment:
       <<: *pg-env
       DAM_TASK_CENTER_URL: http://dam-task-center:8099
+      DAM_CREDENTIAL_SECRET: ${DAM_CREDENTIAL_SECRET:?DAM_CREDENTIAL_SECRET is required}
       SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
     depends_on:
       postgres:
@@ -327,6 +328,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *pg-env
+      DAM_CREDENTIAL_SECRET: ${DAM_CREDENTIAL_SECRET:?DAM_CREDENTIAL_SECRET is required}
       SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
     depends_on:
       postgres:
@@ -359,6 +361,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *pg-env
+      DAM_CREDENTIAL_SECRET: ${DAM_CREDENTIAL_SECRET:?DAM_CREDENTIAL_SECRET is required}
       SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
     depends_on:
       postgres:

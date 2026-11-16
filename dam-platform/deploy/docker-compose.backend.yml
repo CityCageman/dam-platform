@@ -364,6 +364,7 @@ services:
       <<: *pg-env
       DAM_TASK_CENTER_URL: http://dam-task-center:8099
       NACOS_SERVER_ADDR: nacos:8848
+      DAM_CREDENTIAL_SECRET: ${DAM_CREDENTIAL_SECRET:?DAM_CREDENTIAL_SECRET is required}
       SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
     depends_on:
       postgres:
@@ -403,6 +404,7 @@ services:
     environment:
       <<: *pg-env
       NACOS_SERVER_ADDR: nacos:8848
+      DAM_CREDENTIAL_SECRET: ${DAM_CREDENTIAL_SECRET:?DAM_CREDENTIAL_SECRET is required}
       SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
     depends_on:
       postgres:
@@ -441,6 +443,7 @@ services:
     environment:
       <<: *pg-env
       NACOS_SERVER_ADDR: nacos:8848
+      DAM_CREDENTIAL_SECRET: ${DAM_CREDENTIAL_SECRET:?DAM_CREDENTIAL_SECRET is required}
       SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
     depends_on:
       postgres:

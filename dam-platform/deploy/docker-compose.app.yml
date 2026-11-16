@@ -226,6 +226,7 @@ services:
       <<: *pg-env
       DAM_TASK_CENTER_URL: http://dam-task-center:8099
       NACOS_SERVER_ADDR: ${NACOS_HOST:-192.168.1.13}:8848
+      DAM_CREDENTIAL_SECRET: ${DAM_CREDENTIAL_SECRET:?DAM_CREDENTIAL_SECRET is required}
       SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
 
   # 调度中心：dam_scheduler schema（v24）
@@ -255,6 +256,7 @@ services:
     environment:
       <<: *pg-env
       NACOS_SERVER_ADDR: ${NACOS_HOST:-192.168.1.13}:8848
+      DAM_CREDENTIAL_SECRET: ${DAM_CREDENTIAL_SECRET:?DAM_CREDENTIAL_SECRET is required}
       SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
 
   # 统一任务中心：dam_task schema（v26）
@@ -283,6 +285,7 @@ services:
     environment:
       <<: *pg-env
       NACOS_SERVER_ADDR: ${NACOS_HOST:-192.168.1.13}:8848
+      DAM_CREDENTIAL_SECRET: ${DAM_CREDENTIAL_SECRET:?DAM_CREDENTIAL_SECRET is required}
       SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
 
 

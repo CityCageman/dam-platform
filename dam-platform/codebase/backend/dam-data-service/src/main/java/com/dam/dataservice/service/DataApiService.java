@@ -1,14 +1,19 @@
 package com.dam.dataservice.service;
 
+import cn.hutool.json.JSON;
+import cn.hutool.json.JSONNull;
+import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dam.common.exception.BusinessException;
+import com.dam.common.security.CredentialCipher;
 import com.dam.common.vo.PageResult;
 import com.dam.dataservice.dto.DataApiRequest;
 import com.dam.dataservice.entity.DataApi;
 import com.dam.dataservice.repository.DataApiMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,9 +28,13 @@ import java.util.Set;
  * 负责数据 API 定义的分页查询、创建、更新、逻辑删除以及发布/下线状态流转。
  * 状态机：DRAFT/OFFLINE → PUBLISHED（发布），PUBLISHED → OFFLINE（下线）；
  * 已是 PUBLISHED 的 API 重复发布将抛出业务异常。
+ * <p>
+ * 创建/更新时对 upstreamConfig 根字段 {@code password} 加密（AES-GCM，
+ * {@code ENC1:} 前缀）后落库；查询接口原样返回库中密文，不解密、不输出明文。
  *
  * @author DAM Platform
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DataApiService {
@@ -42,6 +51,9 @@ public class DataApiService {
 
     /** 数据 API Mapper */
     private final DataApiMapper dataApiMapper;
+
+    /** 配置凭据加解密组件（upstreamConfig.password 落库前加密） */
+    private final CredentialCipher credentialCipher;
 
     /**
      * 分页查询数据 API 列表
@@ -328,9 +340,10 @@ public class DataApiService {
      * 将上游配置转换为合法的 JSON 文本（jsonb）
      * <p>
      * 支持请求体直接传 JSON 对象/数组，也支持传 JSON 字符串；空值统一落库为 NULL。
+     * 校验通过后对根字段 {@code password} 加密，再返回待落库的 JSON 文本。
      *
      * @param config 上游配置
-     * @return JSON 文本或 null
+     * @return 加密后的 JSON 文本或 null
      */
     private String normalizeUpstreamConfig(Object config) {
         if (config == null) {
@@ -348,7 +361,44 @@ public class DataApiService {
         if (!JSONUtil.isTypeJSON(json)) {
             throw new BusinessException(400, "upstreamConfig 必须是合法的 JSON");
         }
-        return json;
+        return encryptUpstreamPassword(json);
+    }
+
+    /**
+     * 加密 upstreamConfig 根字段 password
+     * <p>
+     * 只处理根字段 {@code password}，其余字段值原样保留；空值、非文本值以及已带
+     * {@code ENC1:} 前缀的密文不做处理，避免前端回传密文时重复加密。配置不是
+     * JSON 对象（如数组）时保持原有落库行为。加密失败时向上抛出，避免把明文
+     * 密码静默写入数据库。
+     *
+     * @param json 已校验合法的配置 JSON
+     * @return 加密后的 JSON；无需加密时返回原值
+     */
+    private String encryptUpstreamPassword(String json) {
+        JSONObject config;
+        try {
+            JSON parsed = JSONUtil.parse(json);
+            if (!(parsed instanceof JSONObject object)) {
+                return json;
+            }
+            config = object;
+        } catch (RuntimeException e) {
+            // 仅记录异常类型，避免把配置内容（含密码）写入日志
+            log.warn("upstreamConfig 解析失败，跳过密码加密: errorType={}",
+                    e.getClass().getSimpleName());
+            return json;
+        }
+        Object value = config.get("password");
+        if (value == null || value instanceof JSONNull) {
+            return json;
+        }
+        String plain = String.valueOf(value);
+        if (plain.isBlank() || plain.startsWith(CredentialCipher.PREFIX)) {
+            return json;
+        }
+        config.set("password", credentialCipher.encrypt(plain));
+        return config.toString();
     }
 
     /**

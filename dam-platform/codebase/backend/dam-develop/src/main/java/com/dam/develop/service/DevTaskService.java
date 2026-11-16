@@ -4,6 +4,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dam.common.exception.BusinessException;
+import com.dam.common.security.CredentialCipher;
 import com.dam.common.vo.PageResult;
 import com.dam.develop.dto.DevTaskCreateRequest;
 import com.dam.develop.dto.DevTaskUpdateRequest;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -73,6 +75,9 @@ public class DevTaskService {
 
     /** 任务版本 Mapper */
     private final DevTaskVersionMapper versionMapper;
+
+    /** 凭据加解密组件：datasourceConfig.password 落库前加密 */
+    private final CredentialCipher credentialCipher;
 
     /**
      * 分页查询任务列表
@@ -355,11 +360,14 @@ public class DevTaskService {
      * 该配置仅 SQL 任务执行时使用。为 null 表示不修改；空字符串表示清空配置。
      * 这里只校验“必须是 JSON 对象”，不校验 url/username/password 等字段，字段校验
      * 由执行服务在真正执行时完成，避免编辑中的配置被过早拦截。
+     * <p>
+     * 规范化后对根字段 {@code password} 做加密（AES-GCM，{@code ENC1:} 前缀）再落库；
+     * 空值与已带 {@code ENC1:} 前缀的密文保持不变，避免前端回传密文时重复加密。
      *
      * @param value 请求中的原始值（JSON 字符串或对象）
      * @return 规范化后的 JSON 字符串；清空时返回 null
      */
-    private static String normalizeDatasourceConfig(Object value) {
+    private String normalizeDatasourceConfig(Object value) {
         if (value == null) {
             return null;
         }
@@ -384,6 +392,7 @@ public class DevTaskService {
         if (node == null || !node.isObject()) {
             throw new BusinessException(400, "datasourceConfig 必须是 JSON 对象");
         }
+        encryptDatasourcePassword((ObjectNode) node);
         String json;
         try {
             json = JSON_MAPPER.writeValueAsString(node);
@@ -395,6 +404,28 @@ public class DevTaskService {
                     "datasourceConfig 长度不能超过 " + MAX_DATASOURCE_CONFIG_LENGTH);
         }
         return json;
+    }
+
+    /**
+     * 加密 datasourceConfig 根字段 password
+     * <p>
+     * 仅处理非空字符串：空值、非字符串以及已带 {@code ENC1:} 前缀的密文保持原样，
+     * 避免前端回传密文时重复加密。不在此处校验配置结构，字段合法性仍由执行服务
+     * 在真正执行时校验。
+     *
+     * @param root 已确认为 JSON 对象的配置根节点
+     */
+    private void encryptDatasourcePassword(ObjectNode root) {
+        JsonNode passwordNode = root.get("password");
+        if (passwordNode == null || !passwordNode.isString()) {
+            return;
+        }
+        String password = passwordNode.asString();
+        // 空密码与前端回传的密文保持不变；CredentialCipher 内部同样会跳过 ENC1: 前缀
+        if (password.isBlank() || password.startsWith(CredentialCipher.PREFIX)) {
+            return;
+        }
+        root.put("password", credentialCipher.encrypt(password));
     }
 
     /**

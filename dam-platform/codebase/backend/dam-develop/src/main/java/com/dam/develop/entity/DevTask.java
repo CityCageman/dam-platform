@@ -20,8 +20,10 @@ import java.time.LocalDateTime;
  * 未删除为 NULL，删除时置为当前时间，不物理删除历史版本。
  * <p>
  * {@code datasource_config} 为 JSONB，仅 SQL 任务使用：保存执行所需的 PostgreSQL
- * JDBC 连接信息（url/username/password/queryTimeoutSeconds/maxRows）。该字段含密码，
- * 任何日志与执行结果都不得输出其原始内容。
+ * JDBC 连接信息（url/username/password/queryTimeoutSeconds/maxRows）。{@code password}
+ * 落库前由 {@code CredentialCipher} 加密为 {@code ENC1:} 前缀密文，执行时解密；查询
+ * 接口返回密文，回传保存时不会重复加密。该字段含密码，任何日志与执行结果都不得输出
+ * 其原始内容。
  *
  * @author DAM Platform
  */

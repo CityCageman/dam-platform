@@ -39,6 +39,8 @@ public class DevTaskUpdateRequest {
      * SQL 任务执行用 JDBC 数据源配置（可选）
      * <p>
      * 支持 JSON 对象或 JSON 字符串；为 null 时保持原值，传空字符串表示清空配置。
+     * 根字段 {@code password} 落库前加密为 {@code ENC1:} 前缀密文；回传已有的密文
+     * 不会重复加密，空值保持不变。
      * 该字段变更不会递增任务版本号（仅 content 变更升版本），仅 SQL 任务执行时读取。
      */
     private Object datasourceConfig;

@@ -1,6 +1,7 @@
 package com.dam.develop.service;
 
 import com.dam.common.exception.BusinessException;
+import com.dam.common.security.CredentialCipher;
 import com.dam.develop.dto.DevTaskExecutionResult;
 import com.dam.develop.dto.DevTaskSchemaResult;
 import com.dam.develop.entity.DevTask;
@@ -131,6 +132,9 @@ public class DevTaskExecutionService {
     /** 任务 Mapper */
     private final DevTaskMapper taskMapper;
 
+    /** 凭据加解密组件：读取 datasourceConfig.password 时解密 */
+    private final CredentialCipher credentialCipher;
+
     /**
      * 执行已发布的 SQL 任务（只读单条查询）
      *
@@ -233,11 +237,14 @@ public class DevTaskExecutionService {
 
     /**
      * 解析并校验任务的数据源配置（不记录任何配置内容）
+     * <p>
+     * 读取时对根字段 {@code password} 解密：{@code ENC1:} 密文还原为明文，历史明文
+     * 原样使用；解密失败时按明文兼容，避免历史配置无法执行。
      *
      * @param rawConfig 任务 datasourceConfig（JSON 字符串）
      * @return JDBC 连接配置
      */
-    private static JdbcConfig parseConfig(String rawConfig) {
+    private JdbcConfig parseConfig(String rawConfig) {
         if (rawConfig == null || rawConfig.isBlank()) {
             throw new BusinessException(400, "任务未配置 datasourceConfig，无法执行 SQL");
         }
@@ -254,7 +261,8 @@ public class DevTaskExecutionService {
         String url = requireConfigText(root, "url");
         validatePostgresUrl(url);
         String username = requireConfigText(root, "username");
-        String password = optionalConfigText(root, "password");
+        // 落库值为 ENC1: 密文；历史明文与空值由 CredentialCipher 原样返回
+        String password = credentialCipher.decrypt(optionalConfigText(root, "password"));
         int queryTimeoutSeconds = readPositiveInt(root, "queryTimeoutSeconds",
                 DEFAULT_QUERY_TIMEOUT_SECONDS, MAX_QUERY_TIMEOUT_SECONDS);
         int maxRows = readPositiveInt(root, "maxRows", DEFAULT_MAX_ROWS, MAX_MAX_ROWS);

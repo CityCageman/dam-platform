@@ -1,10 +1,14 @@
 package com.dam.integration.service;
 
 import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.json.JSONNull;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dam.common.exception.BusinessException;
+import com.dam.common.security.CredentialCipher;
 import com.dam.common.vo.PageResult;
 import com.dam.integration.entity.IntegrationJob;
 import com.dam.integration.entity.IntegrationRun;
@@ -70,6 +74,9 @@ public class IntegrationJobService {
 
     /** 真实 JDBC 同步执行服务 */
     private final IntegrationExecutionService executionService;
+
+    /** 配置凭据加解密组件（sourceConfig/targetConfig 的 password 落库前加密） */
+    private final CredentialCipher credentialCipher;
 
     /** 同步执行线程池（由 IntegrationAsyncConfig 提供） */
     @Resource(name = "integrationTaskExecutor")
@@ -154,9 +161,9 @@ public class IntegrationJobService {
         job.setJobCode(jobCode);
         job.setJobName(jobName);
         job.setSourceType(sourceType);
-        job.setSourceConfig(trimToNull(request.getSourceConfig()));
+        job.setSourceConfig(encryptConfigPassword(request.getSourceConfig()));
         job.setTargetType(targetType);
-        job.setTargetConfig(trimToNull(request.getTargetConfig()));
+        job.setTargetConfig(encryptConfigPassword(request.getTargetConfig()));
         job.setSyncMode(optionalText(request.getSyncMode(), "同步模式", 32));
         job.setStatus(status);
 
@@ -207,13 +214,13 @@ public class IntegrationJobService {
             job.setSourceType(requireText(request.getSourceType(), "源端类型", 32));
         }
         if (request.getSourceConfig() != null) {
-            job.setSourceConfig(trimToNull(request.getSourceConfig()));
+            job.setSourceConfig(encryptConfigPassword(request.getSourceConfig()));
         }
         if (request.getTargetType() != null) {
             job.setTargetType(requireText(request.getTargetType(), "目标端类型", 32));
         }
         if (request.getTargetConfig() != null) {
-            job.setTargetConfig(trimToNull(request.getTargetConfig()));
+            job.setTargetConfig(encryptConfigPassword(request.getTargetConfig()));
         }
         if (request.getSyncMode() != null) {
             job.setSyncMode(optionalText(request.getSyncMode(), "同步模式", 32));
@@ -380,6 +387,45 @@ public class IntegrationJobService {
             // 非事务上下文（如内部直调）直接提交，接口层仍由 @Transactional 保证走 afterCommit
             submit.run();
         }
+    }
+
+    /**
+     * 加密端点配置 JSON 根字段 password 后落库
+     * <p>
+     * 只处理根字段 {@code password}，其余字段值原样保留；null/JSON null、空白值以及
+     * 已带 {@code ENC1:} 前缀的密文不做处理，避免前端回传密文时重复加密。配置不是
+     * 合法 JSON 时保持原有落库行为（原样保存）；加密本身失败则向上抛出，不降级为明文。
+     *
+     * @param rawConfig 原始配置 JSON
+     * @return 加密后的配置 JSON；无需加密或解析失败时返回规范化后的原值
+     */
+    private String encryptConfigPassword(String rawConfig) {
+        String config = trimToNull(rawConfig);
+        if (config == null) {
+            return null;
+        }
+        JSONObject json;
+        try {
+            json = JSONUtil.parseObj(config);
+        } catch (RuntimeException e) {
+            // 仅记录异常类型，避免把配置内容（含密码）带入日志
+            log.warn("集成任务配置 JSON 解析失败，跳过密码加密: errorType={}",
+                    e.getClass().getSimpleName());
+            return config;
+        }
+        if (json == null || json.isEmpty()) {
+            return config;
+        }
+        Object value = json.get("password");
+        if (value == null || value instanceof JSONNull) {
+            return config;
+        }
+        String plain = String.valueOf(value);
+        if (plain.isBlank() || plain.startsWith(CredentialCipher.PREFIX)) {
+            return config;
+        }
+        json.set("password", credentialCipher.encrypt(plain));
+        return json.toString();
     }
 
     /**
