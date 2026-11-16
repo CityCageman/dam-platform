@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * 手工填报指标值
  */
 @Data
-@TableName(value = "metric_value", schema = "dam_asset")
+@TableName(value = "metric_value", schema = "dam_metric")
 public class MetricValue {
     @TableId(type = IdType.AUTO)
     private Long id;

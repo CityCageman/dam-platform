@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
  * 指标定义：MANUAL-手工填报，COMPUTED-系统计算
  */
 @Data
-@TableName(value = "metric_definition", schema = "dam_asset")
+@TableName(value = "metric_definition", schema = "dam_metric")
 public class MetricDefinition {
     @TableId(type = IdType.AUTO)
     private Long id;

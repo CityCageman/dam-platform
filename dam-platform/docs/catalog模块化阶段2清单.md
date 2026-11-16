@@ -577,3 +577,66 @@ ReportService 深度重构
 ```
 
 阶段 2 的目标不是“拆干净”，而是先把代码边界立起来，为阶段 3 的表迁移和阶段 4 的服务拆分铺路。
+
+---
+
+# 10. 实施进展
+
+## 已完成
+
+### 2026-11-16
+
+已实际提取以下 catalog 包：
+
+```text
+com.dam.catalog.metric
+com.dam.catalog.knowledge
+com.dam.catalog.report
+```
+
+同步迁移：
+
+- Controller；
+- Service；
+- Entity；
+- Repository/Mapper。
+
+已更新：
+
+- 跨模块 import；
+- `@MapperScan` 增加 metric/knowledge/report repository 包；
+- 全量后端构建通过。
+
+## 阶段 3 第一小步
+
+已完成 metric/report/knowledge 的 schema 边界迁移脚本：
+
+```text
+db/v21_metric_report_knowledge_schema.sql
+```
+
+目标：
+
+```text
+dam_asset.metric_definition       → dam_metric.metric_definition
+dam_asset.metric_value            → dam_metric.metric_value
+dam_asset.report_catalog          → dam_report.report_catalog
+dam_asset.knowledge_category      → dam_knowledge.knowledge_category
+dam_asset.knowledge_entry         → dam_knowledge.knowledge_entry
+dam_asset.knowledge_sync_config   → dam_knowledge.knowledge_sync_config
+```
+
+实体 schema 已同步改为：
+
+```text
+dam_metric
+dam_report
+dam_knowledge
+```
+
+下一步：
+
+1. 在测试库执行 v21；
+2. 验证指标、报表、知识接口；
+3. 再拆 asset/metadata/system 包；
+4. 再处理 quality/lineage/lifecycle 的表所有权。
