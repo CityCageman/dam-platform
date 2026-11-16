@@ -97,7 +97,7 @@ done
 - **v21/v22 依赖 v10/v11 等历史增量创建的表**（例如 `dam_asset.metric_definition`、`dam_asset.knowledge_entry`）。Docker 首次初始化已把 v2~v20 挂在 v21 之前；若走手工/已有库升级，请先确认这些表存在，否则 v21/v22 会静默跳过，metric/knowledge/quality/lineage 服务将缺表。
 - `db/init-all.sql` 是历史整库脚本，与当前代码 schema 存在已知差异（见 `deploy/生产部署方案_2台_麒麟V10.md` 风险章节），**不作为本流程推荐基线**；新库请使用 01+02+历史增量+本次增量。
 - 如果新环境只使用本次新增的 integration/scheduler/data-service（v23~v25），也必须先有 `dam_asset`/`dam_metadata` 基础 schema（脚本会检查），但可不执行 v21/v22 所依赖的指标/知识历史增量。
-- AI 工作台使用的 `dam_ai` schema 由历史增量 `v19_ai_tasks_schema.sql` 创建，**不在本次 v21~v25 范围内**；使用 AI 任务中心的新库请一并执行 v19（或确认库中已存在 `dam_ai.ai_task`）。
+- AI 工作台使用的 `dam_ai` schema 由历史增量 `v19_ai_tasks_schema.sql` 创建，**不在本次 v21~v25 范围内**；Docker 首次初始化已包含 v19，手工升级的新库请一并执行 v19（或确认库中已存在 `dam_ai.ai_task`）。
 
 ---
 
@@ -346,5 +346,5 @@ pg_restore -h 10.162.3.16 -p 11001 -U dam -d damplatform \
 - 本目录只覆盖 v21~v25；`dam_ai`（v19）、历史 v2~v20 不在范围内。
 - `dam-ai-workbench` 的 `application.yml` 仍声明了数据源（`DAM_AI_DB_*`，缺省回退 `SPRING_DATASOURCE_*`），本次 compose 按其「不连库」部署模式未注入数据库变量；如需启用 AI 任务中心持久化，请显式提供 `DAM_AI_DB_URL/USERNAME/PASSWORD`，并确认 `dam_ai.ai_task`、`dam_ai.ai_task_item` 已存在（v5 + v19）。
 - v21/v22 的幂等性依赖「源表已迁走」：若目标 schema 中已存在同名表（重复建表/人工拷贝），`SET SCHEMA` 会失败并回滚该文件。
-- 全新 Docker 数据库的初始化挂载不包含 v2~v20，指标/知识历史表需要额外补齐（见 3.2 / 6.3）。
+- Docker 初始化挂载按 01/02 + v2~v25 的全量顺序执行（26 个脚本，见第 6 节）；`apply_new_schemas.sh` 只执行 v21~v25，仅适用于已有基础表的库，不能用于空库。
 - 迁移完成前不要启动依赖新 schema 的新服务，否则会因缺表启动失败或接口报错。
