@@ -1,8 +1,8 @@
-package com.dam.catalog.service;
+package com.dam.catalog.system.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.catalog.entity.DamConfig;
-import com.dam.catalog.repository.DamConfigMapper;
+import com.dam.catalog.system.entity.DamConfig;
+import com.dam.catalog.system.repository.DamConfigMapper;
 import com.dam.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

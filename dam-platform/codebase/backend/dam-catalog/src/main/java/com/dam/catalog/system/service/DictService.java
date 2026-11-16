@@ -1,11 +1,11 @@
-package com.dam.catalog.service;
+package com.dam.catalog.system.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.dam.catalog.entity.SysDictData;
-import com.dam.catalog.entity.SysDictType;
-import com.dam.catalog.repository.SysDictDataMapper;
-import com.dam.catalog.repository.SysDictTypeMapper;
+import com.dam.catalog.system.entity.SysDictData;
+import com.dam.catalog.system.entity.SysDictType;
+import com.dam.catalog.system.repository.SysDictDataMapper;
+import com.dam.catalog.system.repository.SysDictTypeMapper;
 import com.dam.common.exception.BusinessException;
 import com.dam.common.vo.PageResult;
 import cn.hutool.core.util.StrUtil;

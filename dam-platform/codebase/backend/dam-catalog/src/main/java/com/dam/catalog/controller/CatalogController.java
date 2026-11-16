@@ -1,14 +1,15 @@
 package com.dam.catalog.controller;
 
 import com.dam.catalog.entity.*;
+import com.dam.catalog.system.entity.*;
 import com.dam.common.service.AiRateLimiter;
 import com.dam.catalog.service.AssetClassifyAiService;
 import com.dam.catalog.service.AiWorkbenchTaskClient;
 import com.dam.catalog.service.CatalogService;
-import com.dam.catalog.service.ConfigService;
+import com.dam.catalog.system.service.ConfigService;
 import com.dam.catalog.service.CryptoService;
 import com.dam.catalog.service.DataSourceTypeService;
-import com.dam.catalog.service.DictService;
+import com.dam.catalog.system.service.DictService;
 import com.dam.catalog.service.DiscoveryService;
 import com.dam.catalog.service.ImportService;
 import com.dam.catalog.service.TechnicalMetadataService;

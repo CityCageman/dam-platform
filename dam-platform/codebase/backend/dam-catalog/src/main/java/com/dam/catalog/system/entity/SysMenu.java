@@ -1,4 +1,4 @@
-package com.dam.catalog.entity;
+package com.dam.catalog.system.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;

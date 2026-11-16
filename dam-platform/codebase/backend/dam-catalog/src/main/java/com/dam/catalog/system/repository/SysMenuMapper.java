@@ -1,7 +1,7 @@
-package com.dam.catalog.repository;
+package com.dam.catalog.system.repository;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.dam.catalog.entity.SysMenu;
+import com.dam.catalog.system.entity.SysMenu;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
