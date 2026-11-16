@@ -640,3 +640,37 @@ dam_knowledge
 2. 验证指标、报表、知识接口；
 3. 再拆 asset/metadata/system 包；
 4. 再处理 quality/lineage/lifecycle 的表所有权。
+
+## 2026-11-16 追加进展
+
+已完成：
+
+```text
+metric 包
+knowledge 包
+report 包
+system 包
+```
+
+`dam-security` 对 `DamConfig` 的跨模块 import 已同步更新。
+
+已完成 v21 的第一批 schema 迁移：
+
+```text
+dam_metric
+dam_report
+dam_knowledge
+```
+
+实体 schema 已同步。
+
+待完成：
+
+```text
+asset 包
+metadata 包
+ai 包
+quality/lineage/lifecycle 的表所有权
+```
+
+注意：部署新代码前必须先执行 v21，否则实体指向的新 schema 不存在。
