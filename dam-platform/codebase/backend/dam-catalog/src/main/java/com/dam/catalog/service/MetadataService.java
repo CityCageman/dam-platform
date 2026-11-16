@@ -1,11 +1,9 @@
 package com.dam.catalog.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.catalog.quality.entity.*;
-import com.dam.catalog.quality.repository.*;
-import com.dam.catalog.lineage.entity.*;
-import com.dam.catalog.lineage.repository.*;
 import com.dam.catalog.entity.*;
+import com.dam.catalog.shared.client.QualityReadClient;
+import com.dam.catalog.shared.client.LineageReadClient;
 import com.dam.catalog.metadata.entity.*;
 import com.dam.catalog.asset.entity.*;
 import com.dam.catalog.repository.*;
@@ -61,14 +59,11 @@ public class MetadataService {
     /** 收藏 Mapper */
     private final DamFavoriteMapper favoriteMapper;
 
-    /** 血缘 Mapper */
-    private final DamLineageMapper lineageMapper;
+    /** 质量摘要客户端 */
+    private final QualityReadClient qualityReadClient;
 
-    /** 质量规则 Mapper */
-    private final DamQualityRuleMapper qualityRuleMapper;
-
-    /** 质量检测结果 Mapper */
-    private final DamQualityCheckMapper qualityCheckMapper;
+    /** 血缘读取客户端 */
+    private final LineageReadClient lineageReadClient;
 
     /**
      * 获取某个资产/表的完整技术元数据（按6大类别组织）
@@ -178,18 +173,13 @@ public class MetadataService {
                 new LambdaQueryWrapper<DamFavorite>().eq(DamFavorite::getAssetId, assetId));
         result.put("favoriteCount", favCount);
 
-        // 血缘分（上下游数量）
-        long upstreamCount = lineageMapper.selectCount(
-                new LambdaQueryWrapper<DamLineage>().eq(DamLineage::getTargetId, assetId));
-        long downstreamCount = lineageMapper.selectCount(
-                new LambdaQueryWrapper<DamLineage>().eq(DamLineage::getSourceId, assetId));
+        // 质量/血缘由各自服务提供，catalog 不再直接访问对应表
+        List<Map<String, Object>> lineageRows = safeLineage(assetId);
+        long upstreamCount = lineageRows.stream().filter(r -> Long.valueOf(assetId).equals(longVal(r.get("targetId")))).count();
+        long downstreamCount = lineageRows.stream().filter(r -> Long.valueOf(assetId).equals(longVal(r.get("sourceId")))).count();
         result.put("upstreamCount", upstreamCount);
         result.put("downstreamCount", downstreamCount);
-
-        // 质量规则数
-        long qualityRuleCount = qualityRuleMapper.selectCount(
-                new LambdaQueryWrapper<DamQualityRule>().eq(DamQualityRule::getTargetTableId, assetId));
-        result.put("qualityRuleCount", qualityRuleCount);
+        result.put("qualityRuleCount", longVal(safeQuality(assetId).get("ruleCount")));
 
         return result;
     }
@@ -199,55 +189,48 @@ public class MetadataService {
      */
     public Map<String, Object> getRelatedMetadata(Long assetId) {
         Map<String, Object> result = new LinkedHashMap<>();
+        List<Map<String, Object>> lineageRows = safeLineage(assetId);
 
-        // 血缘 - 上游
-        List<DamLineage> upstream = lineageMapper.selectList(
-                new LambdaQueryWrapper<DamLineage>().eq(DamLineage::getTargetId, assetId));
-        result.put("upstreamLineage", upstream.stream().map(l -> Map.of(
-                "sourceId", l.getSourceId(),
-                "sourceAssetId", l.getSourceId(), // 前端兼容字段
-                "transformRule", l.getTransformRule(),
-                "transformSql", l.getTransformRule(), // 前端兼容字段
-                "sourceSystem", l.getSourceSystem()
-        )).collect(Collectors.toList()));
+        result.put("upstreamLineage", lineageRows.stream()
+                .filter(r -> Long.valueOf(assetId).equals(longVal(r.get("targetId"))))
+                .map(r -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("sourceId", r.get("sourceId"));
+                    m.put("sourceAssetId", r.get("sourceId"));
+                    m.put("transformRule", r.get("transformRule"));
+                    m.put("transformSql", r.get("transformRule"));
+                    m.put("sourceSystem", r.get("sourceSystem"));
+                    return m;
+                }).collect(Collectors.toList()));
+        result.put("downstreamLineage", lineageRows.stream()
+                .filter(r -> Long.valueOf(assetId).equals(longVal(r.get("sourceId"))))
+                .map(r -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("targetId", r.get("targetId"));
+                    m.put("targetAssetId", r.get("targetId"));
+                    m.put("transformRule", r.get("transformRule"));
+                    m.put("transformSql", r.get("transformRule"));
+                    m.put("sourceSystem", r.get("sourceSystem"));
+                    return m;
+                }).collect(Collectors.toList()));
 
-        // 血缘 - 下游
-        List<DamLineage> downstream = lineageMapper.selectList(
-                new LambdaQueryWrapper<DamLineage>().eq(DamLineage::getSourceId, assetId));
-        result.put("downstreamLineage", downstream.stream().map(l -> Map.of(
-                "targetId", l.getTargetId(),
-                "targetAssetId", l.getTargetId(), // 前端兼容字段
-                "transformRule", l.getTransformRule(),
-                "transformSql", l.getTransformRule(), // 前端兼容字段
-                "sourceSystem", l.getSourceSystem()
-        )).collect(Collectors.toList()));
-
-        // 质量规则
-        List<DamQualityRule> rules = qualityRuleMapper.selectList(
-                new LambdaQueryWrapper<DamQualityRule>().eq(DamQualityRule::getTargetTableId, assetId));
-        result.put("qualityRules", rules.stream().map(r -> {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("ruleCode", r.getRuleCode());
-            m.put("ruleName", r.getRuleCode()); // 前端兼容字段（新表无 rule_name）
-            m.put("ruleType", r.getRuleType());
-            m.put("severity", r.getSeverity());
-            m.put("status", r.getStatus());
-            // 最新检测结果
-            DamQualityCheck latest = qualityCheckMapper.selectOne(
-                    new LambdaQueryWrapper<DamQualityCheck>()
-                            .eq(DamQualityCheck::getRuleId, r.getId())
-                            .orderByDesc(DamQualityCheck::getCheckTime)
-                            .last("LIMIT 1"));
-            if (latest != null) {
-                m.put("passRate", latest.getPassRate());
-                m.put("lastScore", latest.getPassRate()); // 前端兼容字段
-                m.put("lastCheckTime", latest.getCheckTime());
-                m.put("lastStatus", latest.getResultStatus());
-            }
-            return m;
-        }).collect(Collectors.toList()));
-
+        Object rules = safeQuality(assetId).get("rules");
+        result.put("qualityRules", rules instanceof List<?> list ? list : Collections.emptyList());
         return result;
+    }
+
+    private List<Map<String, Object>> safeLineage(Long assetId) {
+        try { return lineageReadClient.byAsset(assetId); }
+        catch (Exception e) { return Collections.emptyList(); }
+    }
+
+    private Map<String, Object> safeQuality(Long assetId) {
+        try { return qualityReadClient.assetSummary(assetId); }
+        catch (Exception e) { return Collections.emptyMap(); }
+    }
+
+    private Long longVal(Object value) {
+        return value instanceof Number n ? n.longValue() : null;
     }
 
     /**

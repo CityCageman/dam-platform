@@ -761,3 +761,32 @@ v21、v22 必须在部署新代码前执行。
 4. 拆分 CatalogController / CatalogService
 5. 抽取独立服务
 ```
+
+## 2026-11-16 第四批进展
+
+已删除 catalog 中重复的质量/血缘实体和 Mapper：
+
+```text
+DamQualityRule
+DamQualityCheck
+DamQualityRuleMapper
+DamQualityCheckMapper
+DamLineage
+DamLineageMapper
+```
+
+catalog 元数据聚合改为调用服务 API：
+
+```text
+GET /api/quality/assets/{tableId}/summary
+GET /api/lineage/{assetId}
+```
+
+新增客户端：
+
+```text
+com.dam.catalog.shared.client.QualityReadClient
+com.dam.catalog.shared.client.LineageReadClient
+```
+
+质量、血缘、周期表由各自服务独占写权限。

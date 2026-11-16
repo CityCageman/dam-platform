@@ -81,6 +81,14 @@ public class QualityController {
         return Result.success(qualityService.getCheckHistory(ruleId));
     }
 
+    /**
+     * 资产维度的质量摘要，供 catalog 元数据聚合调用。
+     */
+    @GetMapping("/assets/{tableId}/summary")
+    public Result<Map<String, Object>> assetSummary(@PathVariable Long tableId) {
+        return Result.success(qualityService.assetSummary(tableId));
+    }
+
     // ==================== 检测执行 ====================
 
     /**

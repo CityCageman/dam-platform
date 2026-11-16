@@ -117,6 +117,42 @@ public class QualityService {
     }
 
     /**
+     * 资产维度的质量摘要：规则数、规则列表、每条规则最近一次检测结果。
+     * 供 catalog 元数据聚合通过内部 API 使用，不再直接查质量表。
+     */
+    public java.util.Map<String, Object> assetSummary(Long tableId) {
+        java.util.List<DamQualityRule> rules = ruleMapper.selectList(
+                new LambdaQueryWrapper<DamQualityRule>()
+                        .eq(DamQualityRule::getTargetTableId, tableId)
+                        .orderByDesc(DamQualityRule::getId));
+        java.util.List<java.util.Map<String, Object>> items = new java.util.ArrayList<>();
+        for (DamQualityRule rule : rules) {
+            java.util.Map<String, Object> item = new java.util.LinkedHashMap<>();
+            item.put("ruleCode", rule.getRuleCode());
+            item.put("ruleName", rule.getRuleCode());
+            item.put("ruleType", rule.getRuleType());
+            item.put("severity", rule.getSeverity());
+            item.put("status", rule.getStatus());
+            DamQualityCheck latest = checkMapper.selectOne(
+                    new LambdaQueryWrapper<DamQualityCheck>()
+                            .eq(DamQualityCheck::getRuleId, rule.getId())
+                            .orderByDesc(DamQualityCheck::getCheckTime)
+                            .last("LIMIT 1"));
+            if (latest != null) {
+                item.put("passRate", latest.getPassRate());
+                item.put("lastScore", latest.getPassRate());
+                item.put("lastCheckTime", latest.getCheckTime());
+                item.put("lastStatus", latest.getResultStatus());
+            }
+            items.add(item);
+        }
+        java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("ruleCount", rules.size());
+        result.put("rules", items);
+        return result;
+    }
+
+    /**
      * 状态字符串 → 状态编码（1-启用 0-禁用）
      *
      * @param status 状态字符串（enabled/active 等）
