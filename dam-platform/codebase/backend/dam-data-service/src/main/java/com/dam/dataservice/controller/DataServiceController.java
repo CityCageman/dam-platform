@@ -1,10 +1,15 @@
 package com.dam.dataservice.controller;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.dam.common.vo.PageResult;
 import com.dam.common.vo.Result;
+import com.dam.dataservice.dto.DataApiExecuteRequest;
+import com.dam.dataservice.dto.DataApiExecutionResult;
 import com.dam.dataservice.dto.DataApiRequest;
+import com.dam.dataservice.dto.DataApiSchemaResult;
 import com.dam.dataservice.entity.DataApi;
 import com.dam.dataservice.entity.DataApiSubscription;
+import com.dam.dataservice.service.DataApiRuntimeService;
 import com.dam.dataservice.service.DataApiService;
 import com.dam.dataservice.service.DataApiSubscriptionService;
 import lombok.RequiredArgsConstructor;
@@ -25,8 +30,9 @@ import java.util.Map;
 /**
  * 数据服务 API 管理接口
  * <p>
- * 提供数据服务运行状态、数据 API 的增删改查与发布/下线，以及 API 订阅关系的
- * 创建、查询与状态变更。本服务只管理元数据，不实现真实 API 网关运行时。
+ * 提供数据服务运行状态、数据 API 的增删改查与发布/下线、已发布 API 的 JDBC
+ * 运行入口与查询结构探测，以及 API 订阅关系的创建、查询与状态变更。本服务只
+ * 管理元数据并提供基础运行入口，不实现完整 API 网关（路由、限流、审计等）。
  * 所有响应统一使用 {@link Result} 包装。
  *
  * @author DAM Platform
@@ -38,6 +44,9 @@ public class DataServiceController {
 
     /** 数据 API 管理服务 */
     private final DataApiService dataApiService;
+
+    /** 数据 API JDBC 运行服务 */
+    private final DataApiRuntimeService dataApiRuntimeService;
 
     /** 数据 API 订阅管理服务 */
     private final DataApiSubscriptionService subscriptionService;
@@ -141,6 +150,39 @@ public class DataServiceController {
     @PostMapping("/apis/{id}/offline")
     public Result<DataApi> offlineApi(@PathVariable Long id) {
         return Result.success(dataApiService.offline(id));
+    }
+
+    /**
+     * 执行已发布的数据 API（需要登录）
+     * <p>
+     * 请求体形如 {@code {"params":{"name":"value"}}}；查询中的 {@code :name}
+     * 会按出现顺序绑定为 PreparedStatement 参数，不拼接 SQL。
+     *
+     * @param id      API ID
+     * @param request 运行请求（params 可为空）
+     * @return 列信息、数据行、行数与耗时
+     */
+    @PostMapping("/apis/{id}/execute")
+    public Result<DataApiExecutionResult> executeApi(
+            @PathVariable Long id,
+            @RequestBody(required = false) DataApiExecuteRequest request) {
+        StpUtil.checkLogin();
+        Map<String, Object> params = request == null ? null : request.getParams();
+        return Result.success(dataApiRuntimeService.execute(id, params));
+    }
+
+    /**
+     * 探测已发布数据 API 的查询参数与返回列结构（需要登录）
+     * <p>
+     * 不返回真实数据：服务端通过 {@code LIMIT 0} 获取结果集元数据。
+     *
+     * @param id API ID
+     * @return 参数名列表与列信息
+     */
+    @GetMapping("/apis/{id}/execute/schema")
+    public Result<DataApiSchemaResult> executeSchema(@PathVariable Long id) {
+        StpUtil.checkLogin();
+        return Result.success(dataApiRuntimeService.schema(id));
     }
 
     /**

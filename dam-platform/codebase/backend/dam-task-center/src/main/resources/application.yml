@@ -52,3 +52,12 @@ sa-token:
   is-share: false
   token-style: jwt
   jwt-secret-key: ${SA_TOKEN_JWT_SECRET_KEY}
+
+dam:
+  task-center:
+    # PENDING 实例超时阈值（分钟）：超时后标记 CANCELLED
+    pending-timeout-minutes: 60
+    # RUNNING 实例超时阈值（分钟）：按 started_at（为空回退 created_at）计时，超时后标记 FAILED
+    running-timeout-minutes: 180
+    # 超时回收扫描间隔（毫秒）；启动后首次扫描固定延迟 60 秒
+    recover-interval-ms: 60000

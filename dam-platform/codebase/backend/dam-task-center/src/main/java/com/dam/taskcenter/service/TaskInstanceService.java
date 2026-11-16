@@ -10,11 +10,18 @@ import com.dam.taskcenter.entity.TaskInstance;
 import com.dam.taskcenter.repository.TaskDefinitionMapper;
 import com.dam.taskcenter.repository.TaskInstanceMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -26,15 +33,38 @@ import java.util.Set;
  * 不执行任务、不伪造 SUCCESS，返回 message=executor not implemented。
  * 状态机：PENDING → RUNNING/SUCCESS/FAILED/CANCELLED；
  * RUNNING → SUCCESS/FAILED/CANCELLED；终态不允许再流转。
+ * <p>
+ * <b>超时回收：</b>由 {@code @Scheduled} 周期扫描长时间停留在 PENDING/RUNNING 的实例
+ * （执行器崩溃或未回填状态），PENDING 超时标记 CANCELLED、RUNNING 超时标记 FAILED，
+ * 统一回填 finished_at 与 error_message“实例超时自动回收”，任何情况下都不会标记 SUCCESS。
+ * 多实例部署通过 PostgreSQL 行锁 {@code FOR UPDATE SKIP LOCKED} + 带状态条件的
+ * {@code UPDATE} 双重保护避免重复回收；单次扫描最多处理 100 条，整批在一个事务内提交，
+ * 单条失败通过 SAVEPOINT 回滚该条并继续处理其余记录。
  *
  * @author DAM Platform
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TaskInstanceService {
 
     /** 单页上限，避免 pageSize 过大拖垮数据库 */
     private static final int MAX_PAGE_SIZE = 100;
+
+    /** 单次回收扫描/处理的最大实例条数（PENDING 与 RUNNING 合计） */
+    private static final int RECOVER_BATCH_SIZE = 100;
+
+    /** 启动后首次回收扫描的延迟（毫秒），固定 60 秒，避开启动期数据库连接竞争 */
+    private static final long RECOVER_INITIAL_DELAY_MS = 60_000L;
+
+    /** 超时回收写入的固定原因（task_instance.error_message 已存在字段） */
+    private static final String RECOVER_ERROR_MESSAGE = "实例超时自动回收";
+
+    /** PENDING 超时后的回收目标状态：取消 */
+    private static final String RECOVER_PENDING_TARGET = "CANCELLED";
+
+    /** RUNNING 超时后的回收目标状态：失败（绝不标记 SUCCESS） */
+    private static final String RECOVER_RUNNING_TARGET = "FAILED";
 
     /** 合法实例状态 */
     private static final Set<String> INSTANCE_STATUSES = Set.of(
@@ -55,6 +85,27 @@ public class TaskInstanceService {
 
     /** 任务实例 Mapper */
     private final TaskInstanceMapper taskInstanceMapper;
+
+    /** 平台事务管理器：超时回收整批一个事务，单条用 SAVEPOINT 隔离 */
+    private final PlatformTransactionManager transactionManager;
+
+    /** PENDING 实例超时阈值（分钟），默认 60 */
+    @Value("${dam.task-center.pending-timeout-minutes:60}")
+    private long pendingTimeoutMinutes;
+
+    /** RUNNING 实例超时阈值（分钟），默认 180 */
+    @Value("${dam.task-center.running-timeout-minutes:180}")
+    private long runningTimeoutMinutes;
+
+    /** 回收扫描间隔（毫秒），默认 60000；仅用于状态接口回显 */
+    @Value("${dam.task-center.recover-interval-ms:60000}")
+    private long recoverIntervalMs;
+
+    /** 最近一次成功扫描的时间，供状态接口查询；volatile 保证调度线程写入可见 */
+    private volatile LocalDateTime lastScanAt;
+
+    /** 最近一次成功扫描回收的实例总数 */
+    private volatile int lastRecoveredCount;
 
     /**
      * 手动触发一次任务。
@@ -191,6 +242,170 @@ public class TaskInstanceService {
             throw new BusinessException(404, "任务实例不存在：" + id);
         }
         return instance;
+    }
+
+    /**
+     * 查询超时回收配置与最近一次扫描结果。
+     * <p>
+     * 供运维确认当前阈值、扫描间隔以及最近一次扫描时间/回收条数；未执行过扫描时
+     * lastScanAt 为 null、lastRecoveredCount 为 0。
+     *
+     * @return 配置与最近扫描结果
+     */
+    public Map<String, Object> recoveryStatus() {
+        Map<String, Object> status = new LinkedHashMap<>();
+        status.put("pendingTimeoutMinutes", pendingTimeoutMinutes);
+        status.put("runningTimeoutMinutes", runningTimeoutMinutes);
+        status.put("recoverIntervalMs", recoverIntervalMs);
+        status.put("initialDelayMs", RECOVER_INITIAL_DELAY_MS);
+        status.put("batchSize", RECOVER_BATCH_SIZE);
+        status.put("pendingRecoveredAs", RECOVER_PENDING_TARGET);
+        status.put("runningRecoveredAs", RECOVER_RUNNING_TARGET);
+        status.put("lastScanAt", lastScanAt);
+        status.put("lastRecoveredCount", lastRecoveredCount);
+        return status;
+    }
+
+    /**
+     * 定时扫描并回收超时任务实例。
+     * <p>
+     * 启动后延迟 {@value #RECOVER_INITIAL_DELAY_MS} 毫秒首次执行，之后按
+     * {@code dam.task-center.recover-interval-ms}（默认 60000）固定延迟重复执行。
+     * 调度线程内的失败只记录日志，不向上抛出，避免调度器因单次数据库异常停止后续扫描。
+     */
+    @Scheduled(fixedDelayString = "${dam.task-center.recover-interval-ms:60000}",
+            initialDelayString = "60000")
+    public void scheduledRecoverTimeoutInstances() {
+        try {
+            Map<String, Object> result = recoverTimeoutInstances();
+            int recovered = (Integer) result.get("recoveredCount");
+            if (recovered > 0) {
+                log.warn("任务实例超时回收完成: recovered={}, pending={}, running={}",
+                        recovered, result.get("pendingRecoveredCount"),
+                        result.get("runningRecoveredCount"));
+            } else {
+                log.debug("任务实例超时回收扫描完成: 无超时实例");
+            }
+        } catch (Exception e) {
+            log.error("任务实例超时回收扫描失败", e);
+        }
+    }
+
+    /**
+     * 立即执行一次超时回收扫描（定时任务与手动接口共用）。
+     * <p>
+     * 整批扫描与条件更新在一个事务内完成；候选行使用 {@code FOR UPDATE SKIP LOCKED}
+     * 加锁，多实例并发扫描时同一条实例只会被一个节点处理。PENDING 超过
+     * {@code pending-timeout-minutes} 标记 CANCELLED，RUNNING 超过
+     * {@code running-timeout-minutes} 标记 FAILED，finished_at 统一回填为扫描时间，
+     * error_message 固定为“实例超时自动回收”；不会把任何实例标记为 SUCCESS。
+     * 单次最多处理 100 条，单条异常通过 SAVEPOINT 回滚后继续处理其余记录。
+     *
+     * @return 本次扫描时间、回收总数与分类计数
+     */
+    public Map<String, Object> recoverTimeoutInstances() {
+        LocalDateTime scanAt = LocalDateTime.now();
+        TransactionTemplate template = new TransactionTemplate(transactionManager);
+        RecoveryResult result = template.execute(status -> recoverInTransaction(scanAt));
+        if (result == null) {
+            throw new IllegalStateException("任务实例超时回收未返回结果");
+        }
+        // 仅在事务成功提交后更新对外可见的扫描状态，避免回滚后状态失真
+        this.lastScanAt = scanAt;
+        this.lastRecoveredCount = result.total();
+
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("scanAt", scanAt);
+        summary.put("recoveredCount", result.total());
+        summary.put("pendingRecoveredCount", result.pendingRecovered());
+        summary.put("runningRecoveredCount", result.runningRecovered());
+        summary.put("pendingTimeoutMinutes", pendingTimeoutMinutes);
+        summary.put("runningTimeoutMinutes", runningTimeoutMinutes);
+        return summary;
+    }
+
+    /**
+     * 在调用方事务内完成候选扫描与批量回收。
+     * <p>
+     * 先扫描 PENDING 超时候选，再用剩余配额扫描 RUNNING 候选，保证单次合计不超过
+     * {@value #RECOVER_BATCH_SIZE} 条。每条记录在嵌套事务（JDBC SAVEPOINT）内执行
+     * 带状态条件的 UPDATE：状态已被其他节点/执行器改变时更新 0 行并跳过；
+     * 单条 SQL 异常只回滚该条 SAVEPOINT，不中断整批。
+     *
+     * @param scanAt 本次扫描基准时间，用于计算超时截止点并作为 finished_at
+     * @return 分类回收计数
+     */
+    private RecoveryResult recoverInTransaction(LocalDateTime scanAt) {
+        LocalDateTime pendingCutoff = scanAt.minusMinutes(Math.max(1L, pendingTimeoutMinutes));
+        LocalDateTime runningCutoff = scanAt.minusMinutes(Math.max(1L, runningTimeoutMinutes));
+
+        List<Long> pendingIds = taskInstanceMapper.selectTimeoutPendingIds(
+                pendingCutoff, RECOVER_BATCH_SIZE);
+        int remaining = RECOVER_BATCH_SIZE - pendingIds.size();
+        List<Long> runningIds = remaining > 0
+                ? taskInstanceMapper.selectTimeoutRunningIds(runningCutoff, remaining)
+                : List.of();
+
+        TransactionTemplate nested = new TransactionTemplate(transactionManager);
+        nested.setPropagationBehavior(TransactionDefinition.PROPAGATION_NESTED);
+
+        int pendingRecovered = recoverBatch(nested, pendingIds,
+                "PENDING", RECOVER_PENDING_TARGET, scanAt);
+        int runningRecovered = recoverBatch(nested, runningIds,
+                "RUNNING", RECOVER_RUNNING_TARGET, scanAt);
+        return new RecoveryResult(pendingRecovered, runningRecovered);
+    }
+
+    /**
+     * 逐条回收一批候选实例，单条失败只跳过该条。
+     *
+     * @param nestedTemplate 嵌套事务模板（SAVEPOINT），隔离单条失败
+     * @param ids            候选实例ID
+     * @param expectedStatus 期望的当前状态
+     * @param targetStatus   回收目标状态（CANCELLED/FAILED）
+     * @param finishedAt     结束时间
+     * @return 实际回收条数
+     */
+    private int recoverBatch(TransactionTemplate nestedTemplate,
+                             List<Long> ids,
+                             String expectedStatus,
+                             String targetStatus,
+                             LocalDateTime finishedAt) {
+        int recovered = 0;
+        for (Long id : ids) {
+            try {
+                Integer updated = nestedTemplate.execute(status ->
+                        taskInstanceMapper.recoverTimeoutById(id, expectedStatus,
+                                targetStatus, finishedAt, RECOVER_ERROR_MESSAGE));
+                if (updated != null && updated > 0) {
+                    recovered++;
+                    log.debug("回收超时任务实例: id={}, {} -> {}", id, expectedStatus, targetStatus);
+                }
+            } catch (Exception e) {
+                // 单条异常仅回滚该条 SAVEPOINT，继续处理其余候选
+                log.warn("回收超时任务实例失败，已跳过: id={}, status={}",
+                        id, expectedStatus, e);
+            }
+        }
+        return recovered;
+    }
+
+    /**
+     * 单次回收扫描结果的分类计数。
+     *
+     * @param pendingRecovered PENDING → CANCELLED 条数
+     * @param runningRecovered RUNNING → FAILED 条数
+     */
+    private record RecoveryResult(int pendingRecovered, int runningRecovered) {
+
+        /**
+         * 回收总数。
+         *
+         * @return pendingRecovered + runningRecovered
+         */
+        int total() {
+            return pendingRecovered + runningRecovered;
+        }
     }
 
     /**

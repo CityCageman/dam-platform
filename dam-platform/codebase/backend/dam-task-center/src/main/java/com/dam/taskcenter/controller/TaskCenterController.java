@@ -1,5 +1,8 @@
 package com.dam.taskcenter.controller;
 
+import cn.dev33.satoken.exception.NotLoginException;
+import cn.dev33.satoken.stp.StpUtil;
+import com.dam.common.exception.BusinessException;
 import com.dam.common.vo.PageResult;
 import com.dam.common.vo.Result;
 import com.dam.taskcenter.dto.TaskCallbackFinishRequest;
@@ -39,6 +42,7 @@ import java.util.Map;
  * 返回 message=executor not implemented，不伪造执行成功。
  * 回调 start 支持按来源三元组幂等登记实例，并按需自动登记任务定义；
  * 回调 finish/log/get 复用 task_instance/task_log 正常工作。
+ * 另提供超时回收状态查询与手动扫描（不提供伪造 SUCCESS 的入口）。
  * 所有响应统一使用 {@link Result} 包装。
  *
  * @author DAM Platform
@@ -74,6 +78,33 @@ public class TaskCenterController {
         status.put("storage", "dam_task");
         status.put("executor", "not implemented");
         return Result.success(status);
+    }
+
+    /**
+     * 查询超时回收配置与最近一次扫描结果。
+     * <p>
+     * 返回 pendingTimeoutMinutes/runningTimeoutMinutes/recoverIntervalMs 等配置，
+     * 以及 lastScanAt、lastRecoveredCount。只读，不触发回收。
+     *
+     * @return 回收配置与最近扫描结果
+     */
+    @GetMapping("/recovery/status")
+    public Result<Map<String, Object>> recoveryStatus() {
+        return Result.success(taskInstanceService.recoveryStatus());
+    }
+
+    /**
+     * 手动触发一次超时回收扫描（需登录）。
+     * <p>
+     * 与定时任务共用同一套逻辑：PENDING 超时标记 CANCELLED，RUNNING 超时标记 FAILED，
+     * 单次最多处理 100 条；不提供任何手动标记 SUCCESS 的入口。
+     *
+     * @return 本次扫描时间、回收总数与分类计数
+     */
+    @PostMapping("/recovery/run")
+    public Result<Map<String, Object>> runRecovery() {
+        requireLogin();
+        return Result.success(taskInstanceService.recoverTimeoutInstances());
     }
 
     /**
@@ -290,5 +321,18 @@ public class TaskCenterController {
     @GetMapping("/callbacks/{instanceId}")
     public Result<TaskCallbackResponse> callback(@PathVariable Long instanceId) {
         return Result.success(taskCallbackService.get(instanceId));
+    }
+
+    /**
+     * 校验当前请求已登录；未登录统一转换为 401 业务异常。
+     * <p>
+     * 仅用于手动触发回收扫描等运维操作，避免匿名请求反复触发全量扫描。
+     */
+    private static void requireLogin() {
+        try {
+            StpUtil.checkLogin();
+        } catch (NotLoginException e) {
+            throw new BusinessException(401, "未登录");
+        }
     }
 }
