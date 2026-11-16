@@ -78,7 +78,7 @@ public class OpenApiRateLimiter {
      * @param now    当前时间（毫秒）
      */
     private void evictExpired(Deque<Long> window, long now) {
-        while (!window.isEmpty() && now - window.peekFirst() > WINDOW_MS) {
+        while (!window.isEmpty() && now - window.peekFirst() >= WINDOW_MS) {
             window.pollFirst();
         }
     }

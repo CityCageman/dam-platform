@@ -159,9 +159,9 @@ public class OpenApiService {
             log.info("开放 API 在执行前被下线: apiCode={}", safeForLog(api.getApiCode()));
             return new BusinessException(404, "数据 API 不存在");
         }
-        log.warn("开放 API 调用失败: apiCode={}, loginId={}, code={}, message={}",
+        log.warn("开放 API 调用失败: apiCode={}, loginId={}, code={}, errorType={}",
                 safeForLog(api.getApiCode()), safeForLog(loginId),
-                e.getCode(), e.getMessage());
+                e.getCode(), e.getClass().getSimpleName());
         return e;
     }
 
