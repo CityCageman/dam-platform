@@ -20,6 +20,7 @@
 | 8 | `v28_integration_run.sql` | 集成运行记录 | `dam_integration` | 建表/索引 |
 | 9 | `v29_scheduler_dispatch.sql` | 调度自动派发时间 | `dam_scheduler` | 加列/索引 |
 | 10 | `v30_task_callback.sql` | TaskCenter 回调来源字段与幂等键 | `dam_task` | 加列/索引 |
+| 11 | `v31_dev_datasource.sql` | 数据开发 SQL 执行数据源配置 | `dam_dev` | 加列 |
 
 要点：
 

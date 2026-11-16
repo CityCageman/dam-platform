@@ -9,7 +9,8 @@ import lombok.Data;
  * <p>
  * 为 null 的字段保持原值；taskCode 只用于校验是否被修改，不允许改变。
  * content 提供且与当前内容不同时，服务端会在同一事务内将 currentVersion 加 1
- * 并追加一条版本记录；content 相同则不产生新版本。
+ * 并追加一条版本记录；content 相同则不产生新版本。datasourceConfig 变更只更新
+ * 主表字段，不单独生成版本记录。
  *
  * @author DAM Platform
  */
@@ -33,6 +34,14 @@ public class DevTaskUpdateRequest {
 
     /** 关联数据源 ID（可选） */
     private Long datasourceId;
+
+    /**
+     * SQL 任务执行用 JDBC 数据源配置（可选）
+     * <p>
+     * 支持 JSON 对象或 JSON 字符串；为 null 时保持原值，传空字符串表示清空配置。
+     * 该字段变更不会递增任务版本号（仅 content 变更升版本），仅 SQL 任务执行时读取。
+     */
+    private Object datasourceConfig;
 
     /** 任务脚本内容（可选；变更时生成新版本） */
     private String content;

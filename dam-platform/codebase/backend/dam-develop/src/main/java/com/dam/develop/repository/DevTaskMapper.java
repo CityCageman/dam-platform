@@ -1,9 +1,12 @@
 package com.dam.develop.repository;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.dam.common.config.JsonbTypeHandler;
 import com.dam.develop.entity.DevTask;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Result;
+import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
 
 /**
@@ -39,5 +42,10 @@ public interface DevTaskMapper extends BaseMapper<DevTask> {
      * @return 任务定义；不存在或已逻辑删除时返回 null
      */
     @Select("SELECT * FROM dam_dev.dev_task WHERE id = #{id} AND deleted_at IS NULL FOR UPDATE")
+    @Results(id = "devTaskWithDatasourceConfig", value = {
+            // 自定义 SQL 不会使用 MyBatis-Plus 的 autoResultMap，需显式指定 JSONB 处理器
+            @Result(column = "datasource_config", property = "datasourceConfig",
+                    typeHandler = JsonbTypeHandler.class)
+    })
     DevTask selectByIdForUpdate(@Param("id") Long id);
 }

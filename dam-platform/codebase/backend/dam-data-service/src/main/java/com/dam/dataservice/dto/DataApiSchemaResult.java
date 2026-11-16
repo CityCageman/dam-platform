@@ -19,7 +19,7 @@ import java.util.List;
 @AllArgsConstructor
 public class DataApiSchemaResult {
 
-    /** 查询中的命名参数，按出现顺序排列（同名参数可能重复出现） */
+    /** 查询中的命名参数（去重后按首次出现顺序排列） */
     private List<String> params;
 
     /** 结果列信息 */

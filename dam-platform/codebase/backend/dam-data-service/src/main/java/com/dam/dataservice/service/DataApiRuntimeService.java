@@ -19,6 +19,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -126,7 +128,7 @@ public class DataApiRuntimeService {
         Map<String, Object> values = params == null ? Collections.emptyMap() : params;
         long startedAt = System.nanoTime();
         try (Connection connection = openConnection(target)) {
-            beginReadOnlyTransaction(connection);
+            beginReadOnlyTransaction(connection, target.queryTimeoutSeconds());
             try (PreparedStatement statement = prepare(connection, target.parsedQuery().sql(),
                     target.queryTimeoutSeconds(), MAX_ROWS)) {
                 bindParameters(statement, target.parsedQuery().paramNames(), values);
@@ -169,7 +171,7 @@ public class DataApiRuntimeService {
         String probeSql = "SELECT * FROM (" + target.parsedQuery().sql()
                 + ") AS dam_api_schema_probe LIMIT 0";
         try (Connection connection = openConnection(target)) {
-            beginReadOnlyTransaction(connection);
+            beginReadOnlyTransaction(connection, target.queryTimeoutSeconds());
             try (PreparedStatement statement = prepare(connection, probeSql,
                     target.queryTimeoutSeconds(), 1)) {
                 List<String> paramNames = target.parsedQuery().paramNames();
@@ -179,7 +181,10 @@ public class DataApiRuntimeService {
                 }
                 try (ResultSet resultSet = statement.executeQuery()) {
                     List<DataApiColumn> columns = readColumns(resultSet.getMetaData());
-                    return new DataApiSchemaResult(List.copyOf(paramNames), columns);
+                    // Schema 仅描述参数集合，同名参数只保留首次出现，顺序不变
+                    List<String> uniqueParams = new ArrayList<>(
+                            new LinkedHashSet<>(paramNames));
+                    return new DataApiSchemaResult(uniqueParams, columns);
                 }
             } finally {
                 rollbackQuietly(connection);
@@ -263,6 +268,9 @@ public class DataApiRuntimeService {
             properties.setProperty("password", target.password());
         }
         properties.setProperty("connectTimeout", String.valueOf(target.connectTimeoutSeconds()));
+        // socketTimeout 兜底：查询超时后驱动取消语句时，避免网络读取无限阻塞
+        properties.setProperty("socketTimeout",
+                String.valueOf(target.queryTimeoutSeconds() + 5));
         // readOnly + readOnlyMode=always：连接层面拒绝写操作
         properties.setProperty("readOnly", "true");
         properties.setProperty("readOnlyMode", "always");
@@ -271,14 +279,24 @@ public class DataApiRuntimeService {
     }
 
     /**
-     * 开启只读事务（关闭自动提交并由调用方统一回滚）
+     * 开启显式的只读事务
+     * <p>
+     * 仅依赖连接属性不够稳妥：pgjdbc 在 {@code readOnlyMode=always} 下切换到
+     * 手动提交时会把会话重置为 READ WRITE。因此这里关闭自动提交后显式执行
+     * {@code SET TRANSACTION READ ONLY}，确保查询所在事务由数据库强制只读。
      *
-     * @param connection JDBC 连接
+     * @param connection     JDBC 连接
+     * @param timeoutSeconds 事务内语句超时（秒）
      * @throws SQLException 设置失败
      */
-    private void beginReadOnlyTransaction(Connection connection) throws SQLException {
+    private void beginReadOnlyTransaction(Connection connection, int timeoutSeconds)
+            throws SQLException {
         connection.setAutoCommit(false);
         connection.setReadOnly(true);
+        try (Statement statement = connection.createStatement()) {
+            statement.setQueryTimeout(timeoutSeconds);
+            statement.execute("SET TRANSACTION READ ONLY");
+        }
     }
 
     /**
@@ -686,7 +704,7 @@ public class DataApiRuntimeService {
             message = message.replace(target.url(), "<jdbc-url>");
         }
         // 密码可能出现在 URL 参数或异常文本中，先精确替换再兜底 password=xxx
-        if (target.password() != null && target.password().length() >= 4) {
+        if (target.password() != null && !target.password().isEmpty()) {
             message = message.replace(target.password(), "******");
         }
         message = PASSWORD_ASSIGNMENT.matcher(message).replaceAll("password=******");

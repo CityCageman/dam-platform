@@ -16,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -59,6 +61,12 @@ public class DevTaskService {
 
     /** 内容变更默认说明 */
     private static final String DEFAULT_CONTENT_CHANGE_NOTE = "内容变更";
+
+    /** datasourceConfig 规范化后的最大长度（字符） */
+    private static final int MAX_DATASOURCE_CONFIG_LENGTH = 16384;
+
+    /** datasourceConfig 与 JSON 对象互转的映射器 */
+    private static final JsonMapper JSON_MAPPER = JsonMapper.builder().build();
 
     /** 任务 Mapper */
     private final DevTaskMapper taskMapper;
@@ -148,6 +156,8 @@ public class DevTaskService {
         task.setTaskName(taskName);
         task.setTaskType(taskType);
         task.setDatasourceId(request.getDatasourceId());
+        // 仅 SQL 任务执行时读取该配置；此处只做 JSON 对象规范化，不校验字段内容
+        task.setDatasourceConfig(normalizeDatasourceConfig(request.getDatasourceConfig()));
         task.setContent(content);
         task.setStatus(DevTask.STATUS_DRAFT);
         task.setCurrentVersion(1);
@@ -180,7 +190,8 @@ public class DevTaskService {
      * <p>
      * taskCode 一经创建不允许修改；请求中为 null 的字段保持原值。content 与当前内容
      * 不同时，currentVersion 加 1 并追加版本记录；content 相同则不产生新版本。
-     * 版本写入与主表更新在同一事务内完成。
+     * datasourceConfig 变更只更新主表字段，不单独升版本。版本写入与主表更新在同一
+     * 事务内完成。
      *
      * @param id      任务 ID
      * @param request 更新请求
@@ -206,6 +217,10 @@ public class DevTaskService {
         }
         if (request.getDatasourceId() != null) {
             task.setDatasourceId(request.getDatasourceId());
+        }
+        // datasourceConfig 变更只更新主表字段，不生成版本记录；null 表示保持原值
+        if (request.getDatasourceConfig() != null) {
+            task.setDatasourceConfig(normalizeDatasourceConfig(request.getDatasourceConfig()));
         }
         if (request.getDescription() != null) {
             task.setDescription(trimToNull(request.getDescription()));
@@ -332,6 +347,54 @@ public class DevTaskService {
             throw new BusinessException(404, "任务版本不存在: " + versionNo);
         }
         return version;
+    }
+
+    /**
+     * 规范化 datasourceConfig：接受 JSON 字符串或 JSON 对象，统一保存为 JSON 对象字符串
+     * <p>
+     * 该配置仅 SQL 任务执行时使用。为 null 表示不修改；空字符串表示清空配置。
+     * 这里只校验“必须是 JSON 对象”，不校验 url/username/password 等字段，字段校验
+     * 由执行服务在真正执行时完成，避免编辑中的配置被过早拦截。
+     *
+     * @param value 请求中的原始值（JSON 字符串或对象）
+     * @return 规范化后的 JSON 字符串；清空时返回 null
+     */
+    private static String normalizeDatasourceConfig(Object value) {
+        if (value == null) {
+            return null;
+        }
+        JsonNode node;
+        if (value instanceof String text) {
+            String trimmed = text.trim();
+            if (trimmed.isEmpty()) {
+                return null;
+            }
+            try {
+                node = JSON_MAPPER.readTree(trimmed);
+            } catch (Exception e) {
+                throw new BusinessException(400, "datasourceConfig 不是合法的 JSON");
+            }
+        } else {
+            try {
+                node = JSON_MAPPER.valueToTree(value);
+            } catch (Exception e) {
+                throw new BusinessException(400, "datasourceConfig 不是合法的 JSON 对象");
+            }
+        }
+        if (node == null || !node.isObject()) {
+            throw new BusinessException(400, "datasourceConfig 必须是 JSON 对象");
+        }
+        String json;
+        try {
+            json = JSON_MAPPER.writeValueAsString(node);
+        } catch (Exception e) {
+            throw new BusinessException(400, "datasourceConfig 序列化失败");
+        }
+        if (json.length() > MAX_DATASOURCE_CONFIG_LENGTH) {
+            throw new BusinessException(400,
+                    "datasourceConfig 长度不能超过 " + MAX_DATASOURCE_CONFIG_LENGTH);
+        }
+        return json;
     }
 
     /**

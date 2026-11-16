@@ -37,6 +37,14 @@ public class DevTaskCreateRequest {
     /** 关联数据源 ID（可选） */
     private Long datasourceId;
 
+    /**
+     * SQL 任务执行用 JDBC 数据源配置（可选）
+     * <p>
+     * 支持传入 JSON 对象，也支持传入 JSON 字符串；服务端统一规范化后以 JSONB 保存。
+     * 仅 SQL 任务会在执行时读取该配置，其他任务类型不会使用。
+     */
+    private Object datasourceConfig;
+
     /** 任务脚本内容（必填） */
     @NotBlank(message = "content 不能为空")
     private String content;
