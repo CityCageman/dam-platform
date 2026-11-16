@@ -14,7 +14,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * @author DAM Platform
  */
 @SpringBootApplication(scanBasePackages = {"com.dam.catalog", "com.dam.common"})
-@MapperScan({"com.dam.catalog.repository", "com.dam.catalog.metric.repository", "com.dam.catalog.knowledge.repository", "com.dam.catalog.report.repository", "com.dam.catalog.system.repository", "com.dam.catalog.asset.repository", "com.dam.catalog.metadata.repository"})
+@MapperScan({"com.dam.catalog.repository", "com.dam.catalog.knowledge.repository", "com.dam.catalog.report.repository", "com.dam.catalog.system.repository", "com.dam.catalog.asset.repository", "com.dam.catalog.metadata.repository"})
 @EnableScheduling
 public class DamCatalogApplication {
     /**

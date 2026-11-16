@@ -431,15 +431,15 @@ export const knowledgeApi = {
 }
 
 export const metricApi = {
-  list(params: any) { return request.get('/catalog/metrics', { params }) },
-  get(id: number) { return request.get(`/catalog/metrics/${id}`) },
-  create(data: any) { return request.post('/catalog/metrics', data) },
-  update(id: number, data: any) { return request.put(`/catalog/metrics/${id}`, data) },
-  remove(id: number) { return request.delete(`/catalog/metrics/${id}`) },
-  aiSql(id: number) { return request.post(`/catalog/metrics/${id}/ai-sql`, null, { timeout: 300000 }) },
-  values(id: number) { return request.get(`/catalog/metrics/${id}/values`) },
-  addValue(id: number, data: any) { return request.post(`/catalog/metrics/${id}/values`, data) },
-  removeValue(id: number, valueId: number) { return request.delete(`/catalog/metrics/${id}/values/${valueId}`) }
+  list(params: any) { return request.get('/metrics', { params }) },
+  get(id: number) { return request.get(`/metrics/${id}`) },
+  create(data: any) { return request.post('/metrics', data) },
+  update(id: number, data: any) { return request.put(`/metrics/${id}`, data) },
+  remove(id: number) { return request.delete(`/metrics/${id}`) },
+  aiSql(id: number) { return request.post(`/metrics/${id}/ai-sql`, null, { timeout: 300000 }) },
+  values(id: number) { return request.get(`/metrics/${id}/values`) },
+  addValue(id: number, data: any) { return request.post(`/metrics/${id}/values`, data) },
+  removeValue(id: number, valueId: number) { return request.delete(`/metrics/${id}/values/${valueId}`) }
 }
 
 export const modelApi = {

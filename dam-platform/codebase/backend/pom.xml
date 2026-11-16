@@ -75,6 +75,7 @@
         <module>dam-gateway</module>
         <module>dam-auth</module>
         <module>dam-catalog</module>
+        <module>dam-metric</module>
         <module>dam-lineage</module>
         <module>dam-standard</module>
         <module>dam-quality</module>

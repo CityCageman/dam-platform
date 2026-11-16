@@ -6,8 +6,10 @@ import java.util.List;
 
 /**
  * 指标只读查询端口。
- * 当前由本地适配器实现；拆分 dam-metric 服务后可替换为 HTTP 适配器，
- * Knowledge/Report 不再直接依赖 Metric Mapper。
+ * <p>
+ * 指标数据由 dam-metric 服务独占，实现为
+ * {@link com.dam.catalog.shared.adapter.MetricLookupHttpAdapter}（HTTP 调用 dam-metric），
+ * Knowledge/Report 不再直接依赖 Metric Mapper 或 dam_metric 表。
  */
 public interface MetricLookupPort {
 

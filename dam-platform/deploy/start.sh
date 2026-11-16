@@ -30,6 +30,7 @@ SERVICES=(
   "dam-scheduler:8096"
   "dam-data-service:8097"
   "dam-portal:8091"
+  "dam-metric:8094"
   "dam-gateway:8080"
 )
 

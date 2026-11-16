@@ -1,18 +1,18 @@
 package com.dam.catalog.metric.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
-import com.dam.common.config.JsonbTypeHandler;
 import lombok.Data;
 
 import java.time.LocalDateTime;
 
 /**
- * 指标定义：MANUAL-手工填报，COMPUTED-系统计算
+ * 指标定义跨服务 DTO：MANUAL-手工填报，COMPUTED-系统计算。
+ * <p>
+ * 指标数据已由 dam-metric 服务独占（dam_metric.metric_definition），
+ * catalog 仅通过 {@code MetricLookupPort} 的 HTTP 适配器读取，
+ * 因此本类不再携带 MyBatis-Plus 表映射注解。
  */
 @Data
-@TableName(value = "metric_definition", schema = "dam_metric")
 public class MetricDefinition {
-    @TableId(type = IdType.AUTO)
     private Long id;
 
     private String metricCode;
@@ -24,16 +24,15 @@ public class MetricDefinition {
     private String unit;
     private Long dataSourceId;
 
-    @TableField(typeHandler = JsonbTypeHandler.class)
+    /** JSON 字符串：来源表 */
     private String sourceTables;
 
     private String sqlExpression;
 
-    /** 取数规则：粒度、去重、必用表、条件、主报表/下钻模板 */
-    @TableField(typeHandler = JsonbTypeHandler.class)
+    /** JSON 字符串：取数规则（粒度、去重、必用表、条件、主报表/下钻模板） */
     private String reportSpec;
 
-    @TableField(typeHandler = JsonbTypeHandler.class)
+    /** JSON 字符串：维度 */
     private String dimensions;
 
     private String timeGrain;

@@ -57,6 +57,10 @@ spring:
               uri: ${DAM_ROUTE_AI_WORKBENCH:http://localhost:8090}
               predicates:
                 - Path=/api/ai-workbench/**
+            - id: dam-metric
+              uri: ${DAM_ROUTE_METRIC:http://localhost:8094}
+              predicates:
+                - Path=/api/metrics/**
             - id: dam-integration
               uri: ${DAM_ROUTE_INTEGRATION:http://localhost:8095}
               predicates:
