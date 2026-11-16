@@ -1003,6 +1003,16 @@ public class IntegrationExecutionService {
      */
     private record Endpoint(String url, String username, String password, String schema,
                             String table, String query, Integer batchSize) {
+
+        /**
+         * 防御性重写：即使未来有人打印配置对象，也不会把密码写进日志
+         */
+        @Override
+        public String toString() {
+            return "Endpoint[url=" + url + ", username=" + username
+                    + ", password=***, schema=" + schema + ", table=" + table
+                    + ", query=" + query + ", batchSize=" + batchSize + "]";
+        }
     }
 
     /**

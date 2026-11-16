@@ -50,4 +50,19 @@ public class TaskInstance {
 
     /** 实例创建时间 */
     private LocalDateTime createdAt;
+
+    /** 回调来源服务 */
+    private String sourceService;
+
+    /** 回调来源任务编码 */
+    private String sourceTaskCode;
+
+    /** 回调来源运行ID */
+    private String sourceRunId;
+
+    /** 回调运行标题 */
+    private String title;
+
+    /** 回调运行参数 JSON 文本 */
+    private String payload;
 }

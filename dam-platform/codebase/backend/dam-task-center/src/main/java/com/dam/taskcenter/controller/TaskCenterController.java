@@ -2,12 +2,16 @@ package com.dam.taskcenter.controller;
 
 import com.dam.common.vo.PageResult;
 import com.dam.common.vo.Result;
+import com.dam.taskcenter.dto.TaskCallbackFinishRequest;
+import com.dam.taskcenter.dto.TaskCallbackRequest;
+import com.dam.taskcenter.dto.TaskCallbackResponse;
 import com.dam.taskcenter.dto.TaskDefinitionRequest;
 import com.dam.taskcenter.dto.TaskLogRequest;
 import com.dam.taskcenter.dto.TaskStatusRequest;
 import com.dam.taskcenter.entity.TaskDefinition;
 import com.dam.taskcenter.entity.TaskInstance;
 import com.dam.taskcenter.entity.TaskLog;
+import com.dam.taskcenter.service.TaskCallbackService;
 import com.dam.taskcenter.service.TaskDefinitionService;
 import com.dam.taskcenter.service.TaskInstanceService;
 import com.dam.taskcenter.service.TaskLogService;
@@ -30,9 +34,11 @@ import java.util.Map;
 /**
  * 统一任务中心 API。
  * <p>
- * 提供任务定义 CRUD、手动触发、任务实例查询/状态流转与日志追加。
+ * 提供任务定义 CRUD、手动触发、任务实例查询/状态流转、日志追加与统一执行回调。
  * 本服务只提供数据库支撑，不实现任务执行器：触发接口只创建 PENDING 实例，
  * 返回 message=executor not implemented，不伪造执行成功。
+ * 回调 start 因 task_instance 缺少来源字段且 task_code 无唯一约束，返回 501；
+ * 回调 finish/log/get 复用 task_instance/task_log 正常工作。
  * 所有响应统一使用 {@link Result} 包装。
  *
  * @author DAM Platform
@@ -50,6 +56,9 @@ public class TaskCenterController {
 
     /** 任务日志服务 */
     private final TaskLogService taskLogService;
+
+    /** 统一任务回调服务 */
+    private final TaskCallbackService taskCallbackService;
 
     /**
      * 任务中心运行状态。
@@ -222,5 +231,65 @@ public class TaskCenterController {
     public Result<TaskLog> appendLog(@PathVariable Long id,
                                      @Valid @RequestBody TaskLogRequest request) {
         return Result.success(taskLogService.append(id, request));
+    }
+
+    /**
+     * 回调开始：登记/复用任务实例。
+     * <p>
+     * 先校验任务定义：不存在返回 404 并提示先创建任务定义。
+     * 由于现有 task_instance 缺少 source_service/source_run_id 字段、task_code
+     * 长度仅 64 且无唯一约束，无法可靠持久化
+     * sourceService+sourceTaskCode+sourceRunId 幂等键；定义存在时统一返回 501，
+     * 不创建实例，不伪造幂等成功。数据库迁移后可在此启用。
+     *
+     * @param request 回调开始请求
+     * @return 不返回成功结果；定义不存在 404，定义存在但暂不支持幂等 501
+     */
+    @PostMapping("/callbacks/start")
+    public Result<TaskCallbackResponse> startCallback(
+            @Valid @RequestBody TaskCallbackRequest request) {
+        return Result.success(taskCallbackService.start(request));
+    }
+
+    /**
+     * 回调结束：把实例更新为终态 SUCCESS/FAILED/CANCELLED。
+     * <p>
+     * 回填 startedAt/finishedAt；errorMessage 写入实例；
+     * rowsRead/rowsWritten 因实例无对应列，以结构化日志写入 task_log 并回显。
+     *
+     * @param instanceId 实例ID
+     * @param request    回调结束请求
+     * @return 更新后的实例快照
+     */
+    @PostMapping("/callbacks/{instanceId}/finish")
+    public Result<TaskCallbackResponse> finishCallback(
+            @PathVariable Long instanceId,
+            @Valid @RequestBody TaskCallbackFinishRequest request) {
+        return Result.success(taskCallbackService.finish(instanceId, request));
+    }
+
+    /**
+     * 回调日志：追加一条任务实例日志。
+     *
+     * @param instanceId 实例ID
+     * @param request    日志请求（message 必填，level 缺省 INFO）
+     * @return 追加后的日志
+     */
+    @PostMapping("/callbacks/{instanceId}/log")
+    public Result<TaskLog> appendCallbackLog(
+            @PathVariable Long instanceId,
+            @Valid @RequestBody TaskLogRequest request) {
+        return Result.success(taskCallbackService.appendLog(instanceId, request));
+    }
+
+    /**
+     * 查询回调实例。
+     *
+     * @param instanceId 实例ID
+     * @return 实例快照（含从结束日志读取的 rowsRead/rowsWritten）
+     */
+    @GetMapping("/callbacks/{instanceId}")
+    public Result<TaskCallbackResponse> callback(@PathVariable Long instanceId) {
+        return Result.success(taskCallbackService.get(instanceId));
     }
 }

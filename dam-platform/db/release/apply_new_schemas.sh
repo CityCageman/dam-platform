@@ -50,6 +50,7 @@ MIGRATIONS=(
   "v27_dev_task.sql"
   "v28_integration_run.sql"
   "v29_scheduler_dispatch.sql"
+  "v30_task_callback.sql"
 )
 
 # 迁移完成后必须存在的 schema
