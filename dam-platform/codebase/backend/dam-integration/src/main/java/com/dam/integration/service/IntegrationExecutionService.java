@@ -10,6 +10,8 @@ import com.dam.integration.entity.IntegrationRun;
 import com.dam.integration.repository.IntegrationJobMapper;
 import com.dam.integration.repository.IntegrationRunMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -129,6 +131,10 @@ public class IntegrationExecutionService {
 
     /** 平台事务管理器，用于把状态变更做成短事务，避免长事务占用连接 */
     private final PlatformTransactionManager transactionManager;
+
+    /** 孤儿运行判定阈值（分钟）：服务崩溃会留下 PENDING/RUNNING 记录，超时后标记 FAILED */
+    @Value("${dam.integration.stale-run-minutes:30}")
+    private long staleRunMinutes;
 
     /**
      * 构造执行服务
@@ -263,6 +269,53 @@ public class IntegrationExecutionService {
         });
         log.error("集成同步任务未能提交到线程池: runId={}, jobId={}, error={}",
                 runId, jobId, error);
+    }
+
+    /**
+     * 回收服务崩溃遗留的 PENDING/RUNNING 运行记录。
+     * <p>
+     * 执行线程是进程内的，服务重启后原线程已不存在；如果不回收，这些记录会永久占用
+     * “同一任务禁止并发执行”的约束。超过配置阈值的记录标记 FAILED，并把仍处于
+     * RUNNING 的任务置为 FAILED，允许人工重试。
+     */
+    @Scheduled(fixedDelayString = "${dam.integration.stale-scan-interval-ms:60000}",
+            initialDelayString = "${dam.integration.stale-scan-interval-ms:60000}")
+    public void recoverStaleRuns() {
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(Math.max(1, staleRunMinutes));
+        List<IntegrationRun> stale = runMapper.selectList(
+                new LambdaQueryWrapper<IntegrationRun>()
+                        .in(IntegrationRun::getStatus,
+                                IntegrationRun.STATUS_PENDING, IntegrationRun.STATUS_RUNNING)
+                        .lt(IntegrationRun::getCreatedAt, cutoff)
+                        .last("LIMIT 100"));
+        if (stale.isEmpty()) {
+            return;
+        }
+        TransactionTemplate template = new TransactionTemplate(transactionManager);
+        template.executeWithoutResult(status -> {
+            LocalDateTime now = LocalDateTime.now();
+            for (IntegrationRun run : stale) {
+                String message = "执行超时或服务重启，运行记录已回收";
+                LambdaUpdateWrapper<IntegrationRun> runUpdate = new LambdaUpdateWrapper<>();
+                runUpdate.eq(IntegrationRun::getId, run.getId())
+                        .in(IntegrationRun::getStatus,
+                                IntegrationRun.STATUS_PENDING, IntegrationRun.STATUS_RUNNING)
+                        .set(IntegrationRun::getStatus, IntegrationRun.STATUS_FAILED)
+                        .set(IntegrationRun::getFinishedAt, now)
+                        .set(IntegrationRun::getErrorMessage, message);
+                runMapper.update(null, runUpdate);
+
+                LambdaUpdateWrapper<IntegrationJob> jobUpdate = new LambdaUpdateWrapper<>();
+                jobUpdate.eq(IntegrationJob::getId, run.getJobId())
+                        .eq(IntegrationJob::getStatus, IntegrationJob.STATUS_RUNNING)
+                        .set(IntegrationJob::getStatus, IntegrationJob.STATUS_FAILED)
+                        .set(IntegrationJob::getLastError, message)
+                        .set(IntegrationJob::getUpdatedAt, now)
+                        .set(IntegrationJob::getUpdatedBy, "system");
+                jobMapper.update(null, jobUpdate);
+            }
+        });
+        log.warn("回收集成孤儿运行记录 {} 条，阈值 {} 分钟", stale.size(), staleRunMinutes);
     }
 
     /**

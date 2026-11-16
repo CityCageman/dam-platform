@@ -3,6 +3,7 @@ package com.dam.integration;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * 数据集成服务启动类
@@ -15,6 +16,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  */
 @SpringBootApplication(scanBasePackages = {"com.dam.integration", "com.dam.common"})
 @MapperScan("com.dam.integration.repository")
+@EnableScheduling
 public class DamIntegrationApplication {
 
     /**
