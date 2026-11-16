@@ -1,6 +1,10 @@
 package com.dam.catalog.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.dam.catalog.quality.entity.*;
+import com.dam.catalog.quality.repository.*;
+import com.dam.catalog.lineage.entity.*;
+import com.dam.catalog.lineage.repository.*;
 import com.dam.catalog.entity.*;
 import com.dam.catalog.metadata.entity.*;
 import com.dam.catalog.asset.entity.*;
