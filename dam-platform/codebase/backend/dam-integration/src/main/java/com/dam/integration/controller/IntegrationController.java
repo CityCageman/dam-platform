@@ -3,8 +3,10 @@ package com.dam.integration.controller;
 import com.dam.common.vo.PageResult;
 import com.dam.common.vo.Result;
 import com.dam.integration.entity.IntegrationJob;
+import com.dam.integration.entity.IntegrationRun;
 import com.dam.integration.model.ConnectorDefinition;
 import com.dam.integration.service.IntegrationCatalogService;
+import com.dam.integration.service.IntegrationExecutionService;
 import com.dam.integration.service.IntegrationJobService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -24,11 +26,10 @@ import java.util.Map;
 /**
  * 数据集成接口
  * <p>
- * 提供运行状态、连接器目录与集成任务管理。所有响应统一使用 {@link Result} 包装；
+ * 提供运行状态、连接器目录、集成任务管理与运行记录查询。所有响应统一使用 {@link Result} 包装；
  * 校验失败与任务不存在分别抛出 400/404 业务异常，由 dam-common 的全局异常处理器转换。
  * <p>
- * 任务管理已接入 dam_integration.integration_job；trigger 只标记 RUNNING，
- * 不包含真实同步执行引擎。
+ * 任务 trigger 使用异步 JDBC 全量同步执行器，接口只返回受理结果与 runId，不阻塞请求。
  *
  * @author DAM Platform
  */
@@ -42,6 +43,9 @@ public class IntegrationController {
 
     /** 集成任务管理服务 */
     private final IntegrationJobService integrationJobService;
+
+    /** 集成同步执行服务（运行记录查询） */
+    private final IntegrationExecutionService integrationExecutionService;
 
     /**
      * 服务运行状态
@@ -159,16 +163,40 @@ public class IntegrationController {
     }
 
     /**
-     * 触发任务
+     * 触发任务（异步执行）
      * <p>
-     * 当前只把任务状态标记为 RUNNING 并返回 accepted=true / taskCreated=false，
-     * 不会创建真实同步任务，也不伪造同步完成结果。
+     * 创建 PENDING 运行记录后立即返回 accepted=true、runId、status=ACCEPTED；
+     * 同一任务已有 PENDING/RUNNING 记录时返回 409。
      *
      * @param id 任务 ID
-     * @return accepted、taskCreated、message 等触发结果
+     * @return accepted、runId、jobId、runNo、status
      */
     @PostMapping("/jobs/{id}/trigger")
     public Result<Map<String, Object>> trigger(@PathVariable Long id) {
         return Result.success(integrationJobService.triggerJob(id));
+    }
+
+    /**
+     * 查询任务的运行记录（按 run_no 倒序）
+     *
+     * @param id    任务 ID
+     * @param limit 返回条数，默认 50，最大 200
+     * @return 运行记录列表
+     */
+    @GetMapping("/jobs/{id}/runs")
+    public Result<List<IntegrationRun>> runs(@PathVariable Long id,
+                                             @RequestParam(defaultValue = "50") Integer limit) {
+        return Result.success(integrationExecutionService.listRuns(id, limit));
+    }
+
+    /**
+     * 查询运行记录详情
+     *
+     * @param runId 运行记录 ID
+     * @return 运行记录
+     */
+    @GetMapping("/runs/{runId}")
+    public Result<IntegrationRun> run(@PathVariable Long runId) {
+        return Result.success(integrationExecutionService.getRun(runId));
     }
 }

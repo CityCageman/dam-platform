@@ -233,10 +233,11 @@ public class SchedulerService {
     }
 
     /**
-     * 触发一次调度任务。
+     * 手动触发一次调度任务。
      * <p>
      * 只写入 PENDING 运行记录，不执行 DAG，也不伪造 SUCCESS；
      * 返回 accepted=true 表示触发请求已受理。
+     * 手动触发不修改 {@code last_dispatched_at}，不干扰 Cron 自动派发节奏。
      *
      * @param id 任务ID
      * @return accepted/runId/message
@@ -285,8 +286,11 @@ public class SchedulerService {
 
     /**
      * 查询调度服务状态。
+     * <p>
+     * executionEngine=dispatch-only：Cron 任务已能自动派发 PENDING 运行记录，
+     * 但尚未接入真实 DAG 执行器，运行状态仍需后续执行引擎回填。
      *
-     * @return 服务名、状态、角色与存储模式
+     * @return 服务名、状态、角色、存储模式与执行器模式
      */
     public Map<String, Object> getStatus() {
         Map<String, Object> status = new LinkedHashMap<>();
@@ -294,7 +298,9 @@ public class SchedulerService {
         status.put("status", "UP");
         status.put("role", "data scheduler");
         status.put("storage", "dam_scheduler");
-        status.put("executionEngine", "not implemented");
+        status.put("executionEngine", "dispatch-only");
+        status.put("executionEngineNote",
+                "Cron 任务已支持自动派发 PENDING 运行记录，未实现真实 DAG 执行器");
         return status;
     }
 

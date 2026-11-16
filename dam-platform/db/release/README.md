@@ -17,12 +17,14 @@
 | 5 | `v25_data_service_management.sql` | 数据 API 与订阅表 | `dam_data_service` | 建 schema + 建表/索引 |
 | 6 | `v26_task_center.sql` | 任务定义/实例/日志 | `dam_task` | 建 schema + 建表/索引 |
 | 7 | `v27_dev_task.sql` | 数据开发任务与版本 | `dam_dev` | 建 schema + 建表/索引 |
+| 8 | `v28_integration_run.sql` | 集成运行记录 | `dam_integration` | 建表/索引 |
+| 9 | `v29_scheduler_dispatch.sql` | 调度自动派发时间 | `dam_scheduler` | 加列/索引 |
 
 要点：
 
 - **v21 / v22 是「移动表」**：通过 `ALTER TABLE IF EXISTS ... SET SCHEMA` 把既有表从 `dam_asset` / `dam_metadata` 移到新 schema，**依赖基础表已经存在**。表不存在时该条语句静默跳过（新库未执行历史增量时即如此）。
 - **v23 ~ v25 是「新建表」**：只使用 `CREATE SCHEMA/TABLE/INDEX IF NOT EXISTS`，可直接在空 schema 上执行。
-- 所有脚本均可重复执行；重复执行时 v21/v22 因源表已迁走而成为空操作，v23~v27 因 `IF NOT EXISTS` 跳过。
+- 所有脚本均可重复执行；重复执行时 v21/v22 因源表已迁走而成为空操作，v23~v29 因 `IF NOT EXISTS` 跳过。
 - 迁移只改结构（含序列），**不删除、不重写业务数据**；行数应与迁移前一致。
 
 ---

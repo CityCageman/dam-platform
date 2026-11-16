@@ -13,8 +13,9 @@ import java.time.LocalDateTime;
 /**
  * 数据集成任务实体
  * <p>
- * 对应 dam_integration.integration_job 表。任务只保存源端/目标端配置与生命周期状态，
- * 不包含真实数据同步执行逻辑；source_config / target_config 为 PostgreSQL JSONB。
+ * 对应 dam_integration.integration_job 表。任务保存源端/目标端配置与生命周期状态；
+ * trigger 接口会创建 integration_run 并通过线程池执行真实 JDBC 全量同步。
+ * source_config / target_config 为 PostgreSQL JSONB。
  *
  * @author DAM Platform
  */
@@ -28,7 +29,7 @@ public class IntegrationJob {
     public static final String STATUS_ENABLED = "ENABLED";
     /** 任务已停用状态 */
     public static final String STATUS_DISABLED = "DISABLED";
-    /** 任务运行中状态（仅状态标记，当前不触发真实执行） */
+    /** 任务运行中状态（真实同步执行期间由执行器设置） */
     public static final String STATUS_RUNNING = "RUNNING";
     /** 任务失败状态 */
     public static final String STATUS_FAILED = "FAILED";
@@ -63,7 +64,7 @@ public class IntegrationJob {
     /** 任务状态：DRAFT/ENABLED/DISABLED/RUNNING/FAILED */
     private String status;
 
-    /** 最近一次触发运行时间（当前仅由 trigger 接口记录） */
+    /** 最近一次触发/开始运行时间 */
     private LocalDateTime lastRunAt;
 
     /** 最近一次失败原因 */

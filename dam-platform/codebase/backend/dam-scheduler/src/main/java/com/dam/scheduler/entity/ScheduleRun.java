@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 /**
  * 调度任务运行记录。
  * <p>
- * 对应 dam_scheduler.schedule_run；触发接口只写入 PENDING 记录，
+ * 对应 dam_scheduler.schedule_run；手动触发与 Cron 自动派发均只写入 PENDING 记录，
  * started_at/finished_at/error_message 由后续真实执行引擎回填。
  *
  * @author DAM Platform

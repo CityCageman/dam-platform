@@ -26,6 +26,13 @@ spring:
     template:
       fetch-size: 100
 
+dam:
+  scheduler:
+    # Cron 自动派发开关；关闭后不再定时扫描，仍可通过 POST /api/scheduler/dispatch/run 手动扫描
+    dispatch-enabled: ${DAM_SCHEDULER_DISPATCH_ENABLED:true}
+    # 自动派发扫描间隔（毫秒），对应 @Scheduled fixedDelay
+    dispatch-interval-ms: ${DAM_SCHEDULER_DISPATCH_INTERVAL_MS:15000}
+
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true

@@ -7,12 +7,18 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dam.common.exception.BusinessException;
 import com.dam.common.vo.PageResult;
 import com.dam.integration.entity.IntegrationJob;
+import com.dam.integration.entity.IntegrationRun;
 import com.dam.integration.repository.IntegrationJobMapper;
+import com.dam.integration.repository.IntegrationRunMapper;
+import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -24,8 +30,8 @@ import java.util.Set;
  * 数据集成任务管理服务
  * <p>
  * 负责 integration_job 的分页查询、详情、创建、更新、逻辑删除与状态切换。
- * 当前阶段只管理任务配置和状态，不实现真实的数据同步执行引擎：
- * trigger 接口只记录触发时间与提示，不改变任务状态，返回 accepted=true / taskCreated=false。
+ * trigger 接口在事务内创建 PENDING 运行记录，提交后把真实 JDBC 全量同步提交到线程池，
+ * 不阻塞 HTTP 请求；同一任务已有 PENDING/RUNNING 记录时返回 409。
  *
  * @author DAM Platform
  */
@@ -56,11 +62,18 @@ public class IntegrationJobService {
     /** 每页最大条数，避免一次拉取过多数据 */
     private static final int MAX_PAGE_SIZE = 200;
 
-    /** 触发接口固定提示：执行引擎尚未实现 */
-    private static final String EXECUTION_ENGINE_NOT_IMPLEMENTED = "execution engine not implemented";
-
     /** 集成任务 Mapper */
     private final IntegrationJobMapper jobMapper;
+
+    /** 运行记录 Mapper */
+    private final IntegrationRunMapper runMapper;
+
+    /** 真实 JDBC 同步执行服务 */
+    private final IntegrationExecutionService executionService;
+
+    /** 同步执行线程池（由 IntegrationAsyncConfig 提供） */
+    @Resource(name = "integrationTaskExecutor")
+    private ThreadPoolTaskExecutor integrationTaskExecutor;
 
     /**
      * 分页查询集成任务
@@ -260,40 +273,113 @@ public class IntegrationJobService {
     }
 
     /**
-     * 触发任务
+     * 触发任务（异步执行）
      * <p>
-     * 当前未实现同步执行引擎：仅将任务状态标记为 RUNNING、记录最近触发时间，
-     * 并返回 accepted=true / taskCreated=false，绝不伪造同步完成结果。
+     * 事务内校验任务类型/同步模式、对任务行加锁并创建一条 PENDING 运行记录；
+     * 事务提交后把真实 JDBC 同步提交到线程池，接口立即返回 accepted=true、runId、
+     * status=ACCEPTED，不阻塞请求。同一任务已有 PENDING/RUNNING 记录时返回 409。
      *
      * @param id 任务 ID
      * @return 触发受理结果
      */
     @Transactional
     public Map<String, Object> triggerJob(Long id) {
+        if (id == null || id <= 0) {
+            throw new BusinessException(400, "任务ID不合法");
+        }
         IntegrationJob job = getJob(id);
-        LocalDateTime now = LocalDateTime.now();
-        String operator = currentUser();
+        // 不支持的源端/目标端类型与 INCREMENTAL 模式在创建运行记录前明确报错
+        executionService.validateSupported(job);
 
-        // 没有执行引擎时不能把任务置为 RUNNING，否则会永远停在运行中；
-        // 只记录触发时间与提示，等待后续执行引擎接管。
+        // 任务行锁：串行化同一任务的 trigger，保证并发检查与 run_no 分配一致
+        if (jobMapper.lockById(id) == null) {
+            throw new BusinessException(404, "集成任务不存在: " + id);
+        }
+
+        LambdaQueryWrapper<IntegrationRun> activeQuery = new LambdaQueryWrapper<>();
+        activeQuery.eq(IntegrationRun::getJobId, id)
+                .in(IntegrationRun::getStatus,
+                        IntegrationRun.STATUS_PENDING, IntegrationRun.STATUS_RUNNING);
+        Long activeRuns = runMapper.selectCount(activeQuery);
+        if (activeRuns != null && activeRuns > 0) {
+            throw new BusinessException(409, "任务已有等待执行或正在执行的运行记录，禁止并发执行");
+        }
+
+        Integer maxRunNo = runMapper.selectMaxRunNo(id);
+        int runNo = maxRunNo == null ? 1 : maxRunNo + 1;
+        LocalDateTime now = LocalDateTime.now();
+        IntegrationRun run = new IntegrationRun();
+        run.setJobId(id);
+        run.setRunNo(runNo);
+        run.setStatus(IntegrationRun.STATUS_PENDING);
+        run.setRowsRead(0L);
+        run.setRowsWritten(0L);
+        run.setCreatedAt(now);
+        try {
+            runMapper.insert(run);
+        } catch (DuplicateKeyException e) {
+            // integration_run 活跃记录唯一索引兜底并发竞态
+            throw new BusinessException(409, "任务已有等待执行或正在执行的运行记录，禁止并发执行");
+        }
+
         LambdaUpdateWrapper<IntegrationJob> update = new LambdaUpdateWrapper<>();
         update.eq(IntegrationJob::getId, id)
                 .set(IntegrationJob::getLastRunAt, now)
-                .set(IntegrationJob::getLastError, EXECUTION_ENGINE_NOT_IMPLEMENTED)
+                .set(IntegrationJob::getLastError, null)
                 .set(IntegrationJob::getUpdatedAt, now)
-                .set(IntegrationJob::getUpdatedBy, operator);
+                .set(IntegrationJob::getUpdatedBy, currentUser());
         if (jobMapper.update(null, update) == 0) {
             throw new BusinessException(404, "集成任务不存在: " + id);
         }
-        log.info("集成任务已受理触发（执行引擎未实现）: id={}, jobCode={}", id, job.getJobCode());
+
+        // 事务提交后才提交线程池，确保执行线程一定能读到 PENDING 运行记录
+        scheduleExecution(run.getId(), id);
+        log.info("集成任务触发受理: id={}, jobCode={}, runId={}, runNo={}",
+                id, job.getJobCode(), run.getId(), runNo);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("accepted", true);
-        result.put("taskCreated", false);
-        result.put("message", EXECUTION_ENGINE_NOT_IMPLEMENTED);
+        result.put("runId", run.getId());
         result.put("jobId", id);
-        result.put("status", job.getStatus());
+        result.put("runNo", runNo);
+        result.put("status", "ACCEPTED");
         return result;
+    }
+
+    /**
+     * 事务提交后把运行记录提交到同步线程池
+     * <p>
+     * 若线程池拒绝（队列满/正在关闭），立即把 PENDING 运行记录和任务置为 FAILED，
+     * 避免运行记录永远停留在 PENDING。
+     *
+     * @param runId 运行记录 ID
+     * @param jobId 集成任务 ID
+     */
+    private void scheduleExecution(Long runId, Long jobId) {
+        Runnable submit = () -> {
+            try {
+                integrationTaskExecutor.execute(() -> executionService.executeRun(runId, jobId));
+            } catch (RuntimeException e) {
+                try {
+                    executionService.markFailedBeforeStart(runId, jobId,
+                            "执行线程池拒绝任务: " + e.getMessage());
+                } catch (RuntimeException markError) {
+                    log.error("标记集成运行记录提交失败时出错: runId={}, jobId={}",
+                            runId, jobId, markError);
+                }
+            }
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    submit.run();
+                }
+            });
+        } else {
+            // 非事务上下文（如内部直调）直接提交，接口层仍由 @Transactional 保证走 afterCommit
+            submit.run();
+        }
     }
 
     /**

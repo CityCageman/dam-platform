@@ -48,6 +48,8 @@ MIGRATIONS=(
   "v25_data_service_management.sql"
   "v26_task_center.sql"
   "v27_dev_task.sql"
+  "v28_integration_run.sql"
+  "v29_scheduler_dispatch.sql"
 )
 
 # 迁移完成后必须存在的 schema
@@ -65,6 +67,7 @@ dam_task.task_instance
 dam_task.task_log
 dam_dev.dev_task
 dam_dev.dev_task_version
+dam_integration.integration_run
 "
 
 # v21/v22 为「移动既有表」，新库未执行历史增量时可能不存在；缺失只告警不失败

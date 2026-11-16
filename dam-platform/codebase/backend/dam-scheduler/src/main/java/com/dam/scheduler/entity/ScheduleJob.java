@@ -58,6 +58,18 @@ public class ScheduleJob {
     private String updatedBy;
 
     /**
+     * 最近一次自动派发时间。
+     * <p>
+     * 仅由自动派发扫描在成功插入运行记录后更新；手动触发不修改该字段。
+     * 为空时以 createdAt 作为计算 Cron 下一次触发点的基准。
+     * <p>
+     * 使用 updateStrategy=NEVER，避免普通任务编辑通过 updateById 把并发派发写入的
+     * 新值回退成旧值，造成重复派发；该列只允许自动派发 Mapper 的专用 SQL 更新。
+     */
+    @TableField(updateStrategy = FieldStrategy.NEVER)
+    private LocalDateTime lastDispatchedAt;
+
+    /**
      * 删除时间。
      * <p>
      * 逻辑删除：未删除为 NULL，删除时置 now()；deleted_at 为 TIMESTAMP 列，

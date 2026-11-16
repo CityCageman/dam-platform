@@ -1,9 +1,13 @@
 package com.dam.scheduler.controller;
 
+import cn.dev33.satoken.exception.NotLoginException;
+import cn.dev33.satoken.stp.StpUtil;
+import com.dam.common.exception.BusinessException;
 import com.dam.common.vo.PageResult;
 import com.dam.common.vo.Result;
 import com.dam.scheduler.entity.ScheduleJob;
 import com.dam.scheduler.entity.ScheduleRun;
+import com.dam.scheduler.service.ScheduleDispatchService;
 import com.dam.scheduler.service.SchedulerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
@@ -17,14 +21,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
  * 调度服务 API。
  * <p>
- * 提供调度任务的数据库持久化管理、启停、触发与运行记录查询。
- * 触发接口只受理请求并落 PENDING 记录，不执行真实 DAG（执行引擎后续实现）。
+ * 提供调度任务的数据库持久化管理、启停、手动触发、Cron 自动派发扫描与运行记录查询。
+ * 派发只落 PENDING 记录，不执行真实 DAG（执行引擎后续实现）。
  *
  * @author DAM Platform
  */
@@ -35,6 +40,8 @@ public class SchedulerController {
 
     private final SchedulerService schedulerService;
 
+    private final ScheduleDispatchService dispatchService;
+
     /**
      * 查询调度服务状态。
      *
@@ -43,6 +50,32 @@ public class SchedulerController {
     @GetMapping("/status")
     public Result<Map<String, Object>> status() {
         return Result.success(schedulerService.getStatus());
+    }
+
+    /**
+     * 查询 Cron 自动派发状态。
+     *
+     * @return enabled、lastScanAt、lastDispatchedCount
+     */
+    @GetMapping("/dispatch/status")
+    public Result<Map<String, Object>> dispatchStatus() {
+        return Result.success(dispatchService.getStatus());
+    }
+
+    /**
+     * 手动触发一次自动派发扫描（需登录）。
+     * <p>
+     * 该接口只扫描并派发当前 due 的任务，不补发历史周期，也不执行 DAG。
+     *
+     * @return 本次派发数 dispatchedCount
+     */
+    @PostMapping("/dispatch/run")
+    public Result<Map<String, Object>> runDispatch() {
+        requireLogin();
+        int dispatched = dispatchService.scanOnce();
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("dispatchedCount", dispatched);
+        return Result.success(result);
     }
 
     /**
@@ -165,5 +198,16 @@ public class SchedulerController {
     @GetMapping("/dags")
     public Result<List<Map<String, Object>>> dags() {
         return Result.success(schedulerService.listDags());
+    }
+
+    /**
+     * 校验当前请求已登录；未登录统一转换为 401 业务异常。
+     */
+    private static void requireLogin() {
+        try {
+            StpUtil.checkLogin();
+        } catch (NotLoginException e) {
+            throw new BusinessException(401, "未登录");
+        }
     }
 }
