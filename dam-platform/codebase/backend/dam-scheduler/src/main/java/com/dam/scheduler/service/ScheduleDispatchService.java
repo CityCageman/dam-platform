@@ -197,8 +197,8 @@ public class ScheduleDispatchService {
      * 重新读取行锁内的最新 {@code last_dispatched_at} 是关键：其他实例可能已经派发并提交，
      * 本实例拿到锁后会基于新值计算下一次触发点，自然跳过重复派发。
      * <p>
-     * TaskCenter 登记安排在事务提交之后异步执行：只有运行记录与
-     * {@code last_dispatched_at} 都成功提交才登记，登记失败也不会回滚派发。
+     * TaskCenter 登记与 DAG 执行均安排在事务提交之后：只有运行记录与
+     * {@code last_dispatched_at} 都成功提交才登记/执行，失败也不会回滚派发。
      *
      * @param jobId 任务ID
      * @return true 表示本次插入了一条 PENDING 运行记录

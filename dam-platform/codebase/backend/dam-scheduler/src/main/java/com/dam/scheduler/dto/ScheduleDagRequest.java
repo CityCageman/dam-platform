@@ -1,6 +1,7 @@
 package com.dam.scheduler.dto;
 
 import lombok.Data;
+import lombok.ToString;
 import tools.jackson.databind.JsonNode;
 
 /**
@@ -20,7 +21,8 @@ public class ScheduleDagRequest {
     /** DAG 名称 */
     private String dagName;
 
-    /** DAG 定义 JSON */
+    /** DAG 定义 JSON（包含原始密码，禁止写入日志） */
+    @ToString.Exclude
     private JsonNode definition;
 
     /** 描述 */

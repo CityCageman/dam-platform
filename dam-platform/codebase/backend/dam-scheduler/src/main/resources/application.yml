@@ -34,6 +34,10 @@ dam:
     dispatch-enabled: ${DAM_SCHEDULER_DISPATCH_ENABLED:true}
     # 自动派发扫描间隔（毫秒），对应 @Scheduled fixedDelay
     dispatch-interval-ms: ${DAM_SCHEDULER_DISPATCH_INTERVAL_MS:15000}
+    # 超过该分钟数仍为 RUNNING 的运行记录会被定时回收为 FAILED（服务重启遗留）
+    stale-run-minutes: ${DAM_SCHEDULER_STALE_RUN_MINUTES:180}
+    # 遗留 RUNNING 回收扫描间隔（毫秒）
+    stale-run-scan-interval-ms: ${DAM_SCHEDULER_STALE_SCAN_INTERVAL_MS:60000}
 
 mybatis-plus:
   configuration:

@@ -27,8 +27,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>
  * 调度服务在手动触发与 Cron 自动派发写入 PENDING 运行记录后，调用
  * {@code POST /api/task-center/callbacks/start} 把本次运行登记到统一任务中心。
- * 只登记开始（TaskCenter 侧实例状态为 PENDING），不调用 finish：
- * 本服务没有真实 DAG 执行器，不能伪造执行成功。
+ * 只登记开始（TaskCenter 侧实例状态为 PENDING），暂不调用 finish：
+ * DAG 执行完成后不要求回调 TaskCenter finish，避免提前耦合。
  * <p>
  * 调度可用性优先：连接/读取超时设置得较短，调用失败只记录 warn，不向上抛出；
  * TaskCenter 不可用不会阻塞或回滚调度派发。Cron 派发使用 {@link #registerStartAsync}

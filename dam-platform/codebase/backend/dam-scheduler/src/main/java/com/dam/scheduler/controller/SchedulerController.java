@@ -171,8 +171,8 @@ public class SchedulerController {
     /**
      * 触发一次调度任务。
      * <p>
-     * 插入一条 run_status=PENDING 的运行记录并返回 accepted=true/runId；
-     * message 固定为 execution engine not implemented，不伪造执行成功。
+     * 插入一条 run_status=PENDING 的运行记录，事务提交后异步执行关联 DAG，
+     * 返回 accepted=true/runId；message 为 execution submitted。
      *
      * @param id 任务ID
      * @return 触发受理结果
