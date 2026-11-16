@@ -15,7 +15,7 @@ import com.dam.catalog.knowledge.repository.KnowledgeSyncConfigMapper;
 import com.dam.catalog.metric.entity.MetricDefinition;
 import com.dam.catalog.repository.*;
 import com.dam.catalog.metadata.repository.*;
-import com.dam.catalog.metric.repository.MetricDefinitionMapper;
+import com.dam.catalog.shared.port.MetricLookupPort;
 import com.dam.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -37,7 +37,7 @@ public class KnowledgeService {
     private final KnowledgeEntryMapper entryMapper;
     private final MetadataTableMapper tableMapper;
     private final MetadataSchemaMapper schemaMapper;
-    private final MetricDefinitionMapper metricMapper;
+    private final MetricLookupPort metricLookupPort;
     private final JdbcTemplate jdbcTemplate;
     private final WeKnoraKnowledgeService weKnoraKnowledgeService;
 
@@ -197,7 +197,7 @@ public class KnowledgeService {
         e.setReportSpec(reportSpec == null ? null
                 : (reportSpec instanceof String s ? s : JSONUtil.toJsonStr(reportSpec)));
         if ("METRIC".equals(entryType) && metricId != null) {
-            MetricDefinition metric = metricMapper.selectById(metricId);
+            MetricDefinition metric = metricLookupPort.findById(metricId);
             if (metric == null || metric.getDeletedAt() != null) {
                 throw new BusinessException("关联指标不存在或已删除");
             }
@@ -286,8 +286,7 @@ public class KnowledgeService {
                 if (result.size() >= size) break;
             }
         } else if ("METRIC".equalsIgnoreCase(sourceType)) {
-            List<MetricDefinition> metrics = metricMapper.selectList(new LambdaQueryWrapper<MetricDefinition>()
-                    .isNull(MetricDefinition::getDeletedAt).last("LIMIT 500"));
+            List<MetricDefinition> metrics = metricLookupPort.listActive(500);
             for (MetricDefinition m : metrics) {
                 String desc = StrUtil.blankToDefault(m.getDefinition(), StrUtil.blankToDefault(m.getFormula(), ""));
                 if (!kw.isEmpty() && !m.getMetricName().toLowerCase().contains(kw) && !desc.toLowerCase().contains(kw)) continue;

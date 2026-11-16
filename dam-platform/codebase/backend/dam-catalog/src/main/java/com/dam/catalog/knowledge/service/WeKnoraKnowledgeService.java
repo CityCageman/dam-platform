@@ -8,7 +8,7 @@ import com.dam.catalog.metric.entity.MetricDefinition;
 import com.dam.catalog.knowledge.entity.KnowledgeSyncConfig;
 import com.dam.catalog.knowledge.repository.KnowledgeCategoryMapper;
 import com.dam.catalog.knowledge.repository.KnowledgeEntryMapper;
-import com.dam.catalog.metric.repository.MetricDefinitionMapper;
+import com.dam.catalog.shared.port.MetricLookupPort;
 import com.dam.catalog.knowledge.repository.KnowledgeSyncConfigMapper;
 import com.dam.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -34,7 +34,7 @@ public class WeKnoraKnowledgeService {
     private final KnowledgeSyncConfigMapper configMapper;
     private final KnowledgeCategoryMapper categoryMapper;
     private final KnowledgeEntryMapper entryMapper;
-    private final MetricDefinitionMapper metricMapper;
+    private final MetricLookupPort metricLookupPort;
 
     @Value("${dam.weknora.llm-model:qwen3-coder-30b-a3b}")
     private String preferredLlmModel;
@@ -380,7 +380,7 @@ public class WeKnoraKnowledgeService {
             if (StrUtil.isNotBlank(e.getFieldMappings())) content.append("字段映射：").append(e.getFieldMappings()).append("\n");
             if (StrUtil.isNotBlank(e.getRelatedMetrics())) content.append("关联指标：").append(e.getRelatedMetrics()).append("\n");
             if (StrUtil.isNotBlank(e.getContent())) content.append("补充：").append(e.getContent()).append("\n");
-            MetricDefinition metric = e.getMetricId() == null ? null : metricMapper.selectById(e.getMetricId());
+            MetricDefinition metric = e.getMetricId() == null ? null : metricLookupPort.findById(e.getMetricId());
             if (metric != null) {
                 content.append("指标库口径：").append(StrUtil.blankToDefault(metric.getDefinition(), "")).append("\n");
                 if (StrUtil.isNotBlank(metric.getFormula())) content.append("计算公式：").append(metric.getFormula()).append("\n");

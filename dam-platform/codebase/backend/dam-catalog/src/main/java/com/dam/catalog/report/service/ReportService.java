@@ -15,7 +15,7 @@ import com.dam.catalog.metadata.repository.DamDataSourceMapper;
 import com.dam.catalog.metadata.repository.MetadataColumnMapper;
 import com.dam.catalog.metadata.repository.MetadataSchemaMapper;
 import com.dam.catalog.metadata.repository.MetadataTableMapper;
-import com.dam.catalog.metric.repository.MetricDefinitionMapper;
+import com.dam.catalog.shared.port.MetricLookupPort;
 import com.dam.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -95,7 +95,7 @@ public class ReportService {
     private final DamAssetMapper assetMapper;
     private final MetadataTableMapper tableMapper;
     private final MetadataColumnMapper columnMapper;
-    private final MetricDefinitionMapper metricMapper;
+    private final MetricLookupPort metricLookupPort;
     private final MetadataSchemaMapper schemaMapper;
     private final CryptoService cryptoService;
     private final WeKnoraKnowledgeService weKnoraKnowledgeService;
@@ -1102,12 +1102,7 @@ public class ReportService {
         }
         // 指标定义/公式：业务用户说“门诊量/收入”时，优先使用已维护的口径
         try {
-            List<MetricDefinition> metrics = metricMapper.selectList(
-                    new LambdaQueryWrapper<MetricDefinition>()
-                            .eq(MetricDefinition::getDataSourceId, dataSourceId)
-                            .eq(MetricDefinition::getStatus, 1)
-                            .isNull(MetricDefinition::getDeletedAt)
-                            .last("LIMIT 50"));
+            List<MetricDefinition> metrics = metricLookupPort.listActiveByDataSource(dataSourceId);
             if (!metrics.isEmpty()) {
                 sb.append("业务指标定义（用户提到指标时，必须优先使用这里的口径/公式，不得自行发明）：\n");
                 for (MetricDefinition m : metrics) {
