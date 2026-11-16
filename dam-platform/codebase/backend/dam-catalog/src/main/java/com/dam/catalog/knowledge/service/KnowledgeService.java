@@ -4,6 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dam.catalog.entity.*;
+import com.dam.catalog.metadata.entity.*;
 import com.dam.catalog.knowledge.entity.KnowledgeCategory;
 import com.dam.catalog.knowledge.entity.KnowledgeEntry;
 import com.dam.catalog.knowledge.entity.KnowledgeSyncConfig;
@@ -13,6 +14,7 @@ import com.dam.catalog.knowledge.repository.KnowledgeSyncConfigMapper;
 
 import com.dam.catalog.metric.entity.MetricDefinition;
 import com.dam.catalog.repository.*;
+import com.dam.catalog.metadata.repository.*;
 import com.dam.catalog.metric.repository.MetricDefinitionMapper;
 import com.dam.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;

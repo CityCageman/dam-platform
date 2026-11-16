@@ -2,7 +2,7 @@ package com.dam.catalog.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dam.catalog.system.entity.DamConfig;
-import com.dam.catalog.entity.DamDataSourceType;
+import com.dam.catalog.metadata.entity.DamDataSourceType;
 import com.dam.catalog.system.repository.DamConfigMapper;
 import com.dam.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.ObjectMapper;

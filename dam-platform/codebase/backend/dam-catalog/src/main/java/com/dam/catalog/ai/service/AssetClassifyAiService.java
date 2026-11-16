@@ -1,18 +1,20 @@
 package com.dam.catalog.ai.service;
 
+import com.dam.catalog.asset.entity.*;
+
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import cn.hutool.json.JSONUtil;
-import com.dam.catalog.entity.AssetCategoryRel;
-import com.dam.catalog.entity.DamAsset;
-import com.dam.catalog.entity.DamCategory;
-import com.dam.catalog.entity.MetadataColumn;
-import com.dam.catalog.entity.MetadataTable;
-import com.dam.catalog.repository.AssetCategoryRelMapper;
-import com.dam.catalog.repository.DamAssetMapper;
-import com.dam.catalog.repository.DamCategoryMapper;
-import com.dam.catalog.repository.MetadataColumnMapper;
-import com.dam.catalog.repository.MetadataTableMapper;
+import com.dam.catalog.asset.entity.AssetCategoryRel;
+import com.dam.catalog.asset.entity.DamAsset;
+import com.dam.catalog.asset.entity.DamCategory;
+import com.dam.catalog.metadata.entity.MetadataColumn;
+import com.dam.catalog.metadata.entity.MetadataTable;
+import com.dam.catalog.asset.repository.AssetCategoryRelMapper;
+import com.dam.catalog.asset.repository.DamAssetMapper;
+import com.dam.catalog.asset.repository.DamCategoryMapper;
+import com.dam.catalog.metadata.repository.MetadataColumnMapper;
+import com.dam.catalog.metadata.repository.MetadataTableMapper;
 import com.dam.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

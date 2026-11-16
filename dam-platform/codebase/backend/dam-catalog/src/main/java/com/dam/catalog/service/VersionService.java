@@ -1,7 +1,7 @@
 package com.dam.catalog.service;
 
-import com.dam.catalog.entity.DamMetadataVersion;
-import com.dam.catalog.repository.DamMetadataVersionMapper;
+import com.dam.catalog.metadata.entity.DamMetadataVersion;
+import com.dam.catalog.metadata.repository.DamMetadataVersionMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

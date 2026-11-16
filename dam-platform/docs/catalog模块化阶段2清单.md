@@ -674,3 +674,46 @@ quality/lineage/lifecycle 的表所有权
 ```
 
 注意：部署新代码前必须先执行 v21，否则实体指向的新 schema 不存在。
+
+## 2026-11-16 第二批进展
+
+已完成包提取：
+
+```text
+asset
+metadata
+system
+ai
+```
+
+并修正跨模块引用：
+
+```text
+dam-security
+dam-operations
+dam-standard
+dam-lifecycle
+```
+
+这些模块不再引用旧的 `com.dam.catalog.entity.DamAsset` / `repository.DamAssetMapper`。
+
+当前 catalog 包结构：
+
+```text
+asset
+metadata
+metric
+knowledge
+report
+system
+ai
+shared（待建）
+```
+
+剩余：
+
+```text
+CatalogController / CatalogService 仍承载跨模块入口
+quality/lineage/lifecycle 共享表尚未迁移
+服务级拆分尚未开始
+```

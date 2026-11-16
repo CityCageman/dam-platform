@@ -1,9 +1,9 @@
 package com.dam.catalog.controller;
 
-import com.dam.catalog.entity.DamDataSource;
-import com.dam.catalog.entity.DamMetadataExt;
-import com.dam.catalog.entity.MetadataManagement;
-import com.dam.catalog.entity.MetadataSchema;
+import com.dam.catalog.metadata.entity.DamDataSource;
+import com.dam.catalog.metadata.entity.DamMetadataExt;
+import com.dam.catalog.metadata.entity.MetadataManagement;
+import com.dam.catalog.metadata.entity.MetadataSchema;
 import com.dam.common.service.AiRateLimiter;
 import com.dam.catalog.ai.service.AiWorkbenchTaskClient;
 import com.dam.catalog.ai.service.MetadataAiService;

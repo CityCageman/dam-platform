@@ -1,8 +1,10 @@
 package com.dam.catalog.service;
 
-import com.dam.catalog.entity.DamAsset;
+import com.dam.catalog.asset.entity.*;
+
+import com.dam.catalog.asset.entity.DamAsset;
 import com.dam.catalog.entity.DamField;
-import com.dam.catalog.repository.DamAssetMapper;
+import com.dam.catalog.asset.repository.DamAssetMapper;
 import com.dam.catalog.repository.DamFieldMapper;
 import com.dam.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;

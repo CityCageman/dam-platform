@@ -2,12 +2,12 @@ package com.dam.catalog.ai.service;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.catalog.entity.MetadataColumn;
-import com.dam.catalog.entity.MetadataSchema;
-import com.dam.catalog.entity.MetadataTable;
-import com.dam.catalog.repository.MetadataColumnMapper;
-import com.dam.catalog.repository.MetadataSchemaMapper;
-import com.dam.catalog.repository.MetadataTableMapper;
+import com.dam.catalog.metadata.entity.MetadataColumn;
+import com.dam.catalog.metadata.entity.MetadataSchema;
+import com.dam.catalog.metadata.entity.MetadataTable;
+import com.dam.catalog.metadata.repository.MetadataColumnMapper;
+import com.dam.catalog.metadata.repository.MetadataSchemaMapper;
+import com.dam.catalog.metadata.repository.MetadataTableMapper;
 import com.dam.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

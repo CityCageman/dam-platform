@@ -1,10 +1,10 @@
 package com.dam.security.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.catalog.entity.DamAsset;
+import com.dam.catalog.asset.entity.DamAsset;
 import com.dam.catalog.entity.DamField;
 import com.dam.catalog.system.entity.DamConfig;
-import com.dam.catalog.repository.DamAssetMapper;
+import com.dam.catalog.asset.repository.DamAssetMapper;
 import com.dam.catalog.repository.DamFieldMapper;
 import com.dam.catalog.system.repository.DamConfigMapper;
 import com.dam.common.exception.BusinessException;

@@ -1,6 +1,8 @@
 package com.dam.catalog.controller;
 
 import com.dam.catalog.entity.*;
+import com.dam.catalog.metadata.entity.*;
+import com.dam.catalog.asset.entity.*;
 import com.dam.catalog.system.entity.*;
 import com.dam.common.service.AiRateLimiter;
 import com.dam.catalog.ai.service.AssetClassifyAiService;

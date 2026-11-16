@@ -1,6 +1,6 @@
 package com.dam.security.interceptor;
 
-import com.dam.catalog.entity.DamAsset;
+import com.dam.catalog.asset.entity.DamAsset;
 import com.dam.catalog.entity.DamField;
 import com.dam.security.entity.DamSensitiveRule;
 import com.dam.security.repository.DamSensitiveRuleMapper;

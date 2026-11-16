@@ -1,14 +1,14 @@
 package com.dam.catalog.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.catalog.entity.DamAsset;
+import com.dam.catalog.asset.entity.DamAsset;
 import com.dam.catalog.entity.DamDataModel;
 import com.dam.catalog.entity.DamField;
 import com.dam.catalog.entity.DamModelField;
 import com.dam.catalog.repository.DamDataModelMapper;
 import com.dam.catalog.repository.DamFieldMapper;
 import com.dam.catalog.repository.DamModelFieldMapper;
-import com.dam.catalog.repository.DamAssetMapper;
+import com.dam.catalog.asset.repository.DamAssetMapper;
 import com.dam.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

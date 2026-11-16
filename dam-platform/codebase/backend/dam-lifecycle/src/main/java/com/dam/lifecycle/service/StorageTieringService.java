@@ -1,8 +1,8 @@
 package com.dam.lifecycle.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.catalog.entity.DamAsset;
-import com.dam.catalog.repository.DamAssetMapper;
+import com.dam.catalog.asset.entity.DamAsset;
+import com.dam.catalog.asset.repository.DamAssetMapper;
 import com.dam.lifecycle.entity.DamDestructionRecord;
 import com.dam.lifecycle.entity.DamLifecycleExecution;
 import com.dam.lifecycle.entity.DamLifecyclePolicy;

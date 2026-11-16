@@ -1,14 +1,18 @@
 package com.dam.catalog.service;
 
+import com.dam.catalog.asset.entity.*;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.catalog.entity.DamAsset;
-import com.dam.catalog.entity.DamDataSource;
-import com.dam.catalog.entity.DamDataSourceType;
+import com.dam.catalog.asset.entity.DamAsset;
+import com.dam.catalog.metadata.entity.DamDataSource;
+import com.dam.catalog.metadata.entity.DamDataSourceType;
 import com.dam.catalog.entity.DamField;
-import com.dam.catalog.entity.DamMetadataCollection;
-import com.dam.catalog.entity.DamSourceSystem;
-import com.dam.catalog.entity.MetadataSchema;
+import com.dam.catalog.metadata.entity.DamMetadataCollection;
+import com.dam.catalog.metadata.entity.DamSourceSystem;
+import com.dam.catalog.metadata.entity.MetadataSchema;
 import com.dam.catalog.repository.*;
+import com.dam.catalog.metadata.repository.*;
+import com.dam.catalog.asset.repository.*;
 import com.dam.catalog.service.adapter.*;
 import com.dam.common.exception.BusinessException;
 import jakarta.annotation.PostConstruct;
