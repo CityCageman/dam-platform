@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * 血缘与资产不强关联：source_code 唯一标识节点，可独立于资产存在。
  */
 @Data
-@TableName(value = "metadata_lineage_source", schema = "dam_metadata")
+@TableName(value = "metadata_lineage_source", schema = "dam_lineage")
 public class MetadataLineageSource {
 
     @TableId(type = IdType.AUTO)

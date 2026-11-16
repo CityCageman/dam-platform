@@ -1,4 +1,4 @@
-package com.dam.catalog.entity;
+package com.dam.catalog.quality.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import com.dam.common.config.JsonbTypeHandler;
@@ -6,7 +6,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName(value = "metadata_quality_check_result", schema = "dam_metadata")
+@TableName(value = "metadata_quality_check_result", schema = "dam_quality")
 public class DamQualityCheck {
     @TableId(type = IdType.AUTO)
     private Long id;

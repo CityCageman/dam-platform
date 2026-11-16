@@ -717,3 +717,47 @@ CatalogController / CatalogService 仍承载跨模块入口
 quality/lineage/lifecycle 共享表尚未迁移
 服务级拆分尚未开始
 ```
+
+## 2026-11-16 第三批进展
+
+已完成 quality/lineage/lifecycle 的表归属迁移脚本：
+
+```text
+db/v22_quality_lineage_lifecycle_schema.sql
+```
+
+迁移：
+
+```text
+dam_metadata.metadata_quality_*      → dam_quality
+dam_metadata.metadata_lineage*       → dam_lineage
+dam_metadata.metadata_column_*       → dam_lineage
+dam_metadata.metadata_report_sql_*   → dam_lineage
+dam_metadata.metadata_lifecycle_*    → dam_lifecycle
+dam_metadata.metadata_destruction_*  → dam_lifecycle
+```
+
+对应实体 schema 已更新：
+
+```text
+dam-quality
+dam-lineage
+dam-lifecycle
+catalog 中保留的只读质量/血缘实体
+```
+
+注意：
+
+```text
+v21、v22 必须在部署新代码前执行。
+```
+
+下一步：
+
+```text
+1. 在测试库执行 v21、v22
+2. 验证质量、血缘、生命周期接口
+3. 删除 catalog 中重复的 quality/lineage 实体和 Mapper
+4. 拆分 CatalogController / CatalogService
+5. 抽取独立服务
+```

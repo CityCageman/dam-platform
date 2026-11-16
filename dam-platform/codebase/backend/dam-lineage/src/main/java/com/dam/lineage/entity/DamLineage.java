@@ -5,7 +5,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName(value = "metadata_lineage", schema = "dam_metadata")
+@TableName(value = "metadata_lineage", schema = "dam_lineage")
 public class DamLineage {
     @TableId(type = IdType.AUTO)
     private Long id;

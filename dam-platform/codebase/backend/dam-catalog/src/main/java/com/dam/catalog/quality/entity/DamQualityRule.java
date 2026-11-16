@@ -1,11 +1,11 @@
-package com.dam.catalog.entity;
+package com.dam.catalog.quality.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName(value = "metadata_quality_rule", schema = "dam_metadata")
+@TableName(value = "metadata_quality_rule", schema = "dam_quality")
 public class DamQualityRule {
     @TableId(type = IdType.AUTO)
     private Long id;

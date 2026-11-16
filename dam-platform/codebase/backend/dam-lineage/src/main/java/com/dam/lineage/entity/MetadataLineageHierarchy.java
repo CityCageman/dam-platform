@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * 上下游节点经 lineage_source.id 关联，可细化到表级/字段级（table_id/column_id）。
  */
 @Data
-@TableName(value = "metadata_lineage_hierarchy", schema = "dam_metadata")
+@TableName(value = "metadata_lineage_hierarchy", schema = "dam_lineage")
 public class MetadataLineageHierarchy {
 
     @TableId(type = IdType.AUTO)

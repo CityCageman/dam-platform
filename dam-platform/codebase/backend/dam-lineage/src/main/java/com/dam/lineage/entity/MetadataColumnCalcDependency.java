@@ -15,7 +15,7 @@ import java.util.List;
  * 以星型结构表达"1 个目标计算字段 → 多个源字段"。
  */
 @Data
-@TableName(value = "metadata_column_calc_dependency", schema = "dam_metadata")
+@TableName(value = "metadata_column_calc_dependency", schema = "dam_lineage")
 public class MetadataColumnCalcDependency {
 
     @TableId(type = IdType.AUTO)
