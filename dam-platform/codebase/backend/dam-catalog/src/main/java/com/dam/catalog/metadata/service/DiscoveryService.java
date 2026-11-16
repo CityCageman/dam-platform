@@ -1,6 +1,8 @@
-package com.dam.catalog.service;
+package com.dam.catalog.metadata.service;
 
 import com.dam.catalog.asset.entity.*;
+import com.dam.catalog.asset.service.CatalogService;
+import com.dam.catalog.service.CryptoService;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dam.catalog.asset.entity.DamAsset;

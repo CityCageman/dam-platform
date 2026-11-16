@@ -790,3 +790,31 @@ com.dam.catalog.shared.client.LineageReadClient
 ```
 
 质量、血缘、周期表由各自服务独占写权限。
+
+## 2026-11-16 第五批进展
+
+已完成 asset/metadata 的 Service/Controller 迁移：
+
+```text
+CatalogService       → com.dam.catalog.asset.service
+ImportService        → com.dam.catalog.asset.service
+CatalogController    → com.dam.catalog.asset.controller
+
+MetadataService      → com.dam.catalog.metadata.service
+DiscoveryService     → com.dam.catalog.metadata.service
+TechnicalMetadataService → com.dam.catalog.metadata.service
+DataSourceTypeService    → com.dam.catalog.metadata.service
+VersionService       → com.dam.catalog.metadata.service
+MetadataController   → com.dam.catalog.metadata.controller
+```
+
+catalog 根目录只剩：
+
+```text
+CryptoService
+ModelService
+ModelController
+DamField / model / sysUserRef
+```
+
+全量后端构建通过。下一步可以开始按服务拆分 metric/report/knowledge。

@@ -3,7 +3,7 @@ package com.dam.catalog.report.service;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.dam.catalog.service.CatalogService;
+import com.dam.catalog.asset.service.CatalogService;
 import com.dam.catalog.system.service.DictService;
 import com.dam.catalog.entity.*;
 import com.dam.catalog.asset.entity.*;

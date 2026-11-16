@@ -1,4 +1,4 @@
-package com.dam.catalog.service;
+package com.dam.catalog.metadata.service;
 
 import com.dam.catalog.metadata.entity.DamMetadataVersion;
 import com.dam.catalog.metadata.repository.DamMetadataVersionMapper;

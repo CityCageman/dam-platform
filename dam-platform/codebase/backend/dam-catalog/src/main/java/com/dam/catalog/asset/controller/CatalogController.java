@@ -1,4 +1,4 @@
-package com.dam.catalog.controller;
+package com.dam.catalog.asset.controller;
 
 import com.dam.catalog.entity.*;
 import com.dam.catalog.metadata.entity.*;
@@ -7,15 +7,15 @@ import com.dam.catalog.system.entity.*;
 import com.dam.common.service.AiRateLimiter;
 import com.dam.catalog.ai.service.AssetClassifyAiService;
 import com.dam.catalog.ai.service.AiWorkbenchTaskClient;
-import com.dam.catalog.service.CatalogService;
+import com.dam.catalog.asset.service.CatalogService;
 import com.dam.catalog.system.service.ConfigService;
 import com.dam.catalog.service.CryptoService;
-import com.dam.catalog.service.DataSourceTypeService;
+import com.dam.catalog.metadata.service.DataSourceTypeService;
 import com.dam.catalog.system.service.DictService;
-import com.dam.catalog.service.DiscoveryService;
-import com.dam.catalog.service.ImportService;
-import com.dam.catalog.service.TechnicalMetadataService;
-import com.dam.catalog.service.VersionService;
+import com.dam.catalog.metadata.service.DiscoveryService;
+import com.dam.catalog.asset.service.ImportService;
+import com.dam.catalog.metadata.service.TechnicalMetadataService;
+import com.dam.catalog.metadata.service.VersionService;
 import com.dam.common.exception.BusinessException;
 import com.dam.common.vo.PageResult;
 import com.dam.common.vo.Result;

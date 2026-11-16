@@ -1,4 +1,4 @@
-package com.dam.catalog.service;
+package com.dam.catalog.asset.service;
 
 import com.dam.catalog.asset.entity.*;
 

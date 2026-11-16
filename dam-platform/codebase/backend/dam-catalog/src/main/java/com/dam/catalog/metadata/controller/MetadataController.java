@@ -1,4 +1,4 @@
-package com.dam.catalog.controller;
+package com.dam.catalog.metadata.controller;
 
 import com.dam.catalog.metadata.entity.DamDataSource;
 import com.dam.catalog.metadata.entity.DamMetadataExt;
@@ -7,8 +7,8 @@ import com.dam.catalog.metadata.entity.MetadataSchema;
 import com.dam.common.service.AiRateLimiter;
 import com.dam.catalog.ai.service.AiWorkbenchTaskClient;
 import com.dam.catalog.ai.service.MetadataAiService;
-import com.dam.catalog.service.MetadataService;
-import com.dam.catalog.service.TechnicalMetadataService;
+import com.dam.catalog.metadata.service.MetadataService;
+import com.dam.catalog.metadata.service.TechnicalMetadataService;
 import com.dam.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

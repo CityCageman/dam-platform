@@ -1,4 +1,4 @@
-package com.dam.catalog.service;
+package com.dam.catalog.metadata.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dam.catalog.system.entity.DamConfig;
