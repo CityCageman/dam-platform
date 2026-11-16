@@ -26,7 +26,7 @@ public class TaskCallbackRequest {
     @Size(max = 64, message = "sourceService 长度不能超过 64")
     private String sourceService;
 
-    /** 来源任务编码，对应 task_definition.task_code */
+    /** 来源任务编码，用于匹配任务定义或生成自动登记的 task_code */
     @NotBlank(message = "sourceTaskCode 不能为空")
     @Size(max = 64, message = "sourceTaskCode 长度不能超过 64")
     private String sourceTaskCode;
