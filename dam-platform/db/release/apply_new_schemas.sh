@@ -46,10 +46,12 @@ MIGRATIONS=(
   "v23_integration_management.sql"
   "v24_scheduler_management.sql"
   "v25_data_service_management.sql"
+  "v26_task_center.sql"
+  "v27_dev_task.sql"
 )
 
 # 迁移完成后必须存在的 schema
-TARGET_SCHEMAS="dam_metric dam_report dam_knowledge dam_quality dam_lineage dam_lifecycle dam_integration dam_scheduler dam_data_service"
+TARGET_SCHEMAS="dam_metric dam_report dam_knowledge dam_quality dam_lineage dam_lifecycle dam_integration dam_scheduler dam_data_service dam_task dam_dev"
 
 # v23~v25 自身建表，迁移后必须存在；缺失即视为失败
 REQUIRED_TABLES="
@@ -58,6 +60,11 @@ dam_scheduler.schedule_job
 dam_scheduler.schedule_run
 dam_data_service.data_api
 dam_data_service.api_subscription
+dam_task.task_definition
+dam_task.task_instance
+dam_task.task_log
+dam_dev.dev_task
+dam_dev.dev_task_version
 "
 
 # v21/v22 为「移动既有表」，新库未执行历史增量时可能不存在；缺失只告警不失败

@@ -103,7 +103,7 @@ class PortalCatalogServiceTest {
 
         // 与 PortalCatalogService 当前目录保持一致；模块正式上线后同步更新此期望值
         assertEquals(
-                Set.of("MDM", "DEV", "STO", "MKT", "OBS"),
+                Set.of("MDM", "STO", "MKT", "OBS"),
                 planned,
                 "PLANNED 模块集合与当前目录不一致");
     }

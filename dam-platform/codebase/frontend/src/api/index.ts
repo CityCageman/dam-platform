@@ -564,6 +564,164 @@ export const dataServiceApi = {
   }
 }
 
+// ==================== 任务中心 / 数据开发 ====================
+
+/** 任务中心-任务定义 */
+export interface TaskCenterDefinition {
+  id: number
+  code?: string
+  definitionCode?: string
+  taskCode?: string
+  name?: string
+  definitionName?: string
+  taskName?: string
+  type?: string
+  taskType?: string
+  status?: string
+  description?: string
+  cronExpression?: string
+  datasourceId?: number
+  createdAt?: string
+  updatedAt?: string
+  [key: string]: unknown
+}
+
+/** 任务中心-运行实例 */
+export interface TaskCenterInstance {
+  id: number
+  definitionId?: number
+  definitionCode?: string
+  definitionName?: string
+  taskCode?: string
+  taskName?: string
+  status?: string
+  triggerType?: string
+  startTime?: string
+  endTime?: string
+  durationMs?: number
+  errorMessage?: string
+  createdAt?: string
+  updatedAt?: string
+  [key: string]: unknown
+}
+
+/** 任务中心-实例日志行 */
+export interface TaskCenterLog {
+  id?: number
+  instanceId?: number
+  level?: string
+  message?: string
+  content?: string
+  logContent?: string
+  logMessage?: string
+  timestamp?: string
+  createdAt?: string
+  [key: string]: unknown
+}
+
+/** 日志接口兼容纯文本、数组与分页包装三种返回 */
+export type TaskCenterLogPayload =
+  | string
+  | TaskCenterLog[]
+  | {
+      records?: TaskCenterLog[]
+      rows?: TaskCenterLog[]
+      list?: TaskCenterLog[]
+      logs?: TaskCenterLog[]
+      content?: string
+      [key: string]: unknown
+    }
+
+/** 任务中心接口：任务定义 / 触发 / 实例 / 日志 */
+export const taskCenterApi = {
+  /** 任务定义列表 */
+  getDefinitions() {
+    return request.get<unknown, ApiResult<TaskCenterDefinition[] | PageResult<TaskCenterDefinition>>>('/task-center/definitions')
+  },
+  /** 立即触发一次任务定义 */
+  triggerDefinition(id: number) {
+    return request.post<unknown, ApiResult<TaskCenterInstance | Record<string, unknown>>>(`/task-center/definitions/${id}/trigger`)
+  },
+  /** 运行实例列表 */
+  getInstances() {
+    return request.get<unknown, ApiResult<TaskCenterInstance[] | PageResult<TaskCenterInstance>>>('/task-center/instances')
+  },
+  /** 实例日志 */
+  getInstanceLogs(id: number) {
+    return request.get<unknown, ApiResult<TaskCenterLogPayload>>(`/task-center/instances/${id}/logs`)
+  }
+}
+
+/** 数据开发任务 */
+export interface DevTask {
+  id: number
+  code?: string
+  name?: string
+  type?: string
+  content?: string
+  datasourceId?: number | null
+  status?: string
+  version?: number
+  currentVersion?: number
+  latestVersion?: number
+  createdAt?: string
+  updatedAt?: string
+  createdBy?: string
+  [key: string]: unknown
+}
+
+/** 数据开发任务新建/编辑入参 */
+export interface DevTaskPayload {
+  code: string
+  name: string
+  type: string
+  content: string
+  datasourceId?: number | null
+}
+
+/** 数据开发任务版本 */
+export interface DevTaskVersion {
+  id?: number
+  taskId?: number
+  version?: number
+  versionNo?: number
+  versionNumber?: number
+  content?: string
+  changeLog?: string
+  remark?: string
+  createdBy?: string
+  createdAt?: string
+  [key: string]: unknown
+}
+
+/** 数据开发接口：任务 CRUD / 发布下线 / 版本 */
+export const devApi = {
+  /** 任务列表 */
+  getTasks() {
+    return request.get<unknown, ApiResult<DevTask[] | PageResult<DevTask>>>('/dev/tasks')
+  },
+  /** 新建任务 */
+  createTask(data: DevTaskPayload) {
+    return request.post<unknown, ApiResult<DevTask>>('/dev/tasks', data)
+  },
+  /** 编辑任务 */
+  updateTask(id: number, data: DevTaskPayload) {
+    return request.put<unknown, ApiResult<DevTask>>(`/dev/tasks/${id}`, data)
+  },
+  /** 发布任务 */
+  publishTask(id: number) {
+    return request.post<unknown, ApiResult<DevTask>>(`/dev/tasks/${id}/publish`)
+  },
+  /** 下线任务 */
+  offlineTask(id: number) {
+    return request.post<unknown, ApiResult<DevTask>>(`/dev/tasks/${id}/offline`)
+  },
+  /** 任务历史版本 */
+  getVersions(id: number) {
+    return request.get<unknown, ApiResult<DevTaskVersion[] | PageResult<DevTaskVersion>>>(`/dev/tasks/${id}/versions`)
+  }
+}
+
 export const modelApi = {
   // 模型
   getModels(keyword?: string, categoryId?: number) { return request.get('/catalog/models', { params: { keyword, categoryId } }) },

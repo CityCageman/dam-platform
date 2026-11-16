@@ -202,7 +202,7 @@ public class PortalCatalogService {
                                        String description, String icon, int sortOrder) {
         String route = "/domains/" + domainCode + "/" + code.toLowerCase(Locale.ROOT);
         // 阶段 1 尚未建设的模块明确标记为规划中，避免前端误以为可进入
-        Set<String> planned = Set.of("MDM", "DEV", "STO", "MKT", "OBS");
+        Set<String> planned = Set.of("MDM", "STO", "MKT", "OBS");
         String status = planned.contains(code) ? PortalModule.STATUS_PLANNED : STATUS_AVAILABLE;
         return new PortalModule(code, name, description, icon, route, sortOrder, status);
     }

@@ -44,6 +44,8 @@ services:
       - ../db/v23_integration_management.sql:/docker-entrypoint-initdb.d/24_v23_integration_management.sql:ro
       - ../db/v24_scheduler_management.sql:/docker-entrypoint-initdb.d/25_v24_scheduler_management.sql:ro
       - ../db/v25_data_service_management.sql:/docker-entrypoint-initdb.d/26_v25_data_service_management.sql:ro
+      - ../db/v26_task_center.sql:/docker-entrypoint-initdb.d/27_v26_task_center.sql:ro
+      - ../db/v27_dev_task.sql:/docker-entrypoint-initdb.d/28_v27_dev_task.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dam -d damplatform"]
       interval: 5s

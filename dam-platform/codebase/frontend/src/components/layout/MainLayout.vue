@@ -32,6 +32,10 @@
           <el-icon><Connection /></el-icon>
           <span>数据集成</span>
         </el-menu-item>
+        <el-menu-item index="/develop">
+          <el-icon><Cpu /></el-icon>
+          <span>数据开发</span>
+        </el-menu-item>
         <el-menu-item index="/scheduler">
           <el-icon><Timer /></el-icon>
           <span>调度中心</span>
@@ -43,6 +47,13 @@
         <el-menu-item index="/knowledge">
           <el-icon><Reading /></el-icon>
           <span>知识中心</span>
+        </el-menu-item>
+
+        <!-- 固定入口：任务中心，保证 /task-center 不依赖后端菜单配置 -->
+        <div class="nav-group">平台</div>
+        <el-menu-item index="/task-center">
+          <el-icon><Tickets /></el-icon>
+          <span>任务中心</span>
         </el-menu-item>
 
         <template v-for="g in moduleGroups" :key="g.title">
@@ -124,7 +135,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Search, ArrowRight, ArrowDown, User, Setting, SwitchButton, Bell, Grid, Connection, Timer, Link, Reading } from '@element-plus/icons-vue'
+import { Search, ArrowRight, ArrowDown, User, Setting, SwitchButton, Bell, Grid, Connection, Cpu, Link, Reading, Tickets, Timer } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { authApi, catalogApi } from '@/api'

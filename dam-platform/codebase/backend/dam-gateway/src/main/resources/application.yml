@@ -77,6 +77,14 @@ spring:
               uri: ${DAM_ROUTE_DATA_SERVICE:http://localhost:8097}
               predicates:
                 - Path=/api/data-service/**
+            - id: dam-task-center
+              uri: ${DAM_ROUTE_TASK_CENTER:http://localhost:8099}
+              predicates:
+                - Path=/api/task-center/**
+            - id: dam-develop
+              uri: ${DAM_ROUTE_DEVELOP:http://localhost:8100}
+              predicates:
+                - Path=/api/dev/**
             - id: dam-portal
               uri: ${DAM_ROUTE_PORTAL:http://localhost:8091}
               predicates:

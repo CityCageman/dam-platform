@@ -77,6 +77,8 @@ services:
       - ../db/v23_integration_management.sql:/docker-entrypoint-initdb.d/24_v23_integration_management.sql:ro
       - ../db/v24_scheduler_management.sql:/docker-entrypoint-initdb.d/25_v24_scheduler_management.sql:ro
       - ../db/v25_data_service_management.sql:/docker-entrypoint-initdb.d/26_v25_data_service_management.sql:ro
+      - ../db/v26_task_center.sql:/docker-entrypoint-initdb.d/27_v26_task_center.sql:ro
+      - ../db/v27_dev_task.sql:/docker-entrypoint-initdb.d/28_v27_dev_task.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dam -d damplatform"]
       interval: 5s
@@ -401,6 +403,45 @@ services:
       nacos:
         condition: service_healthy
 
+  # 统一任务中心：dam_task schema（v26）
+  dam-task-center:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-task-center/target/dam-task-center-1.0.0-exec.jar
+    container_name: dam-task-center
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+      NACOS_SERVER_ADDR: nacos:8848
+      SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+
+  # 数据开发：dam_dev schema（v27）
+  dam-develop:
+    build:
+      context: ../codebase/backend
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: dam-develop/target/dam-develop-1.0.0-exec.jar
+    container_name: dam-develop
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+      NACOS_SERVER_ADDR: nacos:8848
+      SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+
+
   # ==================== 网关 ====================
   # 网关：对外唯一 API 入口；容器内路由必须显式指向服务名，默认 lb:// 在无 Nacos 时不可用，
   # 默认 http://localhost 在容器内会指向网关自身导致 502/连接拒绝。
@@ -436,6 +477,8 @@ services:
       DAM_ROUTE_INTEGRATION: http://dam-integration:8095
       DAM_ROUTE_SCHEDULER: http://dam-scheduler:8096
       DAM_ROUTE_DATA_SERVICE: http://dam-data-service:8097
+      DAM_ROUTE_TASK_CENTER: http://dam-task-center:8099
+      DAM_ROUTE_DEVELOP: http://dam-develop:8100
     # 对外暴露 8080，供前端服务器 Nginx 反代 /api 访问
     ports:
       - "8080:8080"
@@ -456,6 +499,8 @@ services:
       - dam-integration
       - dam-scheduler
       - dam-data-service
+      - dam-task-center
+      - dam-develop
 
 volumes:
   pgdata:

@@ -24,13 +24,15 @@ MODULES=(
   dam-scheduler
   dam-data-service
   dam-ai-workbench
+  dam-task-center
+  dam-develop
 )
 
 # 数据库增量脚本主版本号
-DB_VERSIONS=(21 22 23 24 25)
+DB_VERSIONS=(21 22 23 24 25 26 27)
 
 # 门户中已补齐、不应再标记为 PLANNED 的模块
-RELEASED_MODULES=(KNO DS SCH INT)
+RELEASED_MODULES=(KNO DS SCH INT DEV)
 
 BUILD=0
 FAIL_COUNT=0
@@ -94,7 +96,7 @@ done
 
 # 后端门户 PLANNED 集合必须与前端一致：只剩 MDM/DEV/STO/MKT/OBS
 if [ -f "$BACKEND_DIR/dam-portal/src/main/java/com/dam/portal/service/PortalCatalogService.java" ]; then
-  if grep -q 'Set.of("MDM", "DEV", "STO", "MKT", "OBS")' "$BACKEND_DIR/dam-portal/src/main/java/com/dam/portal/service/PortalCatalogService.java"; then
+  if grep -q 'Set.of("MDM", "STO", "MKT", "OBS")' "$BACKEND_DIR/dam-portal/src/main/java/com/dam/portal/service/PortalCatalogService.java"; then
     ok "后端门户 PLANNED 集合已同步"
   else
     fail "后端 PortalCatalogService PLANNED 集合未同步（应为 MDM/DEV/STO/MKT/OBS）"

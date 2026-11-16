@@ -19,8 +19,9 @@ const routes = [
       { path: 'lineage', component: () => import('@/views/lineage/Index.vue'), meta: { title: '数据血缘', icon: 'Connection' } },
       { path: 'metrics', component: () => import('@/views/metric/MetricManagement.vue'), meta: { title: '指标管理', icon: 'TrendCharts' } },
       { path: 'reports', component: () => import('@/views/report/ReportCenter.vue'), meta: { title: '报表体系', icon: 'DataAnalysis' } },
-      // 数据工程与数据服务：接入已完成的集成/调度/数据服务管理 API
+      // 数据工程与数据服务：接入已完成的集成/开发/调度/数据服务管理 API
       { path: 'integration', component: () => import('@/views/integration/IntegrationManagement.vue'), meta: { title: '数据集成', icon: 'Connection' } },
+      { path: 'develop', component: () => import('@/views/develop/DataDevelopment.vue'), meta: { title: '数据开发', icon: 'Cpu' } },
       { path: 'scheduler', component: () => import('@/views/scheduler/SchedulerManagement.vue'), meta: { title: '调度中心', icon: 'Timer' } },
       { path: 'data-service', component: () => import('@/views/dataService/DataServiceManagement.vue'), meta: { title: '数据服务', icon: 'Link' } },
       // 知识中心独立路由，内部复用 AI 工作台同一套知识库组件
@@ -31,7 +32,9 @@ const routes = [
       { path: 'lifecycle', component: () => import('@/views/lifecycle/Index.vue'), meta: { title: '生命周期', icon: 'Timer' } },
       { path: 'operations', component: () => import('@/views/operations/Index.vue'), meta: { title: '工单中心', icon: 'Tickets' } },
       { path: 'agent', component: () => import('@/views/agent/AgentWorkbench.vue'), meta: { title: 'AI 工作台', icon: 'ChatDotRound' } },
-      // 任务中心：复用现有 AI 任务中心页面，供门户 TC 模块直达
+      // 任务中心：统一任务定义、触发与运行实例/日志
+      { path: 'task-center', component: () => import('@/views/taskCenter/TaskCenter.vue'), meta: { title: '任务中心', icon: 'Tickets' } },
+      // 兼容旧入口：AI 任务中心页面继续保留
       { path: 'agent/tasks', component: () => import('@/views/agent/AiTaskCenter.vue'), meta: { title: '任务中心', icon: 'Tickets', hidden: true } },
       { path: 'profile', component: () => import('@/views/system/Profile.vue'), meta: { title: '个人中心', hidden: true } },
       { path: 'system-config', component: () => import('@/views/system/SystemConfig.vue'), meta: { title: '系统配置', hidden: true } },

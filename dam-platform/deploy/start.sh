@@ -32,6 +32,8 @@ SERVICES=(
   "dam-portal:8091"
   "dam-metric:8094"
   "dam-knowledge:8098"
+  "dam-task-center:8099"
+  "dam-develop:8100"
   "dam-gateway:8080"
 )
 

@@ -160,10 +160,10 @@ export const portalDomains: PortalDomain[] = [
       {
         code: 'DEV',
         name: '数据开发',
-        description: '面向数仓分层的表结构设计与开发协同，当前暂未开放独立工作台。',
+        description: '管理 SQL/脚本开发任务，支持新建、编辑、发布下线与历史版本回溯。',
         icon: 'Cpu',
-        route: '/metadata',
-        status: 'PLANNED'
+        route: '/develop',
+        status: 'AVAILABLE'
       },
       {
         code: 'SCH',
@@ -317,9 +317,9 @@ export const portalDomains: PortalDomain[] = [
       {
         code: 'TC',
         name: '任务中心',
-        description: '集中查看 AI 与数据任务队列、执行进度和处理结果。',
+        description: '集中查看任务定义与运行实例，支持手动触发、状态跟踪与实例日志排查。',
         icon: 'Tickets',
-        route: '/agent/tasks',
+        route: '/task-center',
         status: 'AVAILABLE'
       },
       {
