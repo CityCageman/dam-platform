@@ -9,13 +9,13 @@ import com.dam.catalog.metadata.entity.MetadataSchema;
 import com.dam.catalog.metadata.entity.MetadataTable;
 import com.dam.catalog.service.CryptoService;
 import com.dam.catalog.metric.entity.MetricDefinition;
-import com.dam.catalog.knowledge.service.WeKnoraKnowledgeService;
 import com.dam.catalog.asset.repository.DamAssetMapper;
 import com.dam.catalog.metadata.repository.DamDataSourceMapper;
 import com.dam.catalog.metadata.repository.MetadataColumnMapper;
 import com.dam.catalog.metadata.repository.MetadataSchemaMapper;
 import com.dam.catalog.metadata.repository.MetadataTableMapper;
 import com.dam.catalog.shared.port.MetricLookupPort;
+import com.dam.catalog.shared.port.KnowledgeSearchPort;
 import com.dam.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -98,7 +98,7 @@ public class ReportService {
     private final MetricLookupPort metricLookupPort;
     private final MetadataSchemaMapper schemaMapper;
     private final CryptoService cryptoService;
-    private final WeKnoraKnowledgeService weKnoraKnowledgeService;
+    private final KnowledgeSearchPort knowledgeSearchPort;
 
     /** dam-model-gateway 服务地址（报表 SQL 生成调用编码智能体） */
     @Value("${dam.model-gateway-url:${dam.agent-url:http://localhost:8089}}")
@@ -131,7 +131,7 @@ public class ReportService {
         DamDataSource ds = dataSourceMapper.selectById(dataSourceId);
         if (ds == null) throw new BusinessException("数据源不存在");
 
-        // 1. 检索 WeKnora/本地知识库，把指标解释、字段映射和取数规则并入检索和 Prompt
+        // 1. 通过知识服务检索指标解释、字段映射和取数规则，并入检索和 Prompt
         KnowledgeContext kb = retrieveKnowledge(requirement);
         String knowledgeContext = kb.text;
         String reportSpec = kb.reportSpec;
@@ -1011,10 +1011,10 @@ public class ReportService {
         }
     }
 
-    /** 检索 WeKnora/本地知识库，返回文本上下文和结构化取数规则 */
+    /** 通过知识服务检索业务知识，返回文本上下文和结构化取数规则；失败时降级为仅元数据 */
     private KnowledgeContext retrieveKnowledge(String requirement) {
         try {
-            Map<String, Object> result = weKnoraKnowledgeService.search(requirement, 5);
+            Map<String, Object> result = knowledgeSearchPort.search(requirement, 5);
             Object raw = result.get("results");
             if (!(raw instanceof List<?> list) || list.isEmpty()) return new KnowledgeContext("", null);
             StringBuilder sb = new StringBuilder();

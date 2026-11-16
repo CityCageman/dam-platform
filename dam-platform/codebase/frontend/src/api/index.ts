@@ -410,24 +410,24 @@ export const operationsApi = {
 }
 
 export const knowledgeApi = {
-  categories() { return request.get('/catalog/knowledge/categories') },
-  stats() { return request.get('/catalog/knowledge/stats') },
-  createCategory(data: any) { return request.post('/catalog/knowledge/categories', data) },
-  updateCategory(id: number, data: any) { return request.put(`/catalog/knowledge/categories/${id}`, data) },
-  deleteCategory(id: number) { return request.delete(`/catalog/knowledge/categories/${id}`) },
-  entries(params: any) { return request.get('/catalog/knowledge/entries', { params }) },
-  createEntry(data: any) { return request.post('/catalog/knowledge/entries', data) },
-  updateEntry(id: number, data: any) { return request.put(`/catalog/knowledge/entries/${id}`, data) },
-  deleteEntry(id: number) { return request.delete(`/catalog/knowledge/entries/${id}`) },
-  sources(params: any) { return request.get('/catalog/knowledge/sources', { params }) },
-  sync(data: any) { return request.post('/catalog/knowledge/sync', data) },
-  reindex(id: number) { return request.post(`/catalog/knowledge/entries/${id}/vector-reindex`) },
-  externalStatus() { return request.get('/catalog/knowledge/external/status') },
-  initializeExternal() { return request.post('/catalog/knowledge/external/initialize', null, { timeout: 60000 }) },
-  refreshExternal(data?: any) { return request.post('/catalog/knowledge/external/refresh', data || {}, { timeout: 120000 }) },
-  externalEntryStatus(id: number) { return request.get(`/catalog/knowledge/external/entries/${id}/status`) },
-  migrateExternal() { return request.post('/catalog/knowledge/external/migrate', null, { timeout: 600000 }) },
-  externalSearch(data: any) { return request.post('/catalog/knowledge/external/search', data, { timeout: 60000 }) }
+  categories() { return request.get('/knowledge/categories') },
+  stats() { return request.get('/knowledge/stats') },
+  createCategory(data: any) { return request.post('/knowledge/categories', data) },
+  updateCategory(id: number, data: any) { return request.put(`/knowledge/categories/${id}`, data) },
+  deleteCategory(id: number) { return request.delete(`/knowledge/categories/${id}`) },
+  entries(params: any) { return request.get('/knowledge/entries', { params }) },
+  createEntry(data: any) { return request.post('/knowledge/entries', data) },
+  updateEntry(id: number, data: any) { return request.put(`/knowledge/entries/${id}`, data) },
+  deleteEntry(id: number) { return request.delete(`/knowledge/entries/${id}`) },
+  sources(params: any) { return request.get('/knowledge/sources', { params }) },
+  sync(data: any) { return request.post('/knowledge/sync', data) },
+  reindex(id: number) { return request.post(`/knowledge/entries/${id}/vector-reindex`) },
+  externalStatus() { return request.get('/knowledge/external/status') },
+  initializeExternal() { return request.post('/knowledge/external/initialize', null, { timeout: 60000 }) },
+  refreshExternal(data?: any) { return request.post('/knowledge/external/refresh', data || {}, { timeout: 120000 }) },
+  externalEntryStatus(id: number) { return request.get(`/knowledge/external/entries/${id}/status`) },
+  migrateExternal() { return request.post('/knowledge/external/migrate', null, { timeout: 600000 }) },
+  externalSearch(data: any) { return request.post('/knowledge/external/search', data, { timeout: 60000 }) }
 }
 
 export const metricApi = {

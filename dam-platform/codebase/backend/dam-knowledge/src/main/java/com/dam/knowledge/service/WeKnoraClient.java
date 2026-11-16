@@ -1,9 +1,7 @@
-package com.dam.catalog.knowledge.service;
+package com.dam.knowledge.service;
 
 import cn.hutool.core.util.StrUtil;
 import com.dam.common.exception.BusinessException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
@@ -11,6 +9,8 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.*;
 
@@ -25,7 +25,7 @@ public class WeKnoraClient {
     private final String baseUrl;
     private final String apiKey;
     private final RestClient restClient;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final JsonMapper mapper = JsonMapper.builder().build();
 
     public WeKnoraClient(@Value("${dam.weknora.base-url:https://wiki-medical.cuhkszmc.cn/api/v1}") String baseUrl,
                          @Value("${dam.weknora.api-key:}") String apiKey) {

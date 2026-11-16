@@ -1,22 +1,23 @@
-package com.dam.catalog.knowledge.service;
+package com.dam.knowledge.service;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.catalog.knowledge.entity.KnowledgeCategory;
-import com.dam.catalog.knowledge.entity.KnowledgeEntry;
-import com.dam.catalog.metric.entity.MetricDefinition;
-import com.dam.catalog.knowledge.entity.KnowledgeSyncConfig;
-import com.dam.catalog.knowledge.repository.KnowledgeCategoryMapper;
-import com.dam.catalog.knowledge.repository.KnowledgeEntryMapper;
-import com.dam.catalog.shared.port.MetricLookupPort;
-import com.dam.catalog.knowledge.repository.KnowledgeSyncConfigMapper;
 import com.dam.common.exception.BusinessException;
-import com.fasterxml.jackson.databind.JsonNode;
+import com.dam.knowledge.client.MetricReadClient;
+import com.dam.knowledge.dto.MetricDefinition;
+import com.dam.knowledge.entity.KnowledgeCategory;
+import com.dam.knowledge.entity.KnowledgeEntry;
+import com.dam.knowledge.entity.KnowledgeSyncConfig;
+import com.dam.knowledge.repository.KnowledgeCategoryMapper;
+import com.dam.knowledge.repository.KnowledgeEntryMapper;
+import com.dam.knowledge.repository.KnowledgeSyncConfigMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -24,17 +25,22 @@ import java.util.*;
 /**
  * DAM 知识库与 WeKnora 的迁移/同步/检索适配。
  * 一个 WeKnora 知识库 + 本地分类映射为 WeKnora 标签。
+ * <p>
+ * 指标口径通过 {@link MetricReadClient} 从 dam-metric 只读获取，不依赖 catalog 的指标 Mapper。
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class WeKnoraKnowledgeService {
 
+    /** 解析 WeKnora 返回的 JSON 与本地 JSONB 字段 */
+    private static final JsonMapper MAPPER = JsonMapper.builder().build();
+
     private final WeKnoraClient client;
     private final KnowledgeSyncConfigMapper configMapper;
     private final KnowledgeCategoryMapper categoryMapper;
     private final KnowledgeEntryMapper entryMapper;
-    private final MetricLookupPort metricLookupPort;
+    private final MetricReadClient metricReadClient;
 
     @Value("${dam.weknora.llm-model:qwen3-coder-30b-a3b}")
     private String preferredLlmModel;
@@ -380,7 +386,7 @@ public class WeKnoraKnowledgeService {
             if (StrUtil.isNotBlank(e.getFieldMappings())) content.append("字段映射：").append(e.getFieldMappings()).append("\n");
             if (StrUtil.isNotBlank(e.getRelatedMetrics())) content.append("关联指标：").append(e.getRelatedMetrics()).append("\n");
             if (StrUtil.isNotBlank(e.getContent())) content.append("补充：").append(e.getContent()).append("\n");
-            MetricDefinition metric = e.getMetricId() == null ? null : metricLookupPort.findById(e.getMetricId());
+            MetricDefinition metric = e.getMetricId() == null ? null : metricReadClient.findById(e.getMetricId());
             if (metric != null) {
                 content.append("指标库口径：").append(StrUtil.blankToDefault(metric.getDefinition(), "")).append("\n");
                 if (StrUtil.isNotBlank(metric.getFormula())) content.append("计算公式：").append(metric.getFormula()).append("\n");
@@ -407,7 +413,7 @@ public class WeKnoraKnowledgeService {
     private List<String> jsonStrings(String json) {
         if (StrUtil.isBlank(json)) return List.of();
         try {
-            JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
+            JsonNode node = MAPPER.readTree(json);
             if (node.isArray()) {
                 List<String> values = new ArrayList<>();
                 node.forEach(n -> values.add(n.asText()));
@@ -589,7 +595,7 @@ public class WeKnoraKnowledgeService {
     private void appendJsonList(StringBuilder sb, String title, String json) {
         if (StrUtil.isBlank(json)) return;
         try {
-            JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
+            JsonNode node = MAPPER.readTree(json);
             if (node.isArray()) {
                 sb.append("## ").append(title).append("\n");
                 for (JsonNode item : node) sb.append("- ").append(item.asText()).append("\n");

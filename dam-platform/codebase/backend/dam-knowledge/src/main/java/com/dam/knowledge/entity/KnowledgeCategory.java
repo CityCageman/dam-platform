@@ -1,4 +1,4 @@
-package com.dam.catalog.knowledge.entity;
+package com.dam.knowledge.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;

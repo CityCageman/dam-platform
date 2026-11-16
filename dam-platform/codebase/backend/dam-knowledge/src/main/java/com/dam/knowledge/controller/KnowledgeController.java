@@ -1,8 +1,8 @@
-package com.dam.catalog.knowledge.controller;
+package com.dam.knowledge.controller;
 
-import com.dam.catalog.knowledge.entity.KnowledgeCategory;
-import com.dam.catalog.knowledge.entity.KnowledgeEntry;
-import com.dam.catalog.knowledge.service.KnowledgeService;
+import com.dam.knowledge.entity.KnowledgeCategory;
+import com.dam.knowledge.entity.KnowledgeEntry;
+import com.dam.knowledge.service.KnowledgeService;
 import com.dam.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -12,9 +12,12 @@ import java.util.Map;
 
 /**
  * 知识库：分类/条目维护、选择性同步、向量库对接预留。
+ * <p>
+ * 所有接口统一前缀 {@code /api/knowledge}，由独立的 dam-knowledge 服务提供；
+ * 原 catalog 的 {@code /api/catalog/knowledge} 前缀不再使用。
  */
 @RestController
-@RequestMapping("/api/catalog/knowledge")
+@RequestMapping("/api/knowledge")
 @RequiredArgsConstructor
 public class KnowledgeController {
 
@@ -96,26 +99,26 @@ public class KnowledgeController {
     }
 
     // ==================== 向量库预留 API ====================
-    /** 向量服务拉取待索引文档：GET /api/catalog/knowledge/vector/pending */
+    /** 向量服务拉取待索引文档：GET /api/knowledge/vector/pending */
     @GetMapping("/vector/pending")
     public Result<List<Map<String, Object>>> vectorPending(@RequestParam(required = false) Integer limit) {
         return Result.success(knowledgeService.pendingVectorDocuments(limit));
     }
 
-    /** 单条文档：GET /api/catalog/knowledge/entries/{id}/vector-document */
+    /** 单条文档：GET /api/knowledge/entries/{id}/vector-document */
     @GetMapping("/entries/{id}/vector-document")
     public Result<Map<String, Object>> vectorDocument(@PathVariable Long id) {
         return Result.success(knowledgeService.vectorDocument(id));
     }
 
-    /** 向量服务回写：POST /api/catalog/knowledge/entries/{id}/vector-callback */
+    /** 向量服务回写：POST /api/knowledge/entries/{id}/vector-callback */
     @PostMapping("/entries/{id}/vector-callback")
     public Result<Void> vectorCallback(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         knowledgeService.vectorCallback(id, body);
         return Result.success(null);
     }
 
-    /** 重新入队：POST /api/catalog/knowledge/entries/{id}/vector-reindex */
+    /** 重新入队：POST /api/knowledge/entries/{id}/vector-reindex */
     @PostMapping("/entries/{id}/vector-reindex")
     public Result<Void> reindex(@PathVariable Long id) {
         knowledgeService.reindex(id);

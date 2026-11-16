@@ -1,22 +1,17 @@
-package com.dam.catalog.knowledge.service;
+package com.dam.knowledge.service;
 
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.catalog.entity.*;
-import com.dam.catalog.metadata.entity.*;
-import com.dam.catalog.knowledge.entity.KnowledgeCategory;
-import com.dam.catalog.knowledge.entity.KnowledgeEntry;
-import com.dam.catalog.knowledge.entity.KnowledgeSyncConfig;
-import com.dam.catalog.knowledge.repository.KnowledgeCategoryMapper;
-import com.dam.catalog.knowledge.repository.KnowledgeEntryMapper;
-import com.dam.catalog.knowledge.repository.KnowledgeSyncConfigMapper;
-
-import com.dam.catalog.metric.entity.MetricDefinition;
-import com.dam.catalog.repository.*;
-import com.dam.catalog.metadata.repository.*;
-import com.dam.catalog.shared.port.MetricLookupPort;
 import com.dam.common.exception.BusinessException;
+import com.dam.knowledge.client.MetricReadClient;
+import com.dam.knowledge.dto.MetricDefinition;
+import com.dam.knowledge.entity.KnowledgeCategory;
+import com.dam.knowledge.entity.KnowledgeEntry;
+import com.dam.knowledge.entity.KnowledgeSyncConfig;
+import com.dam.knowledge.repository.KnowledgeCategoryMapper;
+import com.dam.knowledge.repository.KnowledgeEntryMapper;
+import com.dam.knowledge.repository.KnowledgeSyncConfigMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -35,9 +30,7 @@ public class KnowledgeService {
 
     private final KnowledgeCategoryMapper categoryMapper;
     private final KnowledgeEntryMapper entryMapper;
-    private final MetadataTableMapper tableMapper;
-    private final MetadataSchemaMapper schemaMapper;
-    private final MetricLookupPort metricLookupPort;
+    private final MetricReadClient metricReadClient;
     private final JdbcTemplate jdbcTemplate;
     private final WeKnoraKnowledgeService weKnoraKnowledgeService;
 
@@ -197,7 +190,7 @@ public class KnowledgeService {
         e.setReportSpec(reportSpec == null ? null
                 : (reportSpec instanceof String s ? s : JSONUtil.toJsonStr(reportSpec)));
         if ("METRIC".equals(entryType) && metricId != null) {
-            MetricDefinition metric = metricLookupPort.findById(metricId);
+            MetricDefinition metric = metricReadClient.findById(metricId);
             if (metric == null || metric.getDeletedAt() != null) {
                 throw new BusinessException("关联指标不存在或已删除");
             }
@@ -271,26 +264,35 @@ public class KnowledgeService {
         String kw = StrUtil.trimToEmpty(keyword).toLowerCase();
         List<Map<String, Object>> result = new ArrayList<>();
         if ("METADATA".equalsIgnoreCase(sourceType)) {
-            List<MetadataTable> tables = tableMapper.selectList(new LambdaQueryWrapper<MetadataTable>()
-                    .last("LIMIT 500"));
-            Set<Long> schemaIds = tables.stream().map(MetadataTable::getSchemaId).filter(Objects::nonNull).collect(Collectors.toSet());
-            Map<Long, String> schemaMap = new HashMap<>();
-            if (!schemaIds.isEmpty()) schemaMapper.selectByIds(schemaIds).forEach(s -> schemaMap.put(s.getId(), s.getSchemaName()));
-            for (MetadataTable t : tables) {
-                String schema = schemaMap.getOrDefault(t.getSchemaId(), "");
-                String title = (StrUtil.isNotBlank(schema) ? schema + "." : "") + t.getTableName();
-                String desc = StrUtil.blankToDefault(t.getTableComment(), "");
-                if (!kw.isEmpty() && !title.toLowerCase().contains(kw) && !desc.toLowerCase().contains(kw)) continue;
-                result.add(Map.of("id", t.getId(), "title", title, "description", desc,
-                        "sourceType", "METADATA", "sourceKey", "metadata:" + t.getId()));
-                if (result.size() >= size) break;
+            // 技术元数据仍归 catalog（dam_metadata schema），知识服务只做只读候选查询
+            try {
+                List<Map<String, Object>> tables = jdbcTemplate.queryForList(
+                        "SELECT t.id, t.table_name, t.table_comment, s.schema_name "
+                                + "FROM dam_metadata.metadata_table t "
+                                + "LEFT JOIN dam_metadata.metadata_schema s ON s.id = t.schema_id "
+                                + "ORDER BY t.id LIMIT 500");
+                for (Map<String, Object> t : tables) {
+                    String schema = t.get("schema_name") == null ? "" : String.valueOf(t.get("schema_name"));
+                    String tableName = StrUtil.blankToDefault(String.valueOf(t.get("table_name")), "");
+                    String title = (StrUtil.isNotBlank(schema) ? schema + "." : "") + tableName;
+                    String desc = t.get("table_comment") == null ? "" : String.valueOf(t.get("table_comment"));
+                    if (!kw.isEmpty() && !title.toLowerCase().contains(kw) && !desc.toLowerCase().contains(kw)) continue;
+                    Long id = t.get("id") instanceof Number n ? n.longValue() : null;
+                    if (id == null) continue;
+                    result.add(Map.of("id", id, "title", title, "description", desc,
+                            "sourceType", "METADATA", "sourceKey", "metadata:" + id));
+                    if (result.size() >= size) break;
+                }
+            } catch (Exception e) {
+                throw new BusinessException("元数据读取失败: " + e.getMessage());
             }
         } else if ("METRIC".equalsIgnoreCase(sourceType)) {
-            List<MetricDefinition> metrics = metricLookupPort.listActive(500);
+            List<MetricDefinition> metrics = metricReadClient.listActive(500);
             for (MetricDefinition m : metrics) {
+                String title = StrUtil.blankToDefault(m.getMetricName(), "");
                 String desc = StrUtil.blankToDefault(m.getDefinition(), StrUtil.blankToDefault(m.getFormula(), ""));
-                if (!kw.isEmpty() && !m.getMetricName().toLowerCase().contains(kw) && !desc.toLowerCase().contains(kw)) continue;
-                result.add(Map.of("id", m.getId(), "title", m.getMetricName(), "description", desc,
+                if (!kw.isEmpty() && !title.toLowerCase().contains(kw) && !desc.toLowerCase().contains(kw)) continue;
+                result.add(Map.of("id", m.getId(), "title", title, "description", desc,
                         "sourceType", "METRIC", "sourceKey", "metric:" + m.getId()));
                 if (result.size() >= size) break;
             }

@@ -21,6 +21,7 @@ SERVICES=(
   "dam-data-service:8097"
   "dam-portal:8091"
   "dam-metric:8094"
+  "dam-knowledge:8098"
 )
 
 for svc in "${SERVICES[@]}"; do

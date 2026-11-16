@@ -1,15 +1,19 @@
-package com.dam.catalog.knowledge.controller;
+package com.dam.knowledge.controller;
 
-import com.dam.catalog.knowledge.service.WeKnoraKnowledgeService;
+import com.dam.knowledge.service.WeKnoraKnowledgeService;
 import com.dam.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-/** WeKnora 知识库迁移/检索接口 */
+/**
+ * WeKnora 知识库迁移/检索接口。
+ * <p>
+ * 所有接口统一前缀 {@code /api/knowledge/external}，由独立的 dam-knowledge 服务提供。
+ */
 @RestController
-@RequestMapping("/api/catalog/knowledge/external")
+@RequestMapping("/api/knowledge/external")
 @RequiredArgsConstructor
 public class WeKnoraController {
 
