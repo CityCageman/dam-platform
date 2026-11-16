@@ -1,19 +1,19 @@
 package com.dam.scheduler;
 
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
  * 调度服务启动类。
  * <p>
- * 规划承载 DAG 编排、调度计划与依赖管理；当前阶段仅提供状态、任务目录和 DAG 目录查询
- * 以及触发占位接口，不实现数据库持久化与真实调度执行。
- * <p>
- * TODO 后续接入调度引擎与独立 schema 后，再补充 Mapper 扫描和调度执行配置。
+ * 承载调度任务元数据管理、启停与触发记录；任务与运行记录持久化在 dam_scheduler schema，
+ * 真实 DAG 执行引擎尚未实现，触发接口只写入 PENDING 运行记录。
  *
  * @author DAM Platform
  */
 @SpringBootApplication(scanBasePackages = {"com.dam.scheduler", "com.dam.common"})
+@MapperScan("com.dam.scheduler.repository")
 public class DamSchedulerApplication {
 
     /**

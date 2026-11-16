@@ -1,13 +1,21 @@
 package com.dam.dataservice.controller;
 
+import com.dam.common.vo.PageResult;
 import com.dam.common.vo.Result;
-import com.dam.dataservice.model.DataApiDefinition;
-import com.dam.dataservice.service.DataServiceCatalogService;
+import com.dam.dataservice.dto.DataApiRequest;
+import com.dam.dataservice.entity.DataApi;
+import com.dam.dataservice.entity.DataApiSubscription;
+import com.dam.dataservice.service.DataApiService;
+import com.dam.dataservice.service.DataApiSubscriptionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.LinkedHashMap;
@@ -17,8 +25,8 @@ import java.util.Map;
 /**
  * 数据服务 API 管理接口
  * <p>
- * 提供数据服务运行状态、数据 API 目录、订阅列表与 API 发布入口。
- * 阶段 1 为骨架实现：不连接数据库，发布接口明确返回未实现。
+ * 提供数据服务运行状态、数据 API 的增删改查与发布/下线，以及 API 订阅关系的
+ * 创建、查询与状态变更。本服务只管理元数据，不实现真实 API 网关运行时。
  * 所有响应统一使用 {@link Result} 包装。
  *
  * @author DAM Platform
@@ -28,8 +36,11 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class DataServiceController {
 
-    /** 数据服务目录服务 */
-    private final DataServiceCatalogService dataServiceCatalogService;
+    /** 数据 API 管理服务 */
+    private final DataApiService dataApiService;
+
+    /** 数据 API 订阅管理服务 */
+    private final DataApiSubscriptionService subscriptionService;
 
     /**
      * 数据服务运行状态
@@ -46,38 +57,150 @@ public class DataServiceController {
     }
 
     /**
-     * 查询数据 API 目录
+     * 分页查询数据 API 列表
      *
-     * @return 数据 API 列表，字段为 code、name、path、method、status
+     * @param keyword  关键字（apiCode/apiName/path）
+     * @param status   发布状态
+     * @param page     页码（从 1 开始）
+     * @param pageSize 每页条数
+     * @return 分页结果
      */
     @GetMapping("/apis")
-    public Result<List<Map<String, Object>>> apis() {
-        List<Map<String, Object>> apis = dataServiceCatalogService.listApis().stream()
-                .map(DataApiDefinition::toMap)
-                .toList();
-        return Result.success(apis);
+    public Result<PageResult<DataApi>> pageApis(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "20") Integer pageSize) {
+        return Result.success(dataApiService.page(keyword, status, page, pageSize));
     }
 
     /**
-     * 查询数据 API 订阅列表
+     * 查询数据 API 详情
      *
-     * @return 订阅列表；阶段 1 固定为空列表
+     * @param id API ID
+     * @return API 定义
      */
-    @GetMapping("/subscriptions")
-    public Result<List<Map<String, Object>>> subscriptions() {
-        return Result.success(dataServiceCatalogService.listSubscriptions());
+    @GetMapping("/apis/{id}")
+    public Result<DataApi> getApi(@PathVariable Long id) {
+        return Result.success(dataApiService.getById(id));
     }
 
     /**
-     * 发布数据 API（骨架）
-     * <p>
-     * 阶段 1 不实现发布逻辑，返回 accepted=false、message=not implemented。
+     * 创建数据 API
      *
-     * @param id API 标识
-     * @return 发布结果
+     * @param request 创建请求
+     * @return 创建后的 API
+     */
+    @PostMapping("/apis")
+    public Result<DataApi> createApi(@RequestBody DataApiRequest request) {
+        return Result.success(dataApiService.create(request));
+    }
+
+    /**
+     * 更新数据 API（apiCode 不可修改）
+     *
+     * @param id      API ID
+     * @param request 更新请求
+     * @return 更新后的 API
+     */
+    @PutMapping("/apis/{id}")
+    public Result<DataApi> updateApi(@PathVariable Long id,
+                                     @RequestBody DataApiRequest request) {
+        return Result.success(dataApiService.update(id, request));
+    }
+
+    /**
+     * 逻辑删除数据 API
+     *
+     * @param id API ID
+     * @return 空结果
+     */
+    @DeleteMapping("/apis/{id}")
+    public Result<Void> deleteApi(@PathVariable Long id) {
+        dataApiService.delete(id);
+        return Result.success();
+    }
+
+    /**
+     * 发布数据 API（DRAFT/OFFLINE → PUBLISHED）
+     *
+     * @param id API ID
+     * @return 发布后的 API
      */
     @PostMapping("/apis/{id}/publish")
-    public Result<Map<String, Object>> publish(@PathVariable String id) {
-        return Result.success(dataServiceCatalogService.publish(id));
+    public Result<DataApi> publishApi(@PathVariable Long id) {
+        return Result.success(dataApiService.publish(id));
+    }
+
+    /**
+     * 下线数据 API（PUBLISHED → OFFLINE）
+     *
+     * @param id API ID
+     * @return 下线后的 API
+     */
+    @PostMapping("/apis/{id}/offline")
+    public Result<DataApi> offlineApi(@PathVariable Long id) {
+        return Result.success(dataApiService.offline(id));
+    }
+
+    /**
+     * 查询指定数据 API 的订阅列表
+     *
+     * @param id API ID
+     * @return 订阅列表
+     */
+    @GetMapping("/apis/{id}/subscriptions")
+    public Result<List<DataApiSubscription>> listSubscriptions(@PathVariable Long id) {
+        return Result.success(subscriptionService.listByApi(id));
+    }
+
+    /**
+     * 为指定数据 API 创建订阅
+     *
+     * @param id      API ID
+     * @param request 订阅请求（subscriber 必填，status 默认 PENDING）
+     * @return 创建后的订阅记录
+     */
+    @PostMapping("/apis/{id}/subscriptions")
+    public Result<DataApiSubscription> createSubscription(
+            @PathVariable Long id,
+            @RequestBody DataApiSubscription request) {
+        return Result.success(subscriptionService.create(id, request));
+    }
+
+    /**
+     * 分页查询全部订阅（替换原静态空列表实现）
+     *
+     * @param apiId      API ID 过滤
+     * @param subscriber 订阅方过滤（模糊匹配）
+     * @param status     订阅状态过滤
+     * @param page       页码（从 1 开始）
+     * @param pageSize   每页条数
+     * @return 分页结果
+     */
+    @GetMapping("/subscriptions")
+    public Result<PageResult<DataApiSubscription>> pageSubscriptions(
+            @RequestParam(required = false) Long apiId,
+            @RequestParam(required = false) String subscriber,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "20") Integer pageSize) {
+        return Result.success(subscriptionService.page(apiId, subscriber, status, page, pageSize));
+    }
+
+    /**
+     * 更新订阅状态
+     *
+     * @param id   订阅 ID
+     * @param body 请求体：{"status":"PENDING|ACTIVE|REJECTED|DISABLED"}
+     * @return 更新后的订阅记录
+     */
+    @PostMapping("/subscriptions/{id}/status")
+    public Result<DataApiSubscription> updateSubscriptionStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        Object rawStatus = body == null ? null : body.get("status");
+        String status = rawStatus == null ? null : String.valueOf(rawStatus);
+        return Result.success(subscriptionService.updateStatus(id, status));
     }
 }

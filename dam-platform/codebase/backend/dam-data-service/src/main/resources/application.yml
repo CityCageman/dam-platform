@@ -16,16 +16,25 @@ spring:
         server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
       discovery:
         server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
-  autoconfigure:
-    # 数据服务阶段 1 不连接数据库，排除数据源/MyBatis-Plus 自动装配
-    # （dam-common 依赖传递了 mybatis-plus 与 spring-boot-starter-jdbc 相关配置）
-    exclude:
-      # Spring Boot 4 中 DataSource 自动装配迁移至 spring-boot-jdbc 模块，包路径为 org.springframework.boot.jdbc.autoconfigure
-      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
-      - com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration
+  datasource:
+    # 数据 API 管理库；可通过 SPRING_DATASOURCE_* 覆盖
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://10.162.3.16:11001/damplatform?currentSchema=dam_data_service}
+    username: ${SPRING_DATASOURCE_USERNAME:dam}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  jdbc:
+    template:
+      fetch-size: 100
 
-# 数据服务 API 管理为阶段 1 骨架：目录、订阅、发布均未接入数据库
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      # 本服务所有表统一位于 dam_data_service schema
+      schema: dam_data_service
+
+# 数据服务只管理 API 元数据，不向真实网关注册；网关运行时不在本服务实现
 dam:
   data-service:
-    # 后续阶段在此配置数据服务专属库/网关注册地址
     api-publish-enabled: false

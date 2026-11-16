@@ -18,16 +18,24 @@ spring:
         server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
         # Nacos 不可用时仅记录注册失败，不阻断服务启动；生产环境可通过环境变量设为 true 强制校验
         fail-fast: ${NACOS_DISCOVERY_FAIL_FAST:false}
-  autoconfigure:
-    # 数据集成服务阶段 1 不连接数据库，排除数据源/MyBatis-Plus 自动装配
-    # （dam-common 依赖传递了 mybatis-plus 与 spring-boot-starter-jdbc 相关配置）
-    exclude:
-      # Spring Boot 4 中 DataSource 自动装配迁移至 spring-boot-jdbc 模块，包路径为 org.springframework.boot.jdbc.autoconfigure
-      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
-      - com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration
+  datasource:
+    # 集成任务存储在 damplatform 的 dam_integration schema，连接信息统一由环境变量注入
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://10.162.3.16:11001/damplatform}
+    username: ${SPRING_DATASOURCE_USERNAME:dam}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
 
-# 数据集成阶段 1 仅提供骨架：连接器目录为静态配置，集成任务暂不落库
-dam:
-  integration:
-    # 任务列表接口返回的说明信息（data 保持空列表）
-    skeleton-note: 本阶段仅提供数据集成骨架，尚未接入任务存储与同步执行引擎，任务列表为空
+mybatis-plus:
+  configuration:
+    # 数据库下划线列名映射到 Java 驼峰属性（如 job_code -> jobCode）
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      # 本服务所有表统一位于 dam_integration schema（实体 @TableName 亦显式声明）
+      schema: dam_integration
+
+sa-token:
+  token-name: token
+  timeout: 86400
+  token-style: jwt
+  jwt-secret-key: ${SA_TOKEN_JWT_SECRET_KEY}

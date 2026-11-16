@@ -14,13 +14,21 @@ spring:
         server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
       discovery:
         server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
-  autoconfigure:
-    # 调度服务本阶段只提供 API 骨架，不连接数据库，排除数据源/MyBatis-Plus 自动装配
-    # （dam-common 依赖传递了 mybatis-plus 与 spring-boot-starter-jdbc 相关配置）
-    exclude:
-      # Spring Boot 4 中 DataSource 自动装配迁移至 spring-boot-jdbc 模块，包路径为 org.springframework.boot.jdbc.autoconfigure
-      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
-      - com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration
+  datasource:
+    # 调度元数据独立存放在 dam_scheduler schema（见 db/v24_scheduler_management.sql）
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://10.162.3.16:11001/damplatform}
+    username: ${SPRING_DATASOURCE_USERNAME:dam}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      schema: dam_scheduler
+  jdbc:
+    template:
+      fetch-size: 100
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
 
 sa-token:
   token-name: token

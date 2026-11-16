@@ -1,18 +1,21 @@
 package com.dam.dataservice;
 
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
- * 数据服务（API 管理）启动类
+ * 数据服务（数据 API 管理）启动类
  * <p>
- * 负责数据 API 目录、发布与订阅的管理入口；阶段 1 仅提供骨架接口，
- * 不连接数据库，也不实现真实的 API 发布/订阅流程。
- * 复用 dam-common 的统一响应与异常处理（已排除数据源/MyBatis-Plus 自动装配）。
+ * 负责数据 API 目录、发布/下线与订阅关系的管理入口。元数据持久化到
+ * PostgreSQL 的 {@code dam_data_service} schema；本服务只做 API 管理，
+ * 不实现真实的 API 网关运行时（转发、限流、鉴权、调用日志等）。
+ * 复用 dam-common 的统一响应、异常处理、分页与 JSONB 类型处理器。
  *
  * @author DAM Platform
  */
 @SpringBootApplication(scanBasePackages = {"com.dam.dataservice", "com.dam.common"})
+@MapperScan("com.dam.dataservice.repository")
 public class DamDataServiceApplication {
 
     /**
