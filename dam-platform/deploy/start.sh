@@ -26,6 +26,7 @@ SERVICES=(
   "dam-operations:8088"
   "dam-model-gateway:8089"
   "dam-ai-workbench:8090"
+  "dam-portal:8091"
   "dam-gateway:8080"
 )
 

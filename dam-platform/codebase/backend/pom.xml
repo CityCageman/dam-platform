@@ -83,6 +83,7 @@
         <module>dam-operations</module>
         <module>dam-model-gateway</module>
         <module>dam-ai-workbench</module>
+        <module>dam-portal</module>
     </modules>
 
     <dependencyManagement>

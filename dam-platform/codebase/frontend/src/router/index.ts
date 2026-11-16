@@ -7,6 +7,9 @@ const routes = [
     component: () => import('@/components/layout/MainLayout.vue'),
     redirect: '/dashboard',
     children: [
+      // 统一门户：能力域总览与能力域模块入口
+      { path: 'portal', component: () => import('@/views/portal/PortalHome.vue'), meta: { title: '统一门户', icon: 'Grid' } },
+      { path: 'domains/:domainCode', component: () => import('@/views/portal/DomainHome.vue'), meta: { title: '能力域', icon: 'Grid', hidden: true } },
       { path: 'dashboard', component: () => import('@/views/dashboard/Index.vue'), meta: { title: '运营看板', icon: 'DataAnalysis' } },
       { path: 'catalog', component: () => import('@/views/catalog/AssetList.vue'), meta: { title: '资产目录', icon: 'Folder' } },
       { path: 'catalog-detail/:id', component: () => import('@/views/catalog/AssetDetail.vue'), meta: { title: '资产详情', hidden: true } },

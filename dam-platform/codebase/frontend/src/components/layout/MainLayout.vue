@@ -19,6 +19,13 @@
         text-color="#A6B4CC"
         active-text-color="#FFFFFF"
       >
+        <!-- 固定入口：不依赖后端菜单配置，保证统一门户始终可达 -->
+        <div class="nav-group">统一入口</div>
+        <el-menu-item index="/portal">
+          <el-icon><Grid /></el-icon>
+          <span>统一门户</span>
+        </el-menu-item>
+
         <template v-for="g in moduleGroups" :key="g.title">
           <div class="nav-group">{{ g.title }}</div>
           <template v-for="item in g.items" :key="item.configCode">
@@ -98,7 +105,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Search, ArrowRight, ArrowDown, User, Setting, SwitchButton, Bell } from '@element-plus/icons-vue'
+import { Search, ArrowRight, ArrowDown, User, Setting, SwitchButton, Bell, Grid } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { authApi, catalogApi } from '@/api'
@@ -121,9 +128,9 @@ const routeMap = computed(() => {
 
 // 构建菜单树
 const menuTree = computed(() => {
-  const list = navConfig.value.filter((n: any) => n.configCode !== 'data-sources')
+  const list = navConfig.value.filter((n: any) => n.configCode !== 'data-sources' && !isPortalItem(n))
   if (!list.length) {
-    return menuItems.filter(m => !m.meta?.hidden && m.path !== 'data-sources').map(m => ({
+    return menuItems.filter(m => !m.meta?.hidden && m.path !== 'data-sources' && m.path !== 'portal').map(m => ({
       configCode: m.path, configName: m.meta?.title, icon: m.meta?.icon, children: [],
       sortOrder: 0, status: 1
     })).sort((a: any, b: any) => a.sortOrder - b.sortOrder)
@@ -187,9 +194,28 @@ function displayMenuName(item: any): string {
   return item?.configName || ''
 }
 
+/** 统一门户使用侧边栏固定入口，动态菜单中不再重复展示 */
+function isPortalItem(item: any): boolean {
+  const path = String(item?.configValue || item?.path || '')
+  const code = String(item?.configCode || '')
+  return path === '/portal' || code === 'portal'
+}
+
+/** 递归过滤动态菜单中的统一门户项，避免与固定入口重复 */
+function filterPortalItems(items: any[]): any[] {
+  return items
+    .filter((item: any) => !isPortalItem(item))
+    .map((item: any) => (item.children?.length ? { ...item, children: filterPortalItems(item.children) } : item))
+}
+
 /** 按大模块分组后的菜单（数据库菜单优先，空时回退静态路由分组） */
 const moduleGroups = computed(() => {
-  if (apiMenuGroups.value.length) return apiMenuGroups.value
+  if (apiMenuGroups.value.length) {
+    const apiGroups = apiMenuGroups.value
+      .map(g => ({ ...g, items: filterPortalItems(g.items) }))
+      .filter(g => g.items.length)
+    if (apiGroups.length) return apiGroups
+  }
   const roots = menuTree.value
   const groups = MODULE_GROUPS.map(g => ({ title: g.title, items: [] as any[] }))
   const others: any[] = []
@@ -231,6 +257,8 @@ function iconSrc(icon: string) {
 }
 
 const defaultActive = computed(() => {
+  // 能力域页面归属于统一门户，保持门户入口高亮
+  if (route.path.startsWith('/domains/')) return '/portal'
   if (route.query.type) {
     return '/' + (route.path.split('/')[1] || 'dashboard') + '?type=' + route.query.type
   }
