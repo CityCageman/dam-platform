@@ -1,8 +1,11 @@
 #!/bin/bash
 # 启动所有后端服务
-BACKEND_DIR="/Volumes/ExternalHDD/Projects/dam-platform/codebase/backend"
+BACKEND_DIR="$(cd "$(dirname "$0")" && pwd)"
 LOG_DIR="$BACKEND_DIR/logs"
 mkdir -p "$LOG_DIR"
+if [ -z "${SA_TOKEN_JWT_SECRET_KEY:-}" ]; then
+  echo "WARN: SA_TOKEN_JWT_SECRET_KEY 未设置，服务会启动失败；请先 source /etc/dam/env.conf 或 export 该变量"
+fi
 
 SERVICES=(
   "dam-gateway:8080"
