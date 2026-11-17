@@ -12,7 +12,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @author DAM Platform
  */
 @SpringBootApplication(scanBasePackages = {"com.dam.lifecycle", "com.dam.common"})
-@MapperScan({"com.dam.lifecycle.repository", "com.dam.catalog.repository", "com.dam.operations.repository"})
+@MapperScan({"com.dam.lifecycle.repository", "com.dam.catalog.repository", "com.dam.catalog.asset.repository", "com.dam.operations.repository"})
 public class DamLifecycleApplication {
     /**
      * 服务入口

@@ -16,7 +16,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  */
 @SpringBootApplication(scanBasePackages = {"com.dam.standard", "com.dam.common"})
 @EnableScheduling
-@MapperScan({"com.dam.standard.repository", "com.dam.catalog.repository", "com.dam.operations.repository"})
+@MapperScan({"com.dam.standard.repository", "com.dam.catalog.repository", "com.dam.catalog.asset.repository", "com.dam.operations.repository"})
 public class DamStandardApplication {
     /**
      * 服务入口
