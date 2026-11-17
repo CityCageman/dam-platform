@@ -1,0 +1,11 @@
+# Build outputs should never be committed; CI uses mvn clean.
+target/
+**/target/
+
+# Local tooling
+.DS_Store
+.idea/
+*.iml
+
+# Dependencies
+node_modules/

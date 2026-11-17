@@ -3,7 +3,7 @@ package com.dam.catalog.metadata.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dam.catalog.entity.*;
 import com.dam.catalog.metadata.entity.*;
-import com.dam.catalog.repository.*;
+import com.dam.catalog.repository.DamFieldMapper;
 import com.dam.catalog.metadata.repository.*;
 import com.dam.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;

@@ -41,7 +41,7 @@ jobs:
         working-directory: dam-platform/codebase/backend
         run: |
           set -o pipefail
-          mvn -B -DskipTests=false package 2>&1 | tee backend-build.log
+          mvn -B -U -ntp -e -DskipTests=false clean package 2>&1 | tee backend-build.log
 
       - name: Set up Node.js 20
         uses: actions/setup-node@v4

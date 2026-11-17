@@ -12,7 +12,7 @@ import com.dam.catalog.entity.DamField;
 import com.dam.catalog.metadata.entity.DamMetadataCollection;
 import com.dam.catalog.metadata.entity.DamSourceSystem;
 import com.dam.catalog.metadata.entity.MetadataSchema;
-import com.dam.catalog.repository.*;
+import com.dam.catalog.repository.DamFieldMapper;
 import com.dam.catalog.metadata.repository.*;
 import com.dam.catalog.asset.repository.*;
 import com.dam.catalog.service.adapter.*;

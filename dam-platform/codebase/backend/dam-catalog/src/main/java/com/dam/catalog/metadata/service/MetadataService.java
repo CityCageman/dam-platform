@@ -6,7 +6,7 @@ import com.dam.catalog.shared.client.QualityReadClient;
 import com.dam.catalog.shared.client.LineageReadClient;
 import com.dam.catalog.metadata.entity.*;
 import com.dam.catalog.asset.entity.*;
-import com.dam.catalog.repository.*;
+import com.dam.catalog.repository.DamFieldMapper;
 import com.dam.catalog.metadata.repository.*;
 import com.dam.catalog.asset.repository.*;
 import com.dam.common.exception.BusinessException;
