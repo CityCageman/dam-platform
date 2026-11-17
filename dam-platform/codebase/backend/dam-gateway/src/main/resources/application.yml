@@ -99,7 +99,7 @@ spring:
                 allowedOriginPatterns:
                   - ${DAM_CORS_ORIGINS:http://localhost:5173}
                 allowedMethods: "GET,POST,PUT,DELETE,OPTIONS"
-                allowedHeaders: "token,Content-Type,Authorization"
+                allowedHeaders: "token,Content-Type,Authorization,X-API-Key"
                 allowCredentials: true
 
 server:

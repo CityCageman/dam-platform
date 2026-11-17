@@ -4,6 +4,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * 数据集成同步执行线程池
  * <p>
@@ -25,6 +32,12 @@ public class IntegrationAsyncConfig {
     /** 等待队列长度，队列满时拒绝并记录失败 */
     private static final int QUEUE_CAPACITY = 100;
 
+    /** 连接测试/数据预览探测线程上限，避免慢数据库拖垮进程 */
+    private static final int MAX_PROBE_THREADS = 8;
+
+    /** 探测线程空闲存活时间（秒），线程为守护线程，不阻止 JVM 退出 */
+    private static final long PROBE_THREAD_KEEP_ALIVE_SECONDS = 60L;
+
     /**
      * 创建同步执行线程池
      *
@@ -42,5 +55,28 @@ public class IntegrationAsyncConfig {
         executor.setAwaitTerminationSeconds(60);
         executor.initialize();
         return executor;
+    }
+
+    /**
+     * 连接测试/数据预览探测线程池
+     * <p>
+     * 每个探测任务在独立守护线程中执行，调用方用 Future 设置整体超时；
+     * 数据库无响应时可通过取消 + JDBC socketTimeout 释放线程，避免阻塞 HTTP 线程。
+     * 探测并发上限为 {@value #MAX_PROBE_THREADS}，超出时立即拒绝并由接口返回可读错误。
+     *
+     * @return 名为 integrationProbeExecutor 的探测线程池
+     */
+    @Bean(name = "integrationProbeExecutor", destroyMethod = "shutdownNow")
+    public ExecutorService integrationProbeExecutor() {
+        AtomicInteger sequence = new AtomicInteger();
+        ThreadFactory threadFactory = runnable -> {
+            Thread thread = new Thread(runnable,
+                    "integration-probe-" + sequence.incrementAndGet());
+            thread.setDaemon(true);
+            return thread;
+        };
+        return new ThreadPoolExecutor(0, MAX_PROBE_THREADS,
+                PROBE_THREAD_KEEP_ALIVE_SECONDS, TimeUnit.SECONDS,
+                new SynchronousQueue<>(), threadFactory, new ThreadPoolExecutor.AbortPolicy());
     }
 }

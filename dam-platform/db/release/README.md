@@ -22,6 +22,7 @@
 | 10 | `v30_task_callback.sql` | TaskCenter 回调来源字段与幂等键 | `dam_task` | 加列/索引 |
 | 11 | `v31_dev_datasource.sql` | 数据开发 SQL 执行数据源配置 | `dam_dev` | 加列 |
 | 12 | `v32_scheduler_dag.sql` | 调度顺序 SQL DAG | `dam_scheduler` | 建表 |
+| 13 | `v33_data_api_key.sql` | API Key 与调用审计 | `dam_data_service` | 建表 |
 
 要点：
 

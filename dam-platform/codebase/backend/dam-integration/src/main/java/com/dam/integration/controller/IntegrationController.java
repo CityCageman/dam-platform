@@ -6,6 +6,7 @@ import com.dam.integration.entity.IntegrationJob;
 import com.dam.integration.entity.IntegrationRun;
 import com.dam.integration.model.ConnectorDefinition;
 import com.dam.integration.service.IntegrationCatalogService;
+import com.dam.integration.service.IntegrationDiagnosticsService;
 import com.dam.integration.service.IntegrationExecutionService;
 import com.dam.integration.service.IntegrationJobService;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,9 @@ public class IntegrationController {
 
     /** 集成同步执行服务（运行记录查询） */
     private final IntegrationExecutionService integrationExecutionService;
+
+    /** 集成诊断服务（连接测试、数据预览与运行重试） */
+    private final IntegrationDiagnosticsService integrationDiagnosticsService;
 
     /**
      * 服务运行状态
@@ -198,5 +202,51 @@ public class IntegrationController {
     @GetMapping("/runs/{runId}")
     public Result<IntegrationRun> run(@PathVariable Long runId) {
         return Result.success(integrationExecutionService.getRun(runId));
+    }
+
+    /**
+     * 测试任务源端/目标端连接
+     * <p>
+     * 真实建立 JDBC 连接并执行 SELECT 1。任意一端失败仍返回 code=200，
+     * 由 data.ok / data.source.ok / data.target.ok 标记结果；不创建运行记录，
+     * 不影响任务状态与统一任务中心回调。密码不会出现在响应中。
+     *
+     * @param id 任务 ID
+     * @return jobId、整体 ok 与 source/target 的 ok/databaseProduct/version/elapsedMs/error
+     */
+    @PostMapping("/jobs/{id}/test-connection")
+    public Result<Map<String, Object>> testConnection(@PathVariable Long id) {
+        return Result.success(integrationDiagnosticsService.testConnection(id));
+    }
+
+    /**
+     * 预览任务源端数据
+     * <p>
+     * 仅支持 JDBC 源端，执行 source query 或 SELECT * FROM schema.table，只读源端，
+     * 最多返回 100 行；不写目标端、不创建运行记录。列名包含 password/pwd/secret/token
+     * 的列，其行值会替换为 ***。
+     *
+     * @param id    任务 ID
+     * @param limit 返回行数，默认 20，超过 1~100 时收敛到边界值
+     * @return columns、rows、rowCount、truncated
+     */
+    @PostMapping("/jobs/{id}/preview")
+    public Result<Map<String, Object>> preview(@PathVariable Long id,
+                                               @RequestParam(defaultValue = "20") Integer limit) {
+        return Result.success(integrationDiagnosticsService.preview(id, limit));
+    }
+
+    /**
+     * 重试历史运行记录
+     * <p>
+     * 仅允许 FAILED/SUCCESS/CANCELLED 的终态运行重试；存在 PENDING/RUNNING 活跃运行时
+     * 返回 409。复用 triggerJob 创建新运行记录，返回新 runId 与原 runId。
+     *
+     * @param runId 原运行记录 ID
+     * @return 新运行记录信息与 retriedFromRunId
+     */
+    @PostMapping("/runs/{runId}/retry")
+    public Result<Map<String, Object>> retry(@PathVariable Long runId) {
+        return Result.success(integrationDiagnosticsService.retryRun(runId));
     }
 }

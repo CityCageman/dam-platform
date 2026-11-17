@@ -53,6 +53,7 @@ MIGRATIONS=(
   "v30_task_callback.sql"
   "v31_dev_datasource.sql"
   "v32_scheduler_dag.sql"
+  "v33_data_api_key.sql"
 )
 
 # 迁移完成后必须存在的 schema

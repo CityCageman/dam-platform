@@ -23,9 +23,11 @@ import java.util.Map;
  * <ol>
  *   <li>按 apiCode 查询未逻辑删除的 data_api；不存在或非 PUBLISHED 统一返回 404，
  *       不暴露 API 是否曾发布；</li>
- *   <li>校验 api_subscription 存在 api_id + subscriber（当前登录用户）+
- *       status=ACTIVE 的记录；不满足统一返回 403，且响应不包含订阅状态等细节；</li>
- *   <li>按「登录用户 + apiCode」执行内存限流（60 次/分钟），超限返回 429；</li>
+ *   <li>校验 api_subscription 存在 api_id + subscriber（平台登录用户或 API Key
+ *       绑定的订阅方）+ status=ACTIVE 的记录；不满足统一返回 403，且响应不包含
+ *       订阅状态等细节；</li>
+ *   <li>按「subscriber + apiCode」执行内存限流（60 次/分钟），超限返回 429；
+ *       API Key 与平台登录共用同一限流桶；</li>
  *   <li>委托 {@link DataApiRuntimeService} 执行 JDBC 查询或探测 Schema。</li>
  * </ol>
  * 本服务不记录请求参数、upstreamConfig（连接 URL/用户名/密码）等敏感信息；
@@ -65,55 +67,55 @@ public class OpenApiService {
     private final OpenApiRateLimiter rateLimiter;
 
     /**
-     * 以当前登录用户身份执行已发布且已订阅的数据 API
+     * 以鉴权后的订阅方身份执行已发布且已订阅的数据 API
      *
-     * @param apiCode API 编码
-     * @param loginId 当前登录用户标识（订阅方）
-     * @param params  命名参数，可为空
+     * @param apiCode    API 编码
+     * @param subscriber 订阅方（平台登录用户或 API Key 绑定的订阅方）
+     * @param params     命名参数，可为空
      * @return 列信息、数据行、行数与耗时
      */
-    public DataApiExecutionResult execute(String apiCode, String loginId,
+    public DataApiExecutionResult execute(String apiCode, String subscriber,
                                           Map<String, Object> params) {
-        DataApi api = authorize(apiCode, loginId);
-        rateLimiter.check(loginId, api.getApiCode());
+        DataApi api = authorize(apiCode, subscriber);
+        rateLimiter.check(subscriber, api.getApiCode());
         try {
             DataApiExecutionResult result = dataApiRuntimeService.execute(api.getId(), params);
-            log.info("开放 API 调用成功: apiCode={}, loginId={}, rowCount={}, elapsedMs={}",
-                    safeForLog(api.getApiCode()), safeForLog(loginId),
+            log.info("开放 API 调用成功: apiCode={}, subscriber={}, rowCount={}, elapsedMs={}",
+                    safeForLog(api.getApiCode()), safeForLog(subscriber),
                     result.getRowCount(), result.getElapsedMs());
             return result;
         } catch (BusinessException e) {
-            throw translateAndLog(api, loginId, e);
+            throw translateAndLog(api, subscriber, e);
         }
     }
 
     /**
-     * 以当前登录用户身份探测已发布且已订阅的数据 API 的 Schema
+     * 以鉴权后的订阅方身份探测已发布且已订阅的数据 API 的 Schema
      * <p>
-     * 不返回真实数据行；仍执行登录用户订阅校验与同一限流窗口。
+     * 不返回真实数据行；仍执行订阅校验与同一限流窗口。
      *
-     * @param apiCode API 编码
-     * @param loginId 当前登录用户标识（订阅方）
+     * @param apiCode    API 编码
+     * @param subscriber 订阅方（平台登录用户或 API Key 绑定的订阅方）
      * @return 参数名列表与列信息
      */
-    public DataApiSchemaResult schema(String apiCode, String loginId) {
-        DataApi api = authorize(apiCode, loginId);
-        rateLimiter.check(loginId, api.getApiCode());
+    public DataApiSchemaResult schema(String apiCode, String subscriber) {
+        DataApi api = authorize(apiCode, subscriber);
+        rateLimiter.check(subscriber, api.getApiCode());
         try {
             return dataApiRuntimeService.schema(api.getId());
         } catch (BusinessException e) {
-            throw translateAndLog(api, loginId, e);
+            throw translateAndLog(api, subscriber, e);
         }
     }
 
     /**
-     * 校验 API 已发布且当前用户存在 ACTIVE 订阅
+     * 校验 API 已发布且订阅方存在 ACTIVE 订阅
      *
-     * @param apiCode API 编码
-     * @param loginId 当前登录用户标识
+     * @param apiCode    API 编码
+     * @param subscriber 订阅方
      * @return 通过校验的数据 API
      */
-    private DataApi authorize(String apiCode, String loginId) {
+    private DataApi authorize(String apiCode, String subscriber) {
         String code = trim(apiCode);
         if (code == null || code.isEmpty() || code.length() > MAX_API_CODE_LENGTH) {
             throw new BusinessException(404, "数据 API 不存在");
@@ -124,19 +126,19 @@ public class OpenApiService {
             log.debug("开放 API 不存在或未发布: apiCode={}", safeForLog(code));
             throw new BusinessException(404, "数据 API 不存在");
         }
-        if (loginId == null || loginId.isBlank()) {
+        if (subscriber == null || subscriber.isBlank()) {
             // 正常流程已在 Controller 校验登录，这里兜底避免把空订阅方当作有效订阅
             throw new BusinessException(401, "未登录");
         }
         Long activeSubscriptions = subscriptionMapper.selectCount(
                 new LambdaQueryWrapper<DataApiSubscription>()
                         .eq(DataApiSubscription::getApiId, api.getId())
-                        .eq(DataApiSubscription::getSubscriber, loginId)
+                        .eq(DataApiSubscription::getSubscriber, subscriber)
                         .eq(DataApiSubscription::getStatus, STATUS_ACTIVE));
         if (activeSubscriptions == null || activeSubscriptions <= 0) {
             // 统一提示，不区分「未订阅 / 待审批 / 已拒绝 / 已禁用」，避免泄露订阅信息
-            log.warn("开放 API 订阅校验未通过: apiCode={}, loginId={}",
-                    safeForLog(api.getApiCode()), safeForLog(loginId));
+            log.warn("开放 API 订阅校验未通过: apiCode={}, subscriber={}",
+                    safeForLog(api.getApiCode()), safeForLog(subscriber));
             throw new BusinessException(403, "无权访问该数据 API");
         }
         return api;
@@ -149,18 +151,18 @@ public class OpenApiService {
      * 统一转换为 404，保持「未发布即不存在」的外部语义。其余业务异常原样抛出，
      * 其消息已由运行时完成密码/连接串脱敏。
      *
-     * @param api     数据 API
-     * @param loginId 当前登录用户
-     * @param e       运行时业务异常
+     * @param api        数据 API
+     * @param subscriber 订阅方
+     * @param e          运行时业务异常
      * @return 需要继续抛出的业务异常
      */
-    private BusinessException translateAndLog(DataApi api, String loginId, BusinessException e) {
+    private BusinessException translateAndLog(DataApi api, String subscriber, BusinessException e) {
         if (e.getCode() == 409) {
             log.info("开放 API 在执行前被下线: apiCode={}", safeForLog(api.getApiCode()));
             return new BusinessException(404, "数据 API 不存在");
         }
-        log.warn("开放 API 调用失败: apiCode={}, loginId={}, code={}, errorType={}",
-                safeForLog(api.getApiCode()), safeForLog(loginId),
+        log.warn("开放 API 调用失败: apiCode={}, subscriber={}, code={}, errorType={}",
+                safeForLog(api.getApiCode()), safeForLog(subscriber),
                 e.getCode(), e.getClass().getSimpleName());
         return e;
     }

@@ -11,8 +11,9 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 开放 API 基础限流器（单实例内存滑动窗口）
  * <p>
- * 按「登录用户 + apiCode」统计最近 60 秒内的调用次数，超过 60 次抛出
- * {@link BusinessException}（code=429）。执行接口与 schema 接口共用同一窗口。
+ * 按「subscriber + apiCode」统计最近 60 秒内的调用次数，超过 60 次抛出
+ * {@link BusinessException}（code=429）。执行接口与 schema 接口共用同一窗口；
+ * 平台登录与 API Key 鉴权得到的 subscriber 相同则共用同一限流桶。
  * <p>
  * 注意：本实现仅在当前 JVM 内计数，<b>多实例部署时不保证全局配额</b>——每个实例
  * 各自允许 60 次/分钟，实际总次数可能随实例数放大。如果需要集群级限流，应替换为
@@ -26,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class OpenApiRateLimiter {
 
-    /** 每个「用户 + API」每分钟允许的最大调用次数 */
+    /** 每个「订阅方 + API」每分钟允许的最大调用次数 */
     private static final int MAX_REQUESTS_PER_WINDOW = 60;
 
     /** 滑动窗口长度（毫秒） */
@@ -36,7 +37,7 @@ public class OpenApiRateLimiter {
     private static final int MAX_BUCKETS = 10_000;
 
     /**
-     * 限流桶：key 为 {@code loginId:apiCode}，value 为窗口内的请求时间戳（升序）
+     * 限流桶：key 为 {@code subscriber:apiCode}，value 为窗口内的请求时间戳（升序）
      */
     private final Map<String, Deque<Long>> buckets = new ConcurrentHashMap<>();
 
@@ -46,12 +47,12 @@ public class OpenApiRateLimiter {
      * 先移除窗口外的历史时间戳，再判断窗口内是否已达上限；未超限时记录本次
      * 调用时间。时间统一使用 {@link System#currentTimeMillis()}，不依赖业务时钟。
      *
-     * @param loginId 当前登录用户标识
-     * @param apiCode API 编码
+     * @param subscriber 订阅方（平台登录用户或 API Key 绑定的订阅方）
+     * @param apiCode    API 编码
      * @throws BusinessException 超过限流阈值时抛出 code=429
      */
-    public void check(String loginId, String apiCode) {
-        String key = loginId + ":" + apiCode;
+    public void check(String subscriber, String apiCode) {
+        String key = subscriber + ":" + apiCode;
         long now = System.currentTimeMillis();
         Deque<Long> window = buckets.computeIfAbsent(key, ignored -> new ArrayDeque<>());
         synchronized (window) {

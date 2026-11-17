@@ -9,6 +9,7 @@ import com.dam.taskcenter.dto.TaskCallbackFinishRequest;
 import com.dam.taskcenter.dto.TaskCallbackRequest;
 import com.dam.taskcenter.dto.TaskCallbackResponse;
 import com.dam.taskcenter.dto.TaskDefinitionRequest;
+import com.dam.taskcenter.dto.TaskInstanceCancelRequest;
 import com.dam.taskcenter.dto.TaskLogRequest;
 import com.dam.taskcenter.dto.TaskStatusRequest;
 import com.dam.taskcenter.entity.TaskDefinition;
@@ -42,7 +43,8 @@ import java.util.Map;
  * 返回 message=executor not implemented，不伪造执行成功。
  * 回调 start 支持按来源三元组幂等登记实例，并按需自动登记任务定义；
  * 回调 finish/log/get 复用 task_instance/task_log 正常工作。
- * 另提供超时回收状态查询与手动扫描（不提供伪造 SUCCESS 的入口）。
+ * 另提供超时回收状态查询与手动扫描（不提供伪造 SUCCESS 的入口），
+ * 以及终态实例重试（新建 PENDING 实例）与活跃实例人工取消。
  * 所有响应统一使用 {@link Result} 包装。
  *
  * @author DAM Platform
@@ -238,6 +240,40 @@ public class TaskCenterController {
             @PathVariable Long id,
             @Valid @RequestBody TaskStatusRequest request) {
         return Result.success(taskInstanceService.updateStatus(id, request));
+    }
+
+    /**
+     * 重试终态任务实例。
+     * <p>
+     * 仅允许 SUCCESS/FAILED/CANCELLED 的实例重试；PENDING/RUNNING 返回 409，
+     * 任务定义不存在（含已删除）返回 404。基于原 definitionId 新建一条
+     * status=PENDING、triggerType=MANUAL 的实例，run_no 在定义行锁内分配，
+     * 原实例保持不变；不执行任务，message 不会伪造执行成功。
+     *
+     * @param id 原实例ID
+     * @return newInstanceId/runNo/message 等重试受理信息
+     */
+    @PostMapping("/instances/{id}/retry")
+    public Result<Map<String, Object>> retryInstance(@PathVariable Long id) {
+        return Result.success(taskInstanceService.retry(id));
+    }
+
+    /**
+     * 人工取消任务实例。
+     * <p>
+     * 请求体可省略，或传 {"reason":"..."}；reason 为空白时使用“人工取消”。
+     * PENDING/RUNNING → CANCELLED，并回填 finishedAt=now、errorMessage=reason；
+     * 已 CANCELLED 幂等返回现有实例；SUCCESS/FAILED 返回 409。
+     *
+     * @param id      实例ID
+     * @param request 取消请求（可空）
+     * @return 取消后的实例
+     */
+    @PostMapping("/instances/{id}/cancel")
+    public Result<TaskInstance> cancelInstance(
+            @PathVariable Long id,
+            @Valid @RequestBody(required = false) TaskInstanceCancelRequest request) {
+        return Result.success(taskInstanceService.cancel(id, request));
     }
 
     /**

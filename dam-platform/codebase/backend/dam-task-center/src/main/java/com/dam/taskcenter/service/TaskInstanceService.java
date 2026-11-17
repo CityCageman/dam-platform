@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dam.common.exception.BusinessException;
 import com.dam.common.vo.PageResult;
+import com.dam.taskcenter.dto.TaskInstanceCancelRequest;
 import com.dam.taskcenter.dto.TaskStatusRequest;
 import com.dam.taskcenter.entity.TaskDefinition;
 import com.dam.taskcenter.entity.TaskInstance;
@@ -16,6 +17,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -79,6 +81,19 @@ public class TaskInstanceService {
 
     /** 未实现执行器时的固定提示 */
     private static final String EXECUTOR_NOT_IMPLEMENTED = "executor not implemented";
+
+    /** 允许重试的原实例终态 */
+    private static final Set<String> RETRYABLE_STATUSES = Set.of(
+            "SUCCESS", "FAILED", "CANCELLED");
+
+    /** 允许人工取消的活跃状态 */
+    private static final Set<String> CANCELLABLE_STATUSES = Set.of("PENDING", "RUNNING");
+
+    /** 取消原因为空时的默认值 */
+    private static final String DEFAULT_CANCEL_REASON = "人工取消";
+
+    /** 取消原因最大长度（与 DTO 校验保持一致） */
+    private static final int MAX_CANCEL_REASON_LENGTH = 2000;
 
     /** 任务定义 Mapper（校验来源定义并加行锁） */
     private final TaskDefinitionMapper taskDefinitionMapper;
@@ -151,6 +166,143 @@ public class TaskInstanceService {
         result.put("triggerType", TRIGGER_TYPE_MANUAL);
         result.put("message", EXECUTOR_NOT_IMPLEMENTED);
         return result;
+    }
+
+    /**
+     * 基于历史终态实例重试，创建一条新的 PENDING 实例。
+     * <p>
+     * 仅允许原实例处于 SUCCESS/FAILED/CANCELLED 终态；PENDING/RUNNING 说明任务仍活跃，
+     * 返回 409。新实例沿用原实例的 definitionId 与最新 taskCode，status=PENDING、
+     * triggerType=MANUAL，run_no 在任务定义行锁（{@code lockById}）内分配，多实例
+     * 并发重试/触发时不会重复。原实例不做任何修改；不执行任务，消息不伪造执行成功。
+     *
+     * @param instanceId 原任务实例ID
+     * @return newInstanceId/definitionId/taskCode/runNo/status/triggerType/message 等受理信息
+     */
+    @Transactional
+    public Map<String, Object> retry(Long instanceId) {
+        TaskInstance original = requireInstance(instanceId);
+        String current = normalizeExistingStatus(original.getStatus());
+        if ("PENDING".equals(current) || "RUNNING".equals(current)) {
+            throw new BusinessException(409,
+                    "实例仍在等待执行或正在执行，不允许重试：" + instanceId);
+        }
+        if (current == null || !RETRYABLE_STATUSES.contains(current)) {
+            throw new BusinessException(409,
+                    "仅允许重试终态实例（SUCCESS/FAILED/CANCELLED），当前状态："
+                            + original.getStatus());
+        }
+
+        Long definitionId = original.getDefinitionId();
+        if (definitionId == null) {
+            throw new BusinessException(404, "任务定义不存在：原实例未关联任务定义");
+        }
+        // 对定义行加锁，串行分配同一任务内的 run_no；已删除或不存在时返回 null
+        if (taskDefinitionMapper.lockById(definitionId) == null) {
+            throw new BusinessException(404, "任务定义不存在：" + definitionId);
+        }
+        TaskDefinition definition = taskDefinitionMapper.selectById(definitionId);
+        if (definition == null) {
+            throw new BusinessException(404, "任务定义不存在：" + definitionId);
+        }
+
+        Integer maxRunNo = taskInstanceMapper.selectMaxRunNo(definitionId);
+        int runNo = maxRunNo == null ? 1 : maxRunNo + 1;
+
+        TaskInstance instance = new TaskInstance();
+        instance.setDefinitionId(definition.getId());
+        instance.setTaskCode(definition.getTaskCode());
+        instance.setRunNo(runNo);
+        instance.setStatus("PENDING");
+        instance.setTriggerType(TRIGGER_TYPE_MANUAL);
+        instance.setCreatedAt(LocalDateTime.now());
+        taskInstanceMapper.insert(instance);
+
+        log.info("任务实例重试受理: previousInstanceId={}, newInstanceId={}, definitionId={}, runNo={}",
+                instanceId, instance.getId(), definition.getId(), runNo);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("newInstanceId", instance.getId());
+        result.put("instanceId", instance.getId());
+        result.put("retriedFromInstanceId", instanceId);
+        result.put("definitionId", definition.getId());
+        result.put("taskCode", definition.getTaskCode());
+        result.put("runNo", runNo);
+        result.put("status", "PENDING");
+        result.put("triggerType", TRIGGER_TYPE_MANUAL);
+        result.put("message", "retry instance created, " + EXECUTOR_NOT_IMPLEMENTED);
+        return result;
+    }
+
+    /**
+     * 人工取消 PENDING/RUNNING 实例。
+     * <p>
+     * 已 CANCELLED 的实例视为幂等成功，直接返回现有记录（保留原 finishedAt/errorMessage）；
+     * SUCCESS/FAILED 终态返回 409。取消在 {@code SELECT ... FOR UPDATE} 行锁内完成，
+     * 与回调结束/状态回填串行化：成功取消时 status=CANCELLED、finishedAt=now、
+     * errorMessage=请求 reason（空白则默认“人工取消”）。
+     *
+     * @param instanceId 任务实例ID
+     * @param request    取消请求，可为 null
+     * @return 取消后的实例（或已取消的现有实例）
+     */
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public TaskInstance cancel(Long instanceId, TaskInstanceCancelRequest request) {
+        if (instanceId == null) {
+            throw new BusinessException(400, "任务实例ID不能为空");
+        }
+        String reason = resolveCancelReason(request);
+        TaskInstance instance = taskInstanceMapper.selectByIdForUpdate(instanceId);
+        if (instance == null) {
+            throw new BusinessException(404, "任务实例不存在：" + instanceId);
+        }
+
+        String current = normalizeExistingStatus(instance.getStatus());
+        if ("CANCELLED".equals(current)) {
+            return instance;
+        }
+        if (current == null || !CANCELLABLE_STATUSES.contains(current)) {
+            throw new BusinessException(409,
+                    "仅允许取消 PENDING/RUNNING 实例，当前状态：" + instance.getStatus());
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        instance.setStatus("CANCELLED");
+        instance.setFinishedAt(now);
+        instance.setErrorMessage(reason);
+        if (taskInstanceMapper.updateById(instance) == 0) {
+            throw new BusinessException(404, "任务实例不存在：" + instanceId);
+        }
+        log.info("任务实例人工取消: instanceId={}, previousStatus={}", instanceId, current);
+        return instance;
+    }
+
+    /**
+     * 解析取消原因：空白时回退默认值，超长时返回 400。
+     *
+     * @param request 取消请求（可空）
+     * @return 非空取消原因
+     */
+    private static String resolveCancelReason(TaskInstanceCancelRequest request) {
+        if (request == null || !hasText(request.getReason())) {
+            return DEFAULT_CANCEL_REASON;
+        }
+        String reason = request.getReason().trim();
+        if (reason.length() > MAX_CANCEL_REASON_LENGTH) {
+            throw new BusinessException(400,
+                    "reason 长度不能超过 " + MAX_CANCEL_REASON_LENGTH);
+        }
+        return reason;
+    }
+
+    /**
+     * 归一化数据库中已有的状态值，不抛异常（用于重试/取消的前置判断）。
+     *
+     * @param raw 数据库状态
+     * @return 大写状态；为空时返回 null
+     */
+    private static String normalizeExistingStatus(String raw) {
+        return raw == null ? null : raw.trim().toUpperCase(Locale.ROOT);
     }
 
     /**

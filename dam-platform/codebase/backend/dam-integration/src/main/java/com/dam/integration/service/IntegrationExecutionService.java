@@ -63,7 +63,7 @@ import java.util.regex.Pattern;
 public class IntegrationExecutionService {
 
     /** 唯一支持的数据源类型 */
-    private static final String TYPE_JDBC = "JDBC";
+    static final String TYPE_JDBC = "JDBC";
 
     /** 唯一支持的同步模式 */
     private static final String MODE_FULL = "FULL";
@@ -507,14 +507,32 @@ public class IntegrationExecutionService {
     }
 
     /**
-     * 解析单个端点的 JSON 配置
+     * 解析单个端点的 JSON 配置（执行/预览使用：要求源端有 query 或 schema+table，目标端必须有 schema+table）
      *
      * @param raw     JSON 字符串
      * @param label   配置字段名（sourceConfig/targetConfig）
      * @param source  是否为源端
      * @return 端点配置
      */
-    private Endpoint parseEndpoint(String raw, String label, boolean source) {
+    Endpoint parseEndpoint(String raw, String label, boolean source) {
+        return parseEndpoint(raw, label, source, true);
+    }
+
+    /**
+     * 解析单个端点的 JSON 配置
+     * <p>
+     * 同一份实现承担所有调用方的校验：URL 仅允许 PostgreSQL，URL/用户名/密码长度受限，
+     * 密码使用 CredentialCipher 解密，已提供的 schema/table 必须通过标识符白名单，
+     * 源端 query 必须通过只读 SELECT 校验。{@code requireTableOrQuery} 只控制是否强制
+     * 要求表结构：连接测试只需要连接信息，可传 false；执行与预览传 true。
+     *
+     * @param raw                JSON 字符串
+     * @param label              配置字段名（sourceConfig/targetConfig）
+     * @param source             是否为源端
+     * @param requireTableOrQuery 是否要求源端 query 或 schema+table、目标端 schema+table
+     * @return 端点配置
+     */
+    Endpoint parseEndpoint(String raw, String label, boolean source, boolean requireTableOrQuery) {
         if (!hasText(raw)) {
             throw new SyncConfigException(label + " 不能为空");
         }
@@ -544,15 +562,18 @@ public class IntegrationExecutionService {
             validateIdentifier(table, label + ".table");
         }
         String query = optionalEndpointText(json, "query", label, MAX_QUERY_LENGTH);
-        if (source) {
-            if (query != null) {
-                validateSelectQuery(query);
+        if (source && query != null) {
+            validateSelectQuery(query);
+        }
+        if (requireTableOrQuery) {
+            if (source) {
+                if (query == null && (schema == null || table == null)) {
+                    throw new SyncConfigException(
+                            "sourceConfig 未配置 query 时必须同时配置 schema 和 table");
+                }
             } else if (schema == null || table == null) {
-                throw new SyncConfigException(
-                        "sourceConfig 未配置 query 时必须同时配置 schema 和 table");
+                throw new SyncConfigException("targetConfig 必须配置 schema 和 table");
             }
-        } else if (schema == null || table == null) {
-            throw new SyncConfigException("targetConfig 必须配置 schema 和 table");
         }
         return new Endpoint(url, username, password, schema, table, query,
                 parseBatchSize(json, label));
@@ -705,7 +726,7 @@ public class IntegrationExecutionService {
     /**
      * 构造源端查询：优先使用配置的 query，否则拼装 SELECT * FROM schema.table
      */
-    private static String buildSourceSql(Endpoint source, DatabaseMetaData metaData)
+    static String buildSourceSql(Endpoint source, DatabaseMetaData metaData)
             throws SQLException {
         if (source.query() != null) {
             return source.query();
@@ -721,12 +742,31 @@ public class IntegrationExecutionService {
      */
     private static Connection openConnection(Endpoint endpoint, boolean readOnly)
             throws SQLException {
+        return openConnection(endpoint, readOnly, CONNECT_TIMEOUT_SECONDS, SOCKET_TIMEOUT_SECONDS);
+    }
+
+    /**
+     * 按指定连接/网络超时打开 PostgreSQL 连接（诊断探测用）
+     * <p>
+     * 与同步执行共用同一套 URL 白名单、凭据解密结果与驱动参数设置，密码只通过
+     * Properties 传给驱动，不进入日志。
+     *
+     * @param endpoint               端点配置
+     * @param readOnly               是否只读
+     * @param connectTimeoutSeconds  建立连接超时（秒）
+     * @param socketTimeoutSeconds   网络读超时（秒）
+     * @return 已设置只读属性的连接
+     * @throws SQLException 连接失败
+     */
+    static Connection openConnection(Endpoint endpoint, boolean readOnly,
+                                     int connectTimeoutSeconds, int socketTimeoutSeconds)
+            throws SQLException {
         Properties properties = new Properties();
         properties.setProperty("user", endpoint.username());
         properties.setProperty("password", endpoint.password() == null ? "" : endpoint.password());
-        properties.setProperty("connectTimeout", String.valueOf(CONNECT_TIMEOUT_SECONDS));
-        properties.setProperty("loginTimeout", String.valueOf(CONNECT_TIMEOUT_SECONDS));
-        properties.setProperty("socketTimeout", String.valueOf(SOCKET_TIMEOUT_SECONDS));
+        properties.setProperty("connectTimeout", String.valueOf(connectTimeoutSeconds));
+        properties.setProperty("loginTimeout", String.valueOf(connectTimeoutSeconds));
+        properties.setProperty("socketTimeout", String.valueOf(socketTimeoutSeconds));
         properties.setProperty("tcpKeepAlive", "true");
         properties.setProperty("ApplicationName", "dam-integration");
         Connection connection = DriverManager.getConnection(endpoint.url(), properties);
@@ -746,7 +786,7 @@ public class IntegrationExecutionService {
     /**
      * 确认连接的是 PostgreSQL（驱动只支持 PostgreSQL，这里再做产品名兜底）
      */
-    private static void requirePostgres(DatabaseMetaData metaData, String side) throws SQLException {
+    static void requirePostgres(DatabaseMetaData metaData, String side) throws SQLException {
         String product = metaData.getDatabaseProductName();
         if (product == null
                 || !product.toLowerCase(Locale.ROOT).contains("postgresql")) {
@@ -1012,7 +1052,7 @@ public class IntegrationExecutionService {
     /**
      * 归一化数据源类型
      */
-    private static String normalizeType(String value) {
+    static String normalizeType(String value) {
         String trimmed = trimToNull(value);
         return trimmed == null ? null : trimmed.toUpperCase(Locale.ROOT);
     }
@@ -1028,7 +1068,7 @@ public class IntegrationExecutionService {
     /**
      * 构造日志/落库用的错误信息：取异常链中第一个非空 message，脱敏后截断到 2000 字符
      */
-    private static String buildErrorMessage(Throwable error) {
+    static String buildErrorMessage(Throwable error) {
         String message = null;
         Throwable current = error;
         while (current != null && !hasText(message)) {
@@ -1089,7 +1129,7 @@ public class IntegrationExecutionService {
     /**
      * 判断文本是否包含非空白字符
      */
-    private static boolean hasText(String value) {
+    static boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
     }
 
@@ -1102,8 +1142,8 @@ public class IntegrationExecutionService {
     /**
      * 单个端点的 JDBC 配置
      */
-    private record Endpoint(String url, String username, String password, String schema,
-                            String table, String query, Integer batchSize) {
+    record Endpoint(String url, String username, String password, String schema,
+                    String table, String query, Integer batchSize) {
 
         /**
          * 防御性重写：即使未来有人打印配置对象，也不会把密码写进日志
