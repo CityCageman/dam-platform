@@ -17,7 +17,7 @@ Group=dam
 WorkingDirectory=/opt/dam
 # 环境变量文件：数据库连接、智能体密钥、网关路由地址（若拆分部署）
 EnvironmentFile=/etc/dam/env.conf
-ExecStart=/usr/bin/java -Xmx512m -Xms256m -XX:+UseParallelGC -jar /opt/dam/%i-1.0.0-exec.jar --spring.profiles.active=prod
+ExecStart=/opt/jdk21/bin/java -Xmx512m -Xms256m -XX:+UseParallelGC -jar /opt/dam/%i-1.0.0-exec.jar --spring.profiles.active=prod
 SuccessExitStatus=143
 Restart=on-failure
 RestartSec=5
