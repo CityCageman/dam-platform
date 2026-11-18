@@ -32,13 +32,14 @@ const routes = [
   {
     path: '/',
     component: () => import('@/components/layout/MainLayout.vue'),
-    // 登录后默认进入统一门户，左侧只展示统一门户 / 个人中心 / 系统配置
-    redirect: '/portal',
+    // 登录后默认进入运营看板；左侧固定展示 运营看板 / 统一门户 / 个人中心 / 系统配置
+    redirect: '/dashboard',
     children: [
+      // 运营看板：门户模式固定入口（不展示模块详细菜单）
+      { path: 'dashboard', component: () => import('@/views/dashboard/Index.vue'), meta: { title: '运营看板', icon: 'DataAnalysis' } },
       // 统一门户：能力域总览与能力域模块入口
       { path: 'portal', component: () => import('@/views/portal/PortalHome.vue'), meta: { title: '统一门户', icon: 'Grid' } },
       { path: 'domains/:domainCode', component: () => import('@/views/portal/DomainHome.vue'), meta: { title: '能力域', icon: 'Grid', hidden: true } },
-      { path: 'dashboard', component: () => import('@/views/dashboard/Index.vue'), meta: moduleMeta('DASH', '运营看板', 'DataAnalysis') },
       // 数据资产模块：左侧会显示资产目录 / 数据源 / 元数据采集 / 资产详情
       { path: 'catalog', component: () => import('@/views/catalog/AssetList.vue'), meta: moduleMeta('DAM', '资产目录', 'FolderOpened') },
       { path: 'catalog-detail/:id', component: () => import('@/views/catalog/AssetDetail.vue'), meta: moduleMeta('DAM', '资产详情', 'Document') },
@@ -78,8 +79,8 @@ const routes = [
       { path: 'system-config/MGW', component: () => import('@/views/system/SystemConfig.vue'), meta: moduleMeta('MGW', '系统配置', 'Setting') },
     ]
   },
-  // 未匹配的地址回到统一门户，避免空白页或死链
-  { path: '/:pathMatch(.*)*', redirect: '/portal' }
+  // 未匹配的地址回到默认首页，避免空白页或死链；未登录时由守卫统一转到登录页
+  { path: '/:pathMatch(.*)*', redirect: '/dashboard' }
 ]
 
 const router = createRouter({

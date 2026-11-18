@@ -18,7 +18,7 @@
         text-color="#A6B4CC"
         active-text-color="#FFFFFF"
       >
-        <!-- 门户模式：登录后只展示三个固定入口 -->
+        <!-- 门户模式：登录后只展示四个固定入口 -->
         <template v-if="layoutMode === 'portal'">
           <div class="nav-group">统一入口</div>
           <el-menu-item v-for="item in portalFixedMenuItems" :key="item.path" :index="item.path">
@@ -68,9 +68,9 @@
     <main class="main">
       <header class="topbar">
         <div class="crumb">
-          <!-- 门户/系统页面：统一门户 -> 当前页面 -->
+          <!-- 门户/系统页面：固定入口 -> 当前页面 -->
           <template v-if="layoutMode === 'portal'">
-            <span :class="currentPath === '/portal' ? 'crumb-current' : 'crumb-root'">统一门户</span>
+            <span :class="portalCurrentTitle ? 'crumb-root' : 'crumb-current'">{{ portalRootLabel }}</span>
             <template v-if="portalCurrentTitle">
               <el-icon class="crumb-sep"><ArrowRight /></el-icon>
               <span class="crumb-current">{{ portalCurrentTitle }}</span>
@@ -177,7 +177,7 @@ const activeModule = computed(() => getModuleNavigation(routeModuleCode.value))
 
 /**
  * 布局模式完全由当前路由推导：
- * - /portal、/domains/*、/profile、/system-config 为门户模式；
+ * - /dashboard、/portal、/domains/*、/profile、/system-config 为门户模式；
  * - 其余带 moduleCode 的路由为模块模式；
  * 因此刷新模块页面不会丢失左侧详细菜单。
  */
@@ -195,8 +195,12 @@ const activeMenuIndex = computed(() => {
   return moduleMenuItems.value.find(item => item.active && !item.disabled)?.target || ''
 })
 
+/** 门户模式面包屑根节点：运营看板为固定首页，其余页面归属统一门户 */
+const portalRootLabel = computed(() => currentPath.value === '/dashboard' ? '运营看板' : '统一门户')
+
 /** 门户页面顶部面包屑的当前节点 */
 const portalCurrentTitle = computed(() => {
+  if (currentPath.value === '/dashboard') return ''
   if (currentPath.value.startsWith('/domains/')) {
     return getPortalDomain(String(route.params.domainCode || ''))?.name || '能力域'
   }

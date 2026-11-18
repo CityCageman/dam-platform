@@ -2,12 +2,12 @@ import { getPortalDomain } from './portal'
 
 /**
  * 登录后的导航模型：
- * 1. 门户模式（/portal、/domains/*、/profile、/system-config）只展示三个固定入口；
+ * 1. 门户模式（/dashboard、/portal、/domains/*、/profile、/system-config）只展示四个固定入口；
  * 2. 模块模式由当前路由的 moduleCode 推导（系统配置的 SYS/MGW 使用独立路径与 meta），
  *    刷新页面后仍能恢复该模块的详细菜单，不依赖内存状态。
  */
 
-/** 门户模式下的三个固定入口 */
+/** 门户模式下的四个固定入口（运营看板为默认首页） */
 export interface PortalFixedMenuItem {
   title: string
   path: string
@@ -15,6 +15,7 @@ export interface PortalFixedMenuItem {
 }
 
 export const portalFixedMenuItems: PortalFixedMenuItem[] = [
+  { title: '运营看板', path: '/dashboard', icon: 'DataAnalysis' },
   { title: '统一门户', path: '/portal', icon: 'Grid' },
   { title: '个人中心', path: '/profile', icon: 'User' },
   { title: '系统配置', path: '/system-config', icon: 'Setting' }
@@ -168,15 +169,7 @@ export const moduleNavigations: Record<string, ModuleNavigation> = {
   ]),
   SYS: defineModule('SYS', 'platform', '/system-config/SYS', [
     { title: '系统配置', icon: 'Setting', path: '/system-config/SYS' }
-  ]),
-
-  // 独立业务页（不在 8 个能力域中，但保留模块模式与返回门户入口）
-  DASH: {
-    code: 'DASH',
-    name: '运营看板',
-    basePath: '/dashboard',
-    menu: [{ title: '运营看板', icon: 'DataAnalysis', path: '/dashboard' }]
-  }
+  ])
 }
 
 /** 按编码获取模块导航；未收录的编码返回 undefined */
@@ -191,10 +184,11 @@ function normalizePath(path: string): string {
   return normalized || '/'
 }
 
-/** 是否是只展示三个固定入口的门户/系统页面 */
+/** 是否是只展示四个固定入口的门户/系统页面 */
 export function isPortalLayoutPath(path: string): boolean {
   const normalized = normalizePath(path)
-  return normalized === '/portal'
+  return normalized === '/dashboard'
+    || normalized === '/portal'
     || normalized === '/profile'
     || normalized === '/system-config'
     || normalized.startsWith('/domains/')
@@ -203,6 +197,7 @@ export function isPortalLayoutPath(path: string): boolean {
 /** 门户模式下需要高亮的固定入口 */
 export function resolvePortalActiveMenu(path: string): string {
   const normalized = normalizePath(path)
+  if (normalized === '/dashboard') return '/dashboard'
   if (normalized === '/profile') return '/profile'
   if (normalized === '/system-config') return '/system-config'
   return '/portal'

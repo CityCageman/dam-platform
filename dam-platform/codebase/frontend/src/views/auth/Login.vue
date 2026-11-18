@@ -113,7 +113,8 @@ async function handleLogin() {
     userStore.setToken(res.data.token)
     userStore.setUserInfo(res.data.userInfo)
     ElMessage.success('登录成功')
-    router.push('/')
+    // 登录成功后默认进入运营看板
+    router.push('/dashboard')
   } catch (e: any) {
     ElMessage.error(e.message || '登录失败')
   } finally {

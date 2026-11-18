@@ -216,18 +216,17 @@ export const catalogApi = {
 }
 
 // ==================== 配置中心 ====================
-// 基于 dam_config 表管理所有配置（树形结构），支持导航菜单、安全等级、资产类型等
+// 基于 dam_config 表管理配置（树形结构）。UI 仅保留 navigation（菜单维护）入口；
+// 安全等级、资产类型、资产状态、数据源类型、敏感级别、技术元数据类型统一由字典维护。
 
+/**
+ * 旧配置中心类型入口。
+ * 安全等级、资产类型/状态、数据源类型、敏感级别、技术元数据类型均已收敛为字典，
+ * 由「字典维护」统一入口维护；此处仅保留导航菜单（菜单维护）与字典维护。
+ */
 const CONFIG_TYPES = [
-  { type: 'navigation', name: '导航菜单', icon: 'Menu' },
-  { type: 'security_level', name: '安全等级', icon: 'Lock' },
-  { type: 'asset_type', name: '资产类型', icon: 'Collection' },
-  { type: 'asset_status', name: '资产状态', icon: 'List' },
-  { type: 'source_type', name: '数据源类型', icon: 'Connection' },
-  { type: 'sensitive_level', name: '敏感级别', icon: 'Warning' },
-  { type: 'tech_asset_type', name: '技术元数据类型', icon: 'Cpu' },
-  // 字典管理：统一维护 sys_dict_type / sys_dict_data 两张通用字典表
-  { type: '__dict__', name: '字典管理', icon: 'Tickets' }
+  { type: 'navigation', name: '菜单维护', icon: 'Menu' },
+  { type: '__dict__', name: '字典维护', icon: 'Tickets' }
 ]
 
 function flatToTree(list: any[]): any[] {
@@ -259,10 +258,11 @@ export const configApi = {
   async create(data: any) { const res: any = await catalogApi.createConfig(data); return { code: 200, data: res.data, message: 'success' } },
   async update(data: any) { const res: any = await catalogApi.updateConfig(data); return { code: 200, data: res.data, message: 'success' } },
   async delete(id: number) { await catalogApi.deleteConfig(id); return { code: 200, message: 'success' } },
-  /** 配置总览统计 */
+  /** 配置总览统计（字典维护不是 dam_config 类型，跳过避免无效请求） */
   async getStatistics() {
     let total = 0; let enabled = 0; const byType: Record<string, number> = {}
     for (const t of CONFIG_TYPES) {
+      if (t.type === '__dict__') continue
       try {
         const res: any = await catalogApi.getConfig(t.type)
         const items = res.data || []; total += items.length
@@ -465,6 +465,142 @@ export interface PageQuery {
   status?: string
   page?: number
   pageSize?: number
+}
+
+// ==================== 系统配置：用户 / 角色 / 授权 / 菜单 ====================
+
+/** 系统用户（dam_sys.sys_user，敏感字段由后端裁剪） */
+export interface SystemUser {
+  id: number
+  username: string
+  realName?: string
+  email?: string
+  phone?: string
+  department?: string
+  /** 0-停用，1-启用（兼容后端字符串状态） */
+  status?: number | string
+  lastLoginAt?: string
+  createdAt?: string
+  updatedAt?: string
+  [key: string]: unknown
+}
+
+/** 新增/编辑用户入参：password 仅新增时使用，重置密码走独立接口 */
+export interface SystemUserPayload {
+  username: string
+  password?: string
+  realName?: string
+  email?: string
+  phone?: string
+  department?: string
+  status?: number
+}
+
+/** 系统角色（dam_sys.sys_role） */
+export interface SystemRole {
+  id: number
+  roleCode?: string
+  roleName?: string
+  description?: string
+  status?: number | string
+  createdAt?: string
+  updatedAt?: string
+  [key: string]: unknown
+}
+
+/** 新增/编辑角色入参 */
+export interface SystemRolePayload {
+  roleCode: string
+  roleName: string
+  description?: string
+  status?: number
+}
+
+/** 系统菜单（/auth/menus；兼容树形与平铺两种返回结构） */
+export interface SystemMenu {
+  id: number
+  menuName?: string
+  name?: string
+  parentId?: number | null
+  children?: SystemMenu[]
+  [key: string]: unknown
+}
+
+/** 用户角色授权返回值：兼容 ID 数组、角色数组与包装对象 */
+export type RoleAssignmentPayload =
+  | number[]
+  | SystemRole[]
+  | { roleIds?: number[]; roles?: SystemRole[] }
+
+/** 角色菜单授权返回值：兼容 ID 数组、菜单数组与包装对象 */
+export type MenuAssignmentPayload =
+  | number[]
+  | SystemMenu[]
+  | { menuIds?: number[]; menus?: SystemMenu[] }
+
+/**
+ * 系统配置接口：用户 / 角色 / 授权 / 菜单。
+ * baseURL 已为 /api，因此实际请求路径为 /api/auth/...
+ */
+export const systemApi = {
+  users: {
+    /** 分页查询用户 */
+    list(params: PageQuery = {}) {
+      return request.get<unknown, ApiResult<PageResult<SystemUser> | SystemUser[]>>('/auth/users', { params })
+    },
+    create(data: SystemUserPayload) {
+      return request.post<unknown, ApiResult<SystemUser>>('/auth/users', data)
+    },
+    update(id: number, data: SystemUserPayload) {
+      return request.put<unknown, ApiResult<SystemUser>>(`/auth/users/${id}`, data)
+    },
+    remove(id: number) {
+      return request.delete<unknown, ApiResult<void>>(`/auth/users/${id}`)
+    },
+    /** 重置密码：password 由调用方按 auth 服务公钥加密后传入 */
+    resetPassword(id: number, data: { password: string }) {
+      return request.post<unknown, ApiResult<void>>(`/auth/users/${id}/reset-password`, data)
+    }
+  },
+  roles: {
+    /** 分页查询角色 */
+    list(params: PageQuery = {}) {
+      return request.get<unknown, ApiResult<PageResult<SystemRole> | SystemRole[]>>('/auth/roles', { params })
+    },
+    create(data: SystemRolePayload) {
+      return request.post<unknown, ApiResult<SystemRole>>('/auth/roles', data)
+    },
+    update(id: number, data: SystemRolePayload) {
+      return request.put<unknown, ApiResult<SystemRole>>(`/auth/roles/${id}`, data)
+    },
+    remove(id: number) {
+      return request.delete<unknown, ApiResult<void>>(`/auth/roles/${id}`)
+    }
+  },
+  authorizations: {
+    /** 查询用户已分配角色 */
+    getUserRoles(userId: number) {
+      return request.get<unknown, ApiResult<RoleAssignmentPayload>>(`/auth/users/${userId}/roles`)
+    },
+    /** 全量保存用户角色 */
+    saveUserRoles(userId: number, roleIds: number[]) {
+      return request.put<unknown, ApiResult<void>>(`/auth/users/${userId}/roles`, { roleIds })
+    },
+    /** 查询角色已分配菜单 */
+    getRoleMenus(roleId: number) {
+      return request.get<unknown, ApiResult<MenuAssignmentPayload>>(`/auth/roles/${roleId}/menus`)
+    },
+    /** 全量保存角色菜单 */
+    saveRoleMenus(roleId: number, menuIds: number[]) {
+      return request.put<unknown, ApiResult<void>>(`/auth/roles/${roleId}/menus`, { menuIds })
+    }
+  },
+  menus: {
+    /** 菜单树（角色授权时选择菜单） */
+    list() {
+      return request.get<unknown, ApiResult<SystemMenu[]>>('/auth/menus')
+    }
+  }
 }
 
 /** 数据集成任务（dam_integration.integration_job） */
