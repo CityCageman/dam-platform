@@ -38,9 +38,9 @@ import java.util.Objects;
  * 提供用户分页/详情/创建/更新/逻辑删除/重置密码，以及用户-角色授权。
  * 安全约束：
  * <ul>
- *   <li>管理端接口，调用方必须已登录（控制器统一调用 {@link AuthSupport#requireLogin()}）；</li>
- *   <li>当前没有 RBAC 管理权限模型，后续需增加 ADMIN 权限校验；</li>
- *   <li>禁止删除当前登录用户、禁止修改当前登录用户自己的角色；</li>
+ *   <li>管理端接口，调用方必须已登录且具备系统配置管理角色（控制器调用
+ *       {@link AuthSupport#requireAdmin()}，当前接受 ADMIN/governor）；</li>
+ *   <li>即使具备管理角色，也禁止删除当前登录用户、禁止修改当前登录用户自己的角色；</li>
  *   <li>密码仅以 BCrypt 密文落库，响应不返回密码，错误信息不包含密码/hash。</li>
  * </ul>
  *
@@ -53,7 +53,7 @@ public class UserAdminService {
     /** 默认分页大小 */
     private static final int DEFAULT_PAGE_SIZE = 20;
     /** 单页最大条数 */
-    private static final int MAX_PAGE_SIZE = 100;
+    private static final int MAX_PAGE_SIZE = 200;
     /** 关键字最大长度，避免超长 like 查询 */
     private static final int MAX_KEYWORD_LENGTH = 100;
     /** 部门字段为 NOT NULL，创建时未填写则使用该默认值 */
@@ -84,7 +84,7 @@ public class UserAdminService {
      * @param keyword  用户名/真实姓名/部门关键字，可为空
      * @param status   状态过滤：0-禁用，1-启用，可为空
      * @param page     页码，从1开始
-     * @param pageSize 每页条数，最大100
+     * @param pageSize 每页条数，最大200
      * @return 分页结果（含角色信息）
      */
     public PageResult<UserResponse> pageUsers(String keyword, Integer status, Integer page, Integer pageSize) {
@@ -301,9 +301,8 @@ public class UserAdminService {
     /**
      * 全量替换用户角色
      * <p>
-     * 管理端接口；当前没有 RBAC 管理权限模型，后续应增加 ADMIN 权限校验。
-     * 至少禁止普通用户修改自己的角色：即使未来放开 ADMIN，管理员也只能修改他人角色。
-     * 先物理删除旧关联再批量插入，整个过程在同一事务内保证原子性。
+     * 管理端接口，控制器已校验 ADMIN/governor 管理角色；仍禁止修改当前登录用户自己的角色，
+     * 避免管理员误操作或自我提权。先物理删除旧关联再批量插入，整个过程在同一事务内保证原子性。
      *
      * @param id  用户ID
      * @param req 角色ID列表（空数组表示清空）

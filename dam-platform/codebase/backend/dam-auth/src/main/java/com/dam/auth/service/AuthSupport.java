@@ -2,6 +2,7 @@ package com.dam.auth.service;
 
 import cn.dev33.satoken.exception.NotLoginException;
 import cn.dev33.satoken.stp.StpUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dam.auth.model.pojo.SysRole;
 import com.dam.auth.model.pojo.SysUser;
 import com.dam.auth.model.pojo.SysUserRole;
@@ -10,25 +11,32 @@ import com.dam.auth.repository.SysUserMapper;
 import com.dam.auth.repository.SysUserRoleMapper;
 import com.dam.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
-
-import java.util.List;
 import org.springframework.stereotype.Component;
 
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
 /**
- * 管理端登录态支撑组件
+ * 管理端登录态与权限支撑组件
  * <p>
- * 所有 /api/auth/users/** 与 /api/auth/roles/** 管理接口在进入业务逻辑前调用
- * {@link #requireLogin()}：网关会先校验 token，这里在服务内部再校验一次，
+ * 所有 /api/auth/users/**、/api/auth/roles/**、/api/auth/menus 管理接口先调用
+ * {@link #requireLogin()} 校验登录：网关会先校验 token，这里在服务内部再校验一次，
  * 防止绕过网关直连 dam-auth 时未登录访问管理接口（未登录统一返回业务码 401）。
  * <p>
- * 当前平台尚未建立 RBAC 管理权限模型，登录用户均可调用管理接口；后续应在此处
- * 增加 ADMIN 权限校验（例如 StpUtil.checkRole("ADMIN")），并由管理员操作他人账号。
+ * 用户/角色/授权管理再调用 {@link #requireAdmin()} 校验管理角色：当前平台尚未建立
+ * 完整的 RBAC 权限点模型，暂以初始化脚本中的 ADMIN（系统管理员）或 governor（数据管理员）
+ * 角色作为管理角色；后续引入权限点后可替换为权限码判断（例如 user:manage）。
  *
  * @author DAM Platform
  */
 @Component
 @RequiredArgsConstructor
 public class AuthSupport {
+
+    /** 允许访问系统配置的初始化角色编码（兼容 init-all 的 ADMIN 与初始化.sql 的 governor） */
+    private static final Set<String> ADMIN_ROLE_CODES = Set.of("admin", "governor");
 
     /** 用户数据访问对象 */
     private final SysUserMapper userMapper;
@@ -52,27 +60,40 @@ public class AuthSupport {
     }
 
     /**
-     * 校验当前登录用户具备系统管理权限（数据管理员 governor）。
+     * 校验当前登录用户具备系统配置管理权限
      * <p>
-     * 系统配置包含用户、角色和授权管理，不能只依赖“已登录”。当前平台尚无
-     * 统一 ADMIN 角色，使用初始化数据中的 governor（数据管理员）作为管理角色；
-     * 后续引入 RBAC 权限点后可替换为权限码判断。
+     * 系统配置包含用户、角色、菜单和授权管理，不能只依赖“已登录”。
+     * 当前平台尚无统一 ADMIN 权限点，使用角色编码 ADMIN（系统管理员）或
+     * governor（数据管理员）作为管理角色。仅统计未删除且启用的用户-角色关联。
      */
     public void requireAdmin() {
         long userId = currentUserId();
-        List<SysUserRole> links = userRoleMapper.selectList(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SysUserRole>()
-                        .eq(SysUserRole::getUserId, userId)
-                        .eq(SysUserRole::getStatus, 1));
-        boolean admin = links.stream()
-                .map(SysUserRole::getRoleId)
-                .filter(java.util.Objects::nonNull)
-                .map(roleMapper::selectById)
-                .filter(java.util.Objects::nonNull)
-                .map(SysRole::getRoleCode)
-                .anyMatch(code -> "governor".equalsIgnoreCase(code));
+        List<SysUserRole> links = userRoleMapper.selectList(new LambdaQueryWrapper<SysUserRole>()
+                .eq(SysUserRole::getUserId, userId)
+                .eq(SysUserRole::getStatus, 1)
+                .isNull(SysUserRole::getDeletedAt));
+
+        Set<Long> roleIds = new LinkedHashSet<>();
+        for (SysUserRole link : links) {
+            if (link.getRoleId() != null) {
+                roleIds.add(link.getRoleId());
+            }
+        }
+
+        boolean admin = false;
+        if (!roleIds.isEmpty()) {
+            for (SysRole role : roleMapper.selectByIds(roleIds)) {
+                if (role.getStatus() == null || role.getStatus() != 1 || role.getRoleCode() == null) {
+                    continue;
+                }
+                if (ADMIN_ROLE_CODES.contains(role.getRoleCode().toLowerCase(Locale.ROOT))) {
+                    admin = true;
+                    break;
+                }
+            }
+        }
         if (!admin) {
-            throw new BusinessException(403, "仅数据管理员可访问系统配置");
+            throw new BusinessException(403, "仅系统管理员可访问系统配置");
         }
     }
 

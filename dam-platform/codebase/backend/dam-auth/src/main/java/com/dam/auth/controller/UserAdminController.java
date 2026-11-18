@@ -28,8 +28,9 @@ import java.util.List;
  * 系统配置-用户管理接口（管理端）
  * <p>
  * 路径统一在 /api/auth/users 下，与网关 /api/auth/** 路由兼容。
- * 所有接口要求登录：控制器入口统一调用 {@link AuthSupport#requireLogin()}，
- * 未登录返回业务码 401。当前没有 RBAC 管理权限模型，后续需增加 ADMIN 权限校验。
+ * 所有接口要求登录并具备系统配置管理角色：控制器入口统一调用
+ * {@link AuthSupport#requireAdmin()}，未登录返回业务码 401，非管理员返回 403。
+ * 当前以初始化角色 ADMIN/governor 作为管理角色，后续可替换为 RBAC 权限点。
  * <p>
  * 密码相关：请求中的明文密码仅用于服务端 BCrypt 加密，响应不返回密码，
  * 业务异常信息与日志均不包含密码/hash。
@@ -52,7 +53,7 @@ public class UserAdminController {
      * @param keyword  用户名/真实姓名/部门关键字
      * @param status   状态：0-禁用，1-启用
      * @param page     页码，从1开始
-     * @param pageSize 每页条数，最大100
+     * @param pageSize 每页条数，最大200
      * @return 分页用户列表
      */
     @GetMapping

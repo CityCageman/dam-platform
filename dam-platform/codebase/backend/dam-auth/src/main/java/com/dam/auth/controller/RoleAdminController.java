@@ -27,8 +27,9 @@ import java.util.List;
  * 系统配置-角色管理与授权接口（管理端）
  * <p>
  * 路径统一在 /api/auth/roles 下，与网关 /api/auth/** 路由兼容。
- * 所有接口要求登录：控制器入口统一调用 {@link AuthSupport#requireLogin()}，
- * 未登录返回业务码 401。当前没有 RBAC 管理权限模型，后续需增加 ADMIN 权限校验。
+ * 所有接口要求登录并具备系统配置管理角色：控制器入口统一调用
+ * {@link AuthSupport#requireAdmin()}，未登录返回业务码 401，非管理员返回 403。
+ * 当前以初始化角色 ADMIN/governor 作为管理角色，后续可替换为 RBAC 权限点。
  *
  * @author DAM Platform
  */

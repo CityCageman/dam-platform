@@ -15,8 +15,8 @@ import java.util.List;
  * 系统配置-菜单选项接口（管理端）
  * <p>
  * 为前端“授权管理-角色授权”提供可选菜单列表（平铺结构，前端按 parentId 构建树）。
- * 路径 /api/auth/menus 与网关 /api/auth/** 路由兼容；要求登录，未登录返回业务码 401。
- * 当前没有 RBAC 管理权限模型，后续需增加 ADMIN 权限校验。
+ * 路径 /api/auth/menus 与网关 /api/auth/** 路由兼容。
+ * 要求登录并具备系统配置管理角色（ADMIN/governor）：未登录返回 401，非管理员返回 403。
  *
  * @author DAM Platform
  */
@@ -37,7 +37,7 @@ public class MenuAdminController {
      */
     @GetMapping
     public Result<List<MenuResponse>> listMenus() {
-        authSupport.requireLogin();
+        authSupport.requireAdmin();
         return Result.success(roleAdminService.listAllMenus());
     }
 }

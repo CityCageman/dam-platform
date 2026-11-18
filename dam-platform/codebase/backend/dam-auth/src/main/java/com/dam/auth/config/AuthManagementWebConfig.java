@@ -17,7 +17,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * 网关已经对 /api/** 做 token 校验，这里是服务内二次防护，避免绕过网关直连 dam-auth。
  * OPTIONS 预检请求放行，交由网关/CORS 处理。
  * <p>
- * 当前平台尚未建立 RBAC 管理权限模型；后续增加 ADMIN 权限校验时，应扩展本拦截器。
+ * 本拦截器只负责登录态（401）；具体管理角色（ADMIN/governor）校验在控制器入口
+ * 通过 {@link AuthSupport#requireAdmin()} 完成（403）。
  *
  * @author DAM Platform
  */

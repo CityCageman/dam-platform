@@ -43,7 +43,8 @@ import java.util.Map;
  * 提供角色列表/创建/更新/逻辑删除，以及角色-菜单、角色-权限查询。
  * 角色菜单授权采用全量替换语义，并在同一事务内先删后插保证原子性。
  * <p>
- * 当前平台尚未建立 RBAC 管理权限模型，管理接口仅要求登录；后续需增加 ADMIN 权限校验。
+ * 管理接口由控制器调用 {@link AuthSupport#requireAdmin()} 校验登录态与系统配置管理角色
+ * （当前接受 ADMIN/governor）；后续可替换为 RBAC 权限点。
  *
  * @author DAM Platform
  */
@@ -325,8 +326,8 @@ public class RoleAdminService {
     /**
      * 全量替换角色菜单授权
      * <p>
-     * 管理端接口；当前没有 RBAC 管理权限模型，后续应增加 ADMIN 权限校验。
-     * 先物理删除旧关联再批量插入，整个过程在同一事务内保证原子性。
+     * 管理端接口，控制器已校验 ADMIN/governor 管理角色；先物理删除旧关联再批量插入，
+     * 整个过程在同一事务内保证原子性。
      *
      * @param id  角色ID
      * @param req 菜单ID列表（空数组表示清空）
