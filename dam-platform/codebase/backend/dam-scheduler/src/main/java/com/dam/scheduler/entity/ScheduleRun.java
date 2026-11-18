@@ -38,6 +38,22 @@ public class ScheduleRun {
     /** 失败原因 */
     private String errorMessage;
 
+    /**
+     * DolphinScheduler 流程实例ID。
+     * <p>
+     * execution_engine=DOLPHIN 的运行在触发 DS 成功后回填；非空即表示该 run 由 DS 执行、
+     * 由状态轮询回写终态。LOCAL 运行始终为 NULL。
+     */
+    private Long dolphinProcessInstanceId;
+
+    /**
+     * TaskCenter 运行实例ID。
+     * <p>
+     * DS 触发阶段登记 TaskCenter 后保存，供后台轮询在 DS 终态时回写 finish；
+     * LOCAL 运行在同一执行线程内完成回调，不需要该字段。
+     */
+    private Long taskCenterInstanceId;
+
     /** 记录创建时间 */
     private LocalDateTime createdAt;
 }

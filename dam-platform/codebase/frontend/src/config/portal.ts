@@ -7,6 +7,7 @@ import {
   Connection,
   Cpu,
   DataAnalysis,
+  DataBoard,
   Document,
   FolderOpened,
   Grid,
@@ -24,7 +25,8 @@ import {
   Tickets,
   Timer,
   Tools,
-  TrendCharts
+  TrendCharts,
+  User
 } from '@element-plus/icons-vue'
 
 /** 能力域/模块状态：AVAILABLE 已上线（可进入），PLANNED 规划中（禁用） */
@@ -61,6 +63,7 @@ const PORTAL_ICONS: Record<string, Component> = {
   Connection,
   Cpu,
   DataAnalysis,
+  DataBoard,
   Document,
   FolderOpened,
   Grid,
@@ -78,7 +81,8 @@ const PORTAL_ICONS: Record<string, Component> = {
   Tickets,
   Timer,
   Tools,
-  TrendCharts
+  TrendCharts,
+  User
 }
 
 /** 解析能力域/模块图标，缺失时统一回退到 Grid */
@@ -302,7 +306,7 @@ export const portalDomains: PortalDomain[] = [
         name: '模型网关',
         description: '统一配置模型接入、路由策略与调用参数，管理 AI 模型能力供给。',
         icon: 'Platform',
-        route: '/system-config',
+        route: '/system-config/MGW',
         status: 'AVAILABLE'
       }
     ]
@@ -335,7 +339,7 @@ export const portalDomains: PortalDomain[] = [
         name: '系统管理',
         description: '维护导航菜单、系统参数、数据字典与数据源类型等平台配置。',
         icon: 'Setting',
-        route: '/system-config',
+        route: '/system-config/SYS',
         status: 'AVAILABLE'
       },
       {

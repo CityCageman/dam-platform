@@ -38,6 +38,23 @@ dam:
     stale-run-minutes: ${DAM_SCHEDULER_STALE_RUN_MINUTES:180}
     # 遗留 RUNNING 回收扫描间隔（毫秒）
     stale-run-scan-interval-ms: ${DAM_SCHEDULER_STALE_SCAN_INTERVAL_MS:60000}
+    # 执行引擎：LOCAL=本地顺序 SQL DAG（默认，保持存量行为）；DOLPHIN=触发 DolphinScheduler
+    # 任务级 execution_engine 优先；全局值仅作为新建任务的默认引擎
+    engine: ${DAM_SCHEDULER_ENGINE:LOCAL}   # LOCAL/DOLPHIN
+    dolphin:
+      # DS 总开关；false 时 DOLPHIN 引擎任务直接失败并给出明确原因，服务仍可正常启动
+      enabled: ${DAM_DOLPHIN_ENABLED:false}
+      # DS API 基础地址，必须包含 /dolphinscheduler 上下文，仅允许 http/https
+      base-url: ${DAM_DOLPHIN_URL:http://127.0.0.1:12345/dolphinscheduler}
+      # DS 访问 token，仅通过请求头 token 传递，不写日志
+      token: ${DAM_DOLPHIN_TOKEN:}
+      project-code: ${DAM_DOLPHIN_PROJECT_CODE:}
+      tenant-code: ${DAM_DOLPHIN_TENANT:}
+      connect-timeout-ms: 3000
+      read-timeout-ms: 10000
+      # DS 流程实例状态轮询间隔（毫秒）与单轮最大条数
+      poll-interval-ms: ${DAM_DOLPHIN_POLL_INTERVAL_MS:15000}
+      poll-batch-size: ${DAM_DOLPHIN_POLL_BATCH_SIZE:50}
 
 mybatis-plus:
   configuration:

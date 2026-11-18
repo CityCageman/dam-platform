@@ -3,7 +3,10 @@ package com.dam.scheduler.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.dam.common.security.CredentialCipher;
+import com.dam.scheduler.client.DolphinSchedulerClient;
 import com.dam.scheduler.client.TaskCenterClient;
+import com.dam.scheduler.config.DolphinSchedulerProperties;
+import com.dam.scheduler.dto.dolphin.DolphinStartResult;
 import com.dam.scheduler.entity.ScheduleDag;
 import com.dam.scheduler.entity.ScheduleJob;
 import com.dam.scheduler.entity.ScheduleRun;
@@ -51,6 +54,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  *       执行结束回写 SUCCESS/FAILED；回调失败只 warn，不改变本地运行状态；</li>
  *   <li>连接、查询设有超时，连接强制只读事务；密码只用于 JDBC 属性，日志与
  *       error_message 均做脱敏；</li>
+ *   <li>execution_engine=DOLPHIN 的任务不执行本地 DAG，改为触发 DolphinScheduler
+ *       流程实例并回填 dolphin_process_instance_id，由
+ *       {@link DolphinProcessInstancePoller} 轮询终态；DS 未启用/未配置/触发失败时
+ *       run 直接置 FAILED 并给出明确原因，不影响服务启动；</li>
  *   <li>定时回收超过 180 分钟的 RUNNING 记录（服务重启遗留），标记 FAILED。</li>
  * </ul>
  * 不支持并行分支、条件分支与重试编排。
@@ -118,6 +125,12 @@ public class ScheduleRunExecutor {
     /** TaskCenter 回调客户端，统一负责运行开始/结束回写 */
     private final TaskCenterClient taskCenterClient;
 
+    /** DolphinScheduler API 客户端，DOLPHIN 引擎触发流程实例 */
+    private final DolphinSchedulerClient dolphinClient;
+
+    /** 调度执行引擎与 DS 配置 */
+    private final DolphinSchedulerProperties schedulerProperties;
+
     /** 执行线程池 */
     private final ThreadPoolExecutor executor;
 
@@ -135,6 +148,8 @@ public class ScheduleRunExecutor {
      * @param dagMapper          DAG 定义 Mapper
      * @param credentialCipher   凭据加解密组件
      * @param taskCenterClient   TaskCenter 回调客户端
+     * @param dolphinClient      DolphinScheduler API 客户端
+     * @param schedulerProperties 调度执行引擎与 DS 配置
      * @param transactionManager 平台事务管理器
      * @param staleRunMinutes    遗留 RUNNING 阈值，默认 180 分钟
      */
@@ -143,6 +158,8 @@ public class ScheduleRunExecutor {
                                ScheduleDagMapper dagMapper,
                                CredentialCipher credentialCipher,
                                TaskCenterClient taskCenterClient,
+                               DolphinSchedulerClient dolphinClient,
+                               DolphinSchedulerProperties schedulerProperties,
                                PlatformTransactionManager transactionManager,
                                @Value("${dam.scheduler.stale-run-minutes:180}") long staleRunMinutes) {
         this.runMapper = runMapper;
@@ -150,6 +167,8 @@ public class ScheduleRunExecutor {
         this.dagMapper = dagMapper;
         this.credentialCipher = credentialCipher;
         this.taskCenterClient = taskCenterClient;
+        this.dolphinClient = dolphinClient;
+        this.schedulerProperties = schedulerProperties;
         this.staleRunMinutes = Math.max(1, staleRunMinutes);
         this.requiresNewTemplate = new TransactionTemplate(transactionManager);
         this.requiresNewTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -259,6 +278,12 @@ public class ScheduleRunExecutor {
             return;
         }
 
+        // DOLPHIN 引擎不执行本地 DAG：触发 DS 后保持 RUNNING，由轮询服务回写终态
+        if (isDolphinJob(job)) {
+            executeDolphinRun(runId, job, token);
+            return;
+        }
+
         // 开始 DAG 前统一登记 TaskCenter；失败返回 null，本地继续执行且不影响终态
         Long instanceId = taskCenterClient.start(
                 job.getJobCode(), job.getJobName(), runId, token);
@@ -325,6 +350,137 @@ public class ScheduleRunExecutor {
                     runId, jobId, e.getClass().getSimpleName(), error);
         } finally {
             taskCenterClient.finish(instanceId, status, error, token);
+        }
+    }
+
+    /**
+     * 判断任务是否使用 DolphinScheduler 执行引擎。
+     * <p>
+     * 历史数据或空值按 LOCAL 处理，保证迁移前创建的任务继续走本地 DAG；非法值不触发 DS。
+     *
+     * @param job 调度任务
+     * @return true 表示 execution_engine=DOLPHIN
+     */
+    private static boolean isDolphinJob(ScheduleJob job) {
+        String engine = trimToNull(job.getExecutionEngine());
+        return engine != null
+                && DolphinSchedulerProperties.ENGINE_DOLPHIN.equalsIgnoreCase(engine);
+    }
+
+    /**
+     * 触发 DolphinScheduler 流程实例，不执行本地 DAG。
+     * <p>
+     * 生命周期：
+     * <ol>
+     *   <li>run 已由 {@link #startRun(Long)} 置为 RUNNING；</li>
+     *   <li>沿用现有 TaskCenter 回调登记 start，并持久化 instanceId 供后续轮询 finish；</li>
+     *   <li>DS 未启用/未配置/任务缺少流程定义编码/触发失败：run=FAILED、error 明确，
+     *       并立即向 TaskCenter 回写 FAILED；</li>
+     *   <li>触发成功：回填 dolphin_process_instance_id 后保持 RUNNING，
+     *       由 {@link DolphinProcessInstancePoller} 轮询 DS 终态并回写。</li>
+     * </ol>
+     * 该方法不抛出异常，失败只影响本条运行记录。
+     *
+     * @param runId 运行记录ID
+     * @param job   调度任务
+     * @param token 提交线程捕获的 Sa-Token，可为空
+     */
+    private void executeDolphinRun(Long runId, ScheduleJob job, String token) {
+        Long taskCenterInstanceId = taskCenterClient.start(
+                job.getJobCode(), job.getJobName(), runId, token);
+        persistTaskCenterInstance(runId, taskCenterInstanceId);
+
+        String error;
+        try {
+            error = dolphinPrecheck(job);
+            if (error == null) {
+                String tenantCode = schedulerProperties.getDolphin() == null
+                        ? null : schedulerProperties.getDolphin().getTenantCode();
+                DolphinStartResult result = dolphinClient.startProcess(
+                        job.getDolphinProcessDefinitionCode(),
+                        job.getDolphinProcessDefinitionVersion(),
+                        tenantCode,
+                        false);
+                if (!result.ok()) {
+                    error = result.message();
+                } else if (result.processInstanceId() == null) {
+                    error = "DolphinScheduler 启动响应缺少 processInstanceId";
+                } else {
+                    Long processInstanceId = result.processInstanceId();
+                    int updated = runMapper.update(null, new LambdaUpdateWrapper<ScheduleRun>()
+                            .eq(ScheduleRun::getId, runId)
+                            .eq(ScheduleRun::getRunStatus, STATUS_RUNNING)
+                            .set(ScheduleRun::getDolphinProcessInstanceId, processInstanceId));
+                    if (updated == 1) {
+                        log.info("DolphinScheduler 流程实例已触发: runId={}, jobId={}, jobCode={}, "
+                                        + "processDefinitionCode={}, processDefinitionVersion={}, "
+                                        + "processInstanceId={}",
+                                runId, job.getId(), job.getJobCode(),
+                                job.getDolphinProcessDefinitionCode(),
+                                job.getDolphinProcessDefinitionVersion(), processInstanceId);
+                        // 保持 RUNNING，状态由 DolphinProcessInstancePoller 轮询回写
+                        return;
+                    }
+                    error = "运行记录已不处于 RUNNING，无法登记 DolphinScheduler 实例，"
+                            + "DS 流程实例可能仍在运行: " + processInstanceId;
+                }
+            }
+        } catch (Exception e) {
+            // 不输出异常消息，避免把 URL/SQL 等内部信息写入 error_message
+            error = "DolphinScheduler 执行器异常: " + e.getClass().getSimpleName();
+            log.error("DolphinScheduler 执行器异常: runId={}, jobId={}, errorClass={}",
+                    runId, job.getId(), e.getClass().getSimpleName());
+        }
+
+        String safeError = truncate(error);
+        failRun(runId, safeError);
+        taskCenterClient.finish(taskCenterInstanceId, STATUS_FAILED, safeError, token);
+        log.warn("DolphinScheduler 执行失败: runId={}, jobId={}, jobCode={}, error={}",
+                runId, job.getId(), job.getJobCode(), safeError);
+    }
+
+    /**
+     * 检查 DOLPHIN 引擎是否可用，返回明确的失败原因。
+     *
+     * @param job 调度任务
+     * @return 失败原因；可用时返回 null
+     */
+    private String dolphinPrecheck(ScheduleJob job) {
+        if (!schedulerProperties.isDolphinEnabled()) {
+            return "DolphinScheduler 未启用（dam.scheduler.dolphin.enabled=false），"
+                    + "无法执行 DOLPHIN 引擎任务";
+        }
+        if (!dolphinClient.isConfigured()) {
+            return "DolphinScheduler 未配置: "
+                    + String.join("; ", schedulerProperties.configurationIssues());
+        }
+        if (job.getDolphinProcessDefinitionCode() == null) {
+            return "任务未配置 dolphinProcessDefinitionCode，无法触发 DolphinScheduler";
+        }
+        return null;
+    }
+
+    /**
+     * 持久化 TaskCenter 实例ID，供后台轮询在 DS 终态时回写 finish。
+     * <p>
+     * 回填失败只 warn：DS 侧仍会执行，但终态时无法回调 TaskCenter（本地 run 状态不受影响）。
+     *
+     * @param runId                运行记录ID
+     * @param taskCenterInstanceId TaskCenter 实例ID，可为 null
+     */
+    private void persistTaskCenterInstance(Long runId, Long taskCenterInstanceId) {
+        if (runId == null || taskCenterInstanceId == null) {
+            return;
+        }
+        try {
+            runMapper.update(null, new LambdaUpdateWrapper<ScheduleRun>()
+                    .eq(ScheduleRun::getId, runId)
+                    .eq(ScheduleRun::getRunStatus, STATUS_RUNNING)
+                    .set(ScheduleRun::getTaskCenterInstanceId, taskCenterInstanceId));
+        } catch (Exception e) {
+            log.warn("回填 TaskCenter 实例ID失败，DS 终态将跳过 TaskCenter 结束回调: "
+                            + "runId={}, errorClass={}",
+                    runId, e.getClass().getSimpleName());
         }
     }
 

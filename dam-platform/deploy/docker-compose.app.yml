@@ -239,6 +239,12 @@ services:
     container_name: dam-scheduler
     restart: unless-stopped
     environment:
+      DAM_SCHEDULER_ENGINE: ${DAM_SCHEDULER_ENGINE:-LOCAL}
+      DAM_DOLPHIN_ENABLED: ${DAM_DOLPHIN_ENABLED:-false}
+      DAM_DOLPHIN_URL: ${DAM_DOLPHIN_URL:-http://host.docker.internal:12345/dolphinscheduler}
+      DAM_DOLPHIN_TOKEN: ${DAM_DOLPHIN_TOKEN:-}
+      DAM_DOLPHIN_PROJECT_CODE: ${DAM_DOLPHIN_PROJECT_CODE:-}
+      DAM_DOLPHIN_TENANT: ${DAM_DOLPHIN_TENANT:-}
       <<: *pg-env
       DAM_TASK_CENTER_URL: http://dam-task-center:8099
       NACOS_SERVER_ADDR: ${NACOS_HOST:-192.168.1.13}:8848

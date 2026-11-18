@@ -85,6 +85,7 @@ services:
       - ../db/v31_dev_datasource.sql:/docker-entrypoint-initdb.d/32_v31_dev_datasource.sql:ro
       - ../db/v32_scheduler_dag.sql:/docker-entrypoint-initdb.d/33_v32_scheduler_dag.sql:ro
       - ../db/v33_data_api_key.sql:/docker-entrypoint-initdb.d/34_v33_data_api_key.sql:ro
+      - ../db/v34_scheduler_dolphin.sql:/docker-entrypoint-initdb.d/35_v34_scheduler_dolphin.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dam -d damplatform"]
       interval: 5s
@@ -383,6 +384,12 @@ services:
     container_name: dam-scheduler
     restart: unless-stopped
     environment:
+      DAM_SCHEDULER_ENGINE: ${DAM_SCHEDULER_ENGINE:-LOCAL}
+      DAM_DOLPHIN_ENABLED: ${DAM_DOLPHIN_ENABLED:-false}
+      DAM_DOLPHIN_URL: ${DAM_DOLPHIN_URL:-http://host.docker.internal:12345/dolphinscheduler}
+      DAM_DOLPHIN_TOKEN: ${DAM_DOLPHIN_TOKEN:-}
+      DAM_DOLPHIN_PROJECT_CODE: ${DAM_DOLPHIN_PROJECT_CODE:-}
+      DAM_DOLPHIN_TENANT: ${DAM_DOLPHIN_TENANT:-}
       <<: *pg-env
       DAM_TASK_CENTER_URL: http://dam-task-center:8099
       NACOS_SERVER_ADDR: nacos:8848

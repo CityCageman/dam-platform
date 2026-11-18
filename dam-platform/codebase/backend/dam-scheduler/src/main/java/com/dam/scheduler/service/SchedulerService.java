@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dam.common.exception.BusinessException;
 import com.dam.common.vo.PageResult;
+import com.dam.scheduler.config.DolphinSchedulerProperties;
 import com.dam.scheduler.entity.ScheduleJob;
 import com.dam.scheduler.entity.ScheduleRun;
 import com.dam.scheduler.repository.ScheduleJobMapper;
@@ -30,6 +31,10 @@ import java.util.Set;
  * 触发动作落一条 PENDING 运行记录，并在事务提交后交给
  * {@link ScheduleRunExecutor} 异步执行关联的顺序 SQL DAG；运行开始/结束的
  * TaskCenter 回调也统一由执行器负责，本服务不重复登记。
+ * <p>
+ * 每个任务通过 {@code execution_engine} 选择执行引擎：LOCAL 保持原有本地 DAG 执行，
+ * DOLPHIN 触发 DolphinScheduler 流程实例；新建任务未指定时取全局默认引擎，
+ * 默认 LOCAL，保证存量接口与行为兼容。
  *
  * @author DAM Platform
  */
@@ -64,9 +69,15 @@ public class SchedulerService {
     /** 启停接口允许的状态 */
     private static final Set<String> TOGGLE_STATUSES = Set.of("ENABLED", "DISABLED");
 
+    /** 任务允许的执行引擎 */
+    private static final Set<String> EXECUTION_ENGINES = Set.of(
+            DolphinSchedulerProperties.ENGINE_LOCAL,
+            DolphinSchedulerProperties.ENGINE_DOLPHIN);
+
     private final ScheduleJobMapper jobMapper;
     private final ScheduleRunMapper runMapper;
     private final ScheduleRunExecutor runExecutor;
+    private final DolphinSchedulerProperties schedulerProperties;
 
     /**
      * 分页查询调度任务。
@@ -135,6 +146,15 @@ public class SchedulerService {
         String status = StringUtils.hasText(request.getStatus())
                 ? normalizeStatus(request.getStatus(), JOB_STATUSES, "不支持的任务状态")
                 : "DRAFT";
+        String executionEngine = StringUtils.hasText(request.getExecutionEngine())
+                ? normalizeEngine(request.getExecutionEngine())
+                : (schedulerProperties.isDolphinEngine()
+                        ? DolphinSchedulerProperties.ENGINE_DOLPHIN
+                        : DolphinSchedulerProperties.ENGINE_LOCAL);
+        Long dolphinProcessDefinitionCode = request.getDolphinProcessDefinitionCode();
+        Integer dolphinProcessDefinitionVersion = request.getDolphinProcessDefinitionVersion();
+        validateEngineBinding(executionEngine, dolphinProcessDefinitionCode,
+                dolphinProcessDefinitionVersion);
 
         if (jobMapper.countByCodeIncludingDeleted(jobCode) > 0) {
             throw new BusinessException(409, "任务编码已存在: " + jobCode);
@@ -147,6 +167,9 @@ public class SchedulerService {
         job.setJobName(jobName);
         job.setCronExpression(cron);
         job.setDagCode(dagCode);
+        job.setExecutionEngine(executionEngine);
+        job.setDolphinProcessDefinitionCode(dolphinProcessDefinitionCode);
+        job.setDolphinProcessDefinitionVersion(dolphinProcessDefinitionVersion);
         job.setStatus(status);
         job.setDescription(description);
         job.setCreatedAt(now);
@@ -196,6 +219,18 @@ public class SchedulerService {
         if (request.getStatus() != null) {
             job.setStatus(normalizeStatus(request.getStatus(), JOB_STATUSES, "不支持的任务状态"));
         }
+        if (request.getExecutionEngine() != null) {
+            job.setExecutionEngine(normalizeEngine(request.getExecutionEngine()));
+        }
+        if (request.getDolphinProcessDefinitionCode() != null) {
+            job.setDolphinProcessDefinitionCode(request.getDolphinProcessDefinitionCode());
+        }
+        if (request.getDolphinProcessDefinitionVersion() != null) {
+            job.setDolphinProcessDefinitionVersion(request.getDolphinProcessDefinitionVersion());
+        }
+        validateEngineBinding(job.getExecutionEngine(),
+                job.getDolphinProcessDefinitionCode(),
+                job.getDolphinProcessDefinitionVersion());
         job.setUpdatedAt(LocalDateTime.now());
         job.setUpdatedBy(currentUser());
         jobMapper.updateById(job);
@@ -370,6 +405,46 @@ public class SchedulerService {
             throw new BusinessException(400, message + ": " + raw);
         }
         return status;
+    }
+
+    /**
+     * 归一化并校验执行引擎，仅支持 LOCAL/DOLPHIN。
+     *
+     * @param raw 原始引擎值
+     * @return 大写引擎值
+     */
+    private static String normalizeEngine(String raw) {
+        if (!StringUtils.hasText(raw)) {
+            throw new BusinessException(400, "执行引擎不能为空");
+        }
+        String engine = raw.trim().toUpperCase(Locale.ROOT);
+        if (!EXECUTION_ENGINES.contains(engine)) {
+            throw new BusinessException(400, "不支持的执行引擎: " + raw);
+        }
+        return engine;
+    }
+
+    /**
+     * 校验执行引擎与 DolphinScheduler 流程定义绑定是否匹配。
+     * <p>
+     * DOLPHIN 引擎必须有流程定义编码，避免触发时才失败；LOCAL 引擎忽略 DS 字段，
+     * 允许保留历史绑定便于切换。版本号为空表示由 DS 侧决定。
+     *
+     * @param engine  执行引擎
+     * @param code    DS 流程定义编码，可为空
+     * @param version DS 流程定义版本，可为空
+     */
+    private static void validateEngineBinding(String engine, Long code, Integer version) {
+        if (code != null && code <= 0) {
+            throw new BusinessException(400, "dolphinProcessDefinitionCode 必须为正整数");
+        }
+        if (version != null && version <= 0) {
+            throw new BusinessException(400, "dolphinProcessDefinitionVersion 必须为正整数");
+        }
+        if (DolphinSchedulerProperties.ENGINE_DOLPHIN.equals(engine) && code == null) {
+            throw new BusinessException(400,
+                    "DOLPHIN 执行引擎需配置 dolphinProcessDefinitionCode");
+        }
     }
 
     /**

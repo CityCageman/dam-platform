@@ -9,6 +9,7 @@ import com.dam.scheduler.dto.ScheduleDagRequest;
 import com.dam.scheduler.dto.ScheduleDagView;
 import com.dam.scheduler.entity.ScheduleJob;
 import com.dam.scheduler.entity.ScheduleRun;
+import com.dam.scheduler.service.DolphinEngineService;
 import com.dam.scheduler.service.ScheduleDagService;
 import com.dam.scheduler.service.ScheduleDispatchService;
 import com.dam.scheduler.service.SchedulerService;
@@ -47,6 +48,8 @@ public class SchedulerController {
 
     private final ScheduleDagService dagService;
 
+    private final DolphinEngineService dolphinEngineService;
+
     /**
      * 查询调度服务状态。
      *
@@ -55,6 +58,33 @@ public class SchedulerController {
     @GetMapping("/status")
     public Result<Map<String, Object>> status() {
         return Result.success(schedulerService.getStatus());
+    }
+
+    /**
+     * 查询执行引擎状态。
+     * <p>
+     * 返回全局引擎类型、DolphinScheduler 开关与配置是否完整、最近一次连通性探测结果；
+     * 不返回 base-url/token 等敏感配置。
+     *
+     * @return engine、dolphin.enabled/configured、lastProbe
+     */
+    @GetMapping("/engine/status")
+    public Result<Map<String, Object>> engineStatus() {
+        return Result.success(dolphinEngineService.getStatus());
+    }
+
+    /**
+     * 测试 DolphinScheduler 连接（需登录）。
+     * <p>
+     * 只使用服务端配置，不接受调用方传入 URL；通过拉取流程定义列表验证
+     * base-url/token/project-code 是否可用，不触发真实流程实例。
+     *
+     * @return ok/message/checkedAt/definitionCount
+     */
+    @PostMapping("/engine/dolphin/test")
+    public Result<Map<String, Object>> testDolphin() {
+        requireLogin();
+        return Result.success(dolphinEngineService.testConnection());
     }
 
     /**

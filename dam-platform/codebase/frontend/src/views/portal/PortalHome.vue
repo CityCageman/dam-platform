@@ -3,7 +3,7 @@
     <div class="page-head">
       <div>
         <h2 class="page-title">统一门户</h2>
-        <p class="page-desc">按能力域汇聚平台模块，从统一入口快速抵达日常数据工作台。</p>
+        <p class="page-desc">按能力域汇聚平台模块，从统一入口快速抵达日常数据工作台；点击能力域将在新窗口打开。</p>
       </div>
       <div class="head-actions">
         <el-button @click="goDashboard">
@@ -43,7 +43,7 @@
         class="domain-card"
         role="link"
         tabindex="0"
-        :aria-label="`进入${domain.name}能力域`"
+        :aria-label="`在新窗口进入${domain.name}能力域`"
         @click="enterDomain(domain)"
         @keyup.enter="enterDomain(domain)"
       >
@@ -100,7 +100,9 @@ function availableCount(domain: PortalDomain): number {
 }
 
 function enterDomain(domain: PortalDomain) {
-  router.push(domain.route)
+  // 能力域页面在新浏览器窗口打开，当前统一门户保持不变
+  const href = router.resolve(domain.route).href
+  window.open(href, '_blank', 'noopener')
 }
 
 function goDashboard() {

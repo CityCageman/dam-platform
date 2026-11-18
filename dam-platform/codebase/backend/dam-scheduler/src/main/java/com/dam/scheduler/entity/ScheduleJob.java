@@ -38,6 +38,22 @@ public class ScheduleJob {
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String dagCode;
 
+    /**
+     * 执行引擎：LOCAL/DOLPHIN。
+     * <p>
+     * LOCAL 走本地顺序 SQL DAG 执行器；DOLPHIN 触发 DolphinScheduler 流程实例并轮询状态。
+     * 历史数据由迁移脚本回填为 LOCAL。
+     */
+    private String executionEngine;
+
+    /** DolphinScheduler 流程定义编码，executionEngine=DOLPHIN 时必填 */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private Long dolphinProcessDefinitionCode;
+
+    /** DolphinScheduler 流程定义版本，可为空表示由 DS 侧决定 */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private Integer dolphinProcessDefinitionVersion;
+
     /** 状态：DRAFT/ENABLED/DISABLED */
     private String status;
 

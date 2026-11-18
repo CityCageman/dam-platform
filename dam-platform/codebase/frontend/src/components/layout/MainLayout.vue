@@ -10,73 +10,47 @@
         </div>
       </div>
 
-
       <el-menu
-        :default-active="defaultActive"
+        :default-active="activeMenuIndex"
         router
         class="nav"
         background-color="transparent"
         text-color="#A6B4CC"
         active-text-color="#FFFFFF"
       >
-        <!-- 固定入口：不依赖后端菜单配置，保证统一门户始终可达 -->
-        <div class="nav-group">统一入口</div>
-        <el-menu-item index="/portal">
-          <el-icon><Grid /></el-icon>
-          <span>统一门户</span>
-        </el-menu-item>
+        <!-- 门户模式：登录后只展示三个固定入口 -->
+        <template v-if="layoutMode === 'portal'">
+          <div class="nav-group">统一入口</div>
+          <el-menu-item v-for="item in portalFixedMenuItems" :key="item.path" :index="item.path">
+            <el-icon><component :is="resolvePortalIcon(item.icon)" /></el-icon>
+            <span>{{ item.title }}</span>
+          </el-menu-item>
+        </template>
 
-        <!-- 固定入口：数据工程 / 数据服务 / 知识中心，保证已上线管理页始终可达 -->
-        <div class="nav-group">数据工程</div>
-        <el-menu-item index="/integration">
-          <el-icon><Connection /></el-icon>
-          <span>数据集成</span>
-        </el-menu-item>
-        <el-menu-item index="/develop">
-          <el-icon><Cpu /></el-icon>
-          <span>数据开发</span>
-        </el-menu-item>
-        <el-menu-item index="/scheduler">
-          <el-icon><Timer /></el-icon>
-          <span>调度中心</span>
-        </el-menu-item>
-        <el-menu-item index="/data-service">
-          <el-icon><Link /></el-icon>
-          <span>数据服务</span>
-        </el-menu-item>
-        <el-menu-item index="/knowledge">
-          <el-icon><Reading /></el-icon>
-          <span>知识中心</span>
-        </el-menu-item>
+        <!-- 模块模式：由当前路由推导，刷新后仍展示该模块的详细菜单 -->
+        <template v-else-if="activeModule">
+          <div class="nav-group">当前模块</div>
+          <div class="module-summary">
+            <span v-if="activeModule.domainName" class="module-domain">{{ activeModule.domainName }}</span>
+            <b class="module-name">{{ activeModule.name }}</b>
+          </div>
 
-        <!-- 固定入口：任务中心，保证 /task-center 不依赖后端菜单配置 -->
-        <div class="nav-group">平台</div>
-        <el-menu-item index="/task-center">
-          <el-icon><Tickets /></el-icon>
-          <span>任务中心</span>
-        </el-menu-item>
+          <el-menu-item index="/portal" class="back-portal">
+            <el-icon><ArrowLeft /></el-icon>
+            <span>返回统一门户</span>
+          </el-menu-item>
 
-        <template v-for="g in moduleGroups" :key="g.title">
-          <div class="nav-group">{{ g.title }}</div>
-          <template v-for="item in g.items" :key="item.configCode">
-            <el-sub-menu v-if="item.children?.length" :index="item.configCode">
-              <template #title>
-                <img v-if="isImageIcon(item.icon)" :src="iconSrc(item.icon)" class="menu-icon-img" />
-                <el-icon v-else><component :is="item.icon" /></el-icon>
-                <span>{{ displayMenuName(item) }}</span>
-              </template>
-              <el-menu-item v-for="child in item.children" :key="child.configCode" :index="navIndex(child)">
-                <img v-if="isImageIcon(child.icon)" :src="iconSrc(child.icon)" class="menu-icon-img" />
-                <el-icon v-else><component :is="child.icon" /></el-icon>
-                <span>{{ displayMenuName(child) }}</span>
-              </el-menu-item>
-            </el-sub-menu>
-            <el-menu-item v-else :index="routePath(item)">
-              <img v-if="isImageIcon(item.icon)" :src="iconSrc(item.icon)" class="menu-icon-img" />
-              <el-icon v-else><component :is="item.icon" /></el-icon>
-              <span>{{ displayMenuName(item) }}</span>
-            </el-menu-item>
-          </template>
+          <div class="nav-group">模块菜单</div>
+          <el-menu-item
+            v-for="item in moduleMenuItems"
+            :key="item.path"
+            :index="item.target"
+            :disabled="item.disabled"
+            :title="item.hint || item.title"
+          >
+            <el-icon><component :is="resolvePortalIcon(item.icon)" /></el-icon>
+            <span>{{ item.title }}</span>
+          </el-menu-item>
         </template>
       </el-menu>
 
@@ -94,9 +68,37 @@
     <main class="main">
       <header class="topbar">
         <div class="crumb">
-          <span class="crumb-root">数据治理</span>
-          <el-icon class="crumb-sep"><ArrowRight /></el-icon>
-          <span class="crumb-current">{{ route.meta.title }}</span>
+          <!-- 门户/系统页面：统一门户 -> 当前页面 -->
+          <template v-if="layoutMode === 'portal'">
+            <span :class="currentPath === '/portal' ? 'crumb-current' : 'crumb-root'">统一门户</span>
+            <template v-if="portalCurrentTitle">
+              <el-icon class="crumb-sep"><ArrowRight /></el-icon>
+              <span class="crumb-current">{{ portalCurrentTitle }}</span>
+            </template>
+          </template>
+
+          <!-- 模块页面：统一门户 -> 能力域 -> 模块 -> 当前页面 -->
+          <template v-else-if="activeModule">
+            <button type="button" class="crumb-link" @click="goPortal">统一门户</button>
+            <template v-if="activeModule.domainName">
+              <el-icon class="crumb-sep"><ArrowRight /></el-icon>
+              <button type="button" class="crumb-link" @click="goDomain">{{ activeModule.domainName }}</button>
+            </template>
+            <el-icon class="crumb-sep"><ArrowRight /></el-icon>
+            <button type="button" class="crumb-link" @click="goModuleHome">{{ activeModule.name }}</button>
+            <template v-if="showPageCrumb">
+              <el-icon class="crumb-sep"><ArrowRight /></el-icon>
+              <span class="crumb-current">{{ route.meta.title }}</span>
+            </template>
+          </template>
+
+          <template v-else>
+            <span class="crumb-root">统一门户</span>
+            <template v-if="route.meta.title">
+              <el-icon class="crumb-sep"><ArrowRight /></el-icon>
+              <span class="crumb-current">{{ route.meta.title }}</span>
+            </template>
+          </template>
         </div>
         <div class="topbar-right">
           <el-input v-model="keyword" class="global-search" placeholder="搜索资产 / 表 / 字段 / 指标"
@@ -133,13 +135,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Search, ArrowRight, ArrowDown, User, Setting, SwitchButton, Bell, Grid, Connection, Cpu, Link, Reading, Tickets, Timer } from '@element-plus/icons-vue'
+import { Search, ArrowRight, ArrowDown, ArrowLeft, User, Setting, SwitchButton, Bell } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/store/user'
-import { authApi, catalogApi } from '@/api'
+import { authApi } from '@/api'
 import AgentFloat from '@/components/agent/AgentFloat.vue'
+import {
+  getModuleNavigation,
+  isPortalLayoutPath,
+  portalFixedMenuItems,
+  resolveModuleMenu,
+  resolvePortalActiveMenu
+} from '@/config/navigation'
+import { getPortalDomain, resolvePortalIcon } from '@/config/portal'
+
+type LayoutMode = 'portal' | 'module'
 
 const router = useRouter()
 const route = useRoute()
@@ -148,174 +160,69 @@ const initial = computed(() => (userStore.userInfo?.realName || userStore.userIn
 function showNotice() { ElMessage.info('暂无新的待处理通知') }
 
 const keyword = ref('')
-const navConfig = ref<any[]>([])
-const menuItems = router.options.routes.find(r => r.path === '/')?.children || []
-const routeMap = computed(() => {
-  const map = new Map<string, any>()
-  menuItems.forEach(m => map.set(m.path, m))
-  return map
+
+/** 去除末尾斜杠后的当前路径，避免 /catalog/ 之类地址导致高亮丢失 */
+const currentPath = computed(() => route.path.replace(/\/+$/, '') || '/')
+
+/** 当前路由对应的模块编码（模块路由的 meta 在 router/index.ts 中统一生成） */
+const routeModuleCode = computed(() => {
+  const metaCode = route.meta.moduleCode
+  if (typeof metaCode === 'string' && metaCode) return metaCode
+  const paramCode = route.params.moduleCode
+  if (Array.isArray(paramCode)) return paramCode[0] || ''
+  return paramCode || ''
 })
 
-// 构建菜单树
-const menuTree = computed(() => {
-  const list = navConfig.value.filter((n: any) => n.configCode !== 'data-sources' && !isPortalItem(n))
-  if (!list.length) {
-    return menuItems.filter(m => !m.meta?.hidden && m.path !== 'data-sources' && m.path !== 'portal').map(m => ({
-      configCode: m.path, configName: m.meta?.title, icon: m.meta?.icon, children: [],
-      sortOrder: 0, status: 1
-    })).sort((a: any, b: any) => a.sortOrder - b.sortOrder)
-  }
-  const map = new Map<number, any>()
-  list.forEach((item: any) => map.set(item.id, { ...item, children: [] }))
-  const roots: any[] = []
-  list.forEach((item: any) => {
-    const node = map.get(item.id)
-    if (item.parentId && map.has(item.parentId)) {
-      const parent = map.get(item.parentId)
-      node._parentCode = parent.configCode
-      node._parentPath = parent.configValue || '/' + parent.configCode
-      parent.children.push(node)
-    } else {
-      roots.push(node)
-    }
-  })
-  return roots.filter((n: any) => n.status !== 0).sort((a: any, b: any) => (a.sortOrder || 99) - (b.sortOrder || 99)).map((n: any) => {
-    if (n.children?.length) {
-      n.children = n.children.filter((c: any) => c.status !== 0).sort((a: any, b: any) => (a.sortOrder || 99) - (b.sortOrder || 99))
-    }
-    return n
-  })
+const activeModule = computed(() => getModuleNavigation(routeModuleCode.value))
+
+/**
+ * 布局模式完全由当前路由推导：
+ * - /portal、/domains/*、/profile、/system-config 为门户模式；
+ * - 其余带 moduleCode 的路由为模块模式；
+ * 因此刷新模块页面不会丢失左侧详细菜单。
+ */
+const layoutMode = computed<LayoutMode>(() => {
+  if (isPortalLayoutPath(route.path)) return 'portal'
+  return activeModule.value ? 'module' : 'portal'
 })
 
-// ===== 平台大模块分组（整个侧边栏按大模块组织，参考 frontend-new） =====
-const MODULE_GROUPS = [
-  { title: '总览', keys: ['dashboard'] },
-  { title: '数据资产', keys: ['catalog', 'catalog-detail', 'metadata', 'models', 'lineage'] },
-  { title: '治理能力', keys: ['standard', 'quality', 'metrics', 'security', 'lifecycle'] },
-  { title: '平台运营', keys: ['operations', 'agent'] }
-]
+const moduleMenuItems = computed(() =>
+  activeModule.value ? resolveModuleMenu(activeModule.value, route) : []
+)
 
-/** 取菜单项对应的一级路径段（兼容配置中心 navigation 的 configValue） */
-function groupKey(item: any): string {
-  const p = String(item.configValue || item.configCode || '')
-  return p.replace(/^\//, '').split('/')[0].split('?')[0]
-}
-
-/** 数据库菜单（sys_menu）转换后的分组 */
-const apiMenuGroups = ref<{ title: string; items: any[] }[]>([])
-
-/** 将 sys_menu 树节点规范化为前端菜单项结构 */
-function normalizeMenu(n: any): any {
-  return {
-    ...n,
-    configCode: n.path || String(n.id),
-    configName: n.path === '/agent' ? 'AI 工作台' : (n.menuName || n.configName),
-    configValue: n.path,
-    icon: n.icon,
-    children: (n.children || []).map(normalizeMenu)
-  }
-}
-
-/** 兼容历史导航配置：数据库里仍叫“智能助手”时前端也显示“AI 工作台” */
-function displayMenuName(item: any): string {
-  const path = String(item?.configValue || item?.path || '')
-  const code = String(item?.configCode || '')
-  if (path === '/agent' || code === 'agent' || code === 'nav_agent') return 'AI 工作台'
-  return item?.configName || ''
-}
-
-/** 统一门户使用侧边栏固定入口，动态菜单中不再重复展示 */
-function isPortalItem(item: any): boolean {
-  const path = String(item?.configValue || item?.path || '')
-  const code = String(item?.configCode || '')
-  return path === '/portal' || code === 'portal'
-}
-
-/** 递归过滤动态菜单中的统一门户项，避免与固定入口重复 */
-function filterPortalItems(items: any[]): any[] {
-  return items
-    .filter((item: any) => !isPortalItem(item))
-    .map((item: any) => (item.children?.length ? { ...item, children: filterPortalItems(item.children) } : item))
-}
-
-/** 按大模块分组后的菜单（数据库菜单优先，空时回退静态路由分组） */
-const moduleGroups = computed(() => {
-  if (apiMenuGroups.value.length) {
-    const apiGroups = apiMenuGroups.value
-      .map(g => ({ ...g, items: filterPortalItems(g.items) }))
-      .filter(g => g.items.length)
-    if (apiGroups.length) return apiGroups
-  }
-  const roots = menuTree.value
-  const groups = MODULE_GROUPS.map(g => ({ title: g.title, items: [] as any[] }))
-  const others: any[] = []
-  for (const it of roots) {
-    const k = groupKey(it)
-    const idx = MODULE_GROUPS.findIndex(g => g.keys.includes(k))
-    if (idx >= 0) groups[idx].items.push(it)
-    else others.push(it)
-  }
-  const res = groups.filter(g => g.items.length)
-  if (others.length) res.push({ title: '其他', items: others })
-  return res
+const activeMenuIndex = computed(() => {
+  if (layoutMode.value === 'portal') return resolvePortalActiveMenu(route.path)
+  return moduleMenuItems.value.find(item => item.active && !item.disabled)?.target || ''
 })
 
-function navIndex(item: any): string {
-  if (item._parentPath && item._parentCode && item.configCode.startsWith(item._parentCode + '-')) {
-    const type = item.configCode.substring(item._parentCode.length + 1)
-    return item._parentPath + '?type=' + type
+/** 门户页面顶部面包屑的当前节点 */
+const portalCurrentTitle = computed(() => {
+  if (currentPath.value.startsWith('/domains/')) {
+    return getPortalDomain(String(route.params.domainCode || ''))?.name || '能力域'
   }
-  return routePath(item)
-}
-
-function routePath(item: any): string {
-  if (item.configValue) return item.configValue
-  const found = routeMap.value.get(item.configCode)
-  const p = found ? found.path : item.configCode
-  return p.startsWith('/') ? p : '/' + p
-}
-
-/** 判断 icon 值是否为图片路径（否则视为 Element Plus 组件名，保持兼容） */
-function isImageIcon(icon?: string) {
-  return !!icon && (icon.includes('/') || /\.(svg|png|ico|webp)$/i.test(icon))
-}
-
-/** 将存储的图标路径转为可访问的 src */
-function iconSrc(icon: string) {
-  if (!icon) return ''
-  return icon.startsWith('/') ? icon : '/image/' + icon
-}
-
-const defaultActive = computed(() => {
-  // 能力域页面归属于统一门户，保持门户入口高亮
-  if (route.path.startsWith('/domains/')) return '/portal'
-  if (route.query.type) {
-    return '/' + (route.path.split('/')[1] || 'dashboard') + '?type=' + route.query.type
-  }
-  return '/' + (route.path.split('/')[1] || 'dashboard')
+  if (currentPath.value === '/portal') return ''
+  return String(route.meta.title || '')
 })
 
-onMounted(async () => {
-  // 1. 优先读取数据库菜单（dam_sys.sys_menu）
-  try {
-    const res: any = await catalogApi.getMenus()
-    const tree = res.data || []
-    if (tree.length) {
-      apiMenuGroups.value = tree.map((n: any) => {
-        const node = normalizeMenu(n)
-        return { title: node.configName, items: node.children?.length ? node.children : [node] }
-      })
-    }
-  } catch (_e) { /* 菜单接口不可用时回退 */ }
-
-  // 2. 回退：配置中心 navigation（为空时 menuTree 再用静态路由兜底）
-  if (!apiMenuGroups.value.length) {
-    try {
-      const res: any = await catalogApi.getNavigation()
-      navConfig.value = res.data || []
-    } catch (_e) {}
-  }
+/** 模块首页与模块名称重名时不重复展示当前页节点 */
+const showPageCrumb = computed(() => {
+  const title = String(route.meta.title || '')
+  return !!title && title !== activeModule.value?.name
 })
+
+function goPortal() {
+  router.push('/portal')
+}
+
+function goDomain() {
+  if (!activeModule.value?.domainCode) return
+  router.push(`/domains/${activeModule.value.domainCode}`)
+}
+
+function goModuleHome() {
+  if (!activeModule.value) return
+  router.push(activeModule.value.basePath)
+}
 
 function goSearch() {
   if (!keyword.value.trim()) return
@@ -409,11 +316,39 @@ async function handleLogout() {
   left: 2px; top: 8px; bottom: 8px;
   width: 3px; border-radius: 3px; background: #D99A1C;
 }
+:deep(.el-menu-item.is-disabled) {
+  opacity: .42;
+  cursor: not-allowed;
+}
 :deep(.el-sub-menu .el-menu) { background: transparent; }
 :deep(.el-sub-menu .el-menu-item) { padding-left: 44px !important; font-size: 12.5px; }
 :deep(.el-menu-item .el-icon),
 :deep(.el-sub-menu__title .el-icon) { font-size: 16px; }
 .menu-icon-img { width: 16px; height: 16px; object-fit: contain; margin-right: 6px; vertical-align: middle; }
+
+/* 当前模块信息与返回门户 */
+.module-summary {
+  padding: 2px 12px 10px;
+  line-height: 1.35;
+}
+.module-domain {
+  display: block;
+  color: #AD8DA9;
+  font-size: 10.5px;
+  letter-spacing: .5px;
+}
+.module-name {
+  display: block;
+  margin-top: 3px;
+  color: #F5EDF3;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.back-portal {
+  margin-bottom: 4px;
+  color: #D8C7D5 !important;
+  border: 1px dashed rgba(255, 255, 255, .14);
+}
 
 /* 侧栏底部用户 */
 .sidebar-foot {
@@ -452,8 +387,18 @@ async function handleLogout() {
   z-index: 10;
 }
 .crumb { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--med-text-light); white-space: nowrap; }
+.crumb-root { color: var(--med-text-light); }
 .crumb-current { color: var(--med-text); font-weight: 600; }
 .crumb-sep { font-size: 11px; }
+.crumb-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--med-text-light);
+  cursor: pointer;
+}
+.crumb-link:hover { color: var(--med-primary); }
 
 .topbar-right { display: flex; align-items: center; gap: 12px; margin-left: auto; }
 .global-search { width: 300px; }
@@ -495,9 +440,10 @@ async function handleLogout() {
   .user-meta { display: none; }
 }
 @media (max-width: 900px) {
-  .brand-text, .nav-group, .sidebar-foot .who { display: none; }
+  .brand-text, .nav-group, .sidebar-foot .who, .module-summary { display: none; }
   .sidebar { width: 72px; flex-basis: 72px; align-items: center; padding: 18px 8px; }
   :deep(.el-menu-item), :deep(.el-sub-menu__title) { justify-content: center; padding: 0 !important; }
+  :deep(.el-menu-item span) { display: none; }
   .global-search { display: none; }
   .content { padding: 16px; }
 }

@@ -23,6 +23,7 @@
 | 11 | `v31_dev_datasource.sql` | 数据开发 SQL 执行数据源配置 | `dam_dev` | 加列 |
 | 12 | `v32_scheduler_dag.sql` | 调度顺序 SQL DAG | `dam_scheduler` | 建表 |
 | 13 | `v33_data_api_key.sql` | API Key 与调用审计 | `dam_data_service` | 建表 |
+| 14 | `v34_scheduler_dolphin.sql` | DolphinScheduler 执行引擎字段 | `dam_scheduler` | 加列/索引 |
 
 要点：
 
