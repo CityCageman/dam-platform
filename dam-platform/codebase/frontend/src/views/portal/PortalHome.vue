@@ -2,12 +2,12 @@
   <div class="portal-page">
     <div class="page-head">
       <div>
-        <h2 class="page-title">统一门户</h2>
-        <p class="page-desc">按能力域汇聚平台模块，从统一入口快速抵达日常数据工作台；点击能力域将在新窗口打开。</p>
+        <h2 class="page-title">产品中心</h2>
+        <p class="page-desc">按能力域汇聚平台产品与模块，从统一入口快速抵达日常数据工作台；点击能力域将在当前窗口进入。</p>
       </div>
       <div class="head-actions">
-        <el-button @click="goDashboard">
-          <el-icon><DataAnalysis /></el-icon>运营看板
+        <el-button @click="goCockpit">
+          <el-icon><DataAnalysis /></el-icon>我的驾驶舱
         </el-button>
       </div>
     </div>
@@ -21,15 +21,15 @@
       </div>
       <div class="hero-stats">
         <div class="hero-stat">
-          <b>{{ portalDomains.length }}</b>
+          <b>{{ visibleDomains.length }}</b>
           <span>能力域</span>
         </div>
         <div class="hero-stat">
-          <b>{{ portalModuleTotal }}</b>
+          <b>{{ visibleModuleTotal }}</b>
           <span>模块</span>
         </div>
         <div class="hero-stat">
-          <b>{{ portalAvailableTotal }}</b>
+          <b>{{ visibleAvailableTotal }}</b>
           <span>已上线</span>
         </div>
       </div>
@@ -38,12 +38,12 @@
     <!-- 8 个能力域 -->
     <section class="domain-grid" aria-label="能力域列表">
       <article
-        v-for="domain in portalDomains"
+        v-for="domain in visibleDomains"
         :key="domain.code"
         class="domain-card"
         role="link"
         tabindex="0"
-        :aria-label="`在新窗口进入${domain.name}能力域`"
+        :aria-label="`进入${domain.name}能力域`"
         @click="enterDomain(domain)"
         @keyup.enter="enterDomain(domain)"
       >
@@ -78,35 +78,44 @@
           </button>
         </div>
       </article>
+      <el-empty v-if="!visibleDomains.length" description="当前角色暂无可访问产品" />
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { DataAnalysis } from '@element-plus/icons-vue'
+import { useUserStore } from '@/store/user'
+import { canAccessModule } from '@/config/roles'
 import {
-  portalAvailableTotal,
   portalDomains,
-  portalModuleTotal,
   resolvePortalIcon
 } from '@/config/portal'
 import type { PortalDomain } from '@/config/portal'
 
 const router = useRouter()
+const userStore = useUserStore()
+
+const visibleDomains = computed(() => portalDomains.map(domain => ({
+  ...domain,
+  modules: domain.modules.filter(module => canAccessModule(module.code, userStore.roles))
+})).filter(domain => domain.modules.length > 0))
+const visibleModuleTotal = computed(() => visibleDomains.value.reduce((sum, domain) => sum + domain.modules.length, 0))
+const visibleAvailableTotal = computed(() => visibleDomains.value.reduce((sum, domain) => sum + domain.modules.filter(module => module.status === 'AVAILABLE').length, 0))
 
 function availableCount(domain: PortalDomain): number {
   return domain.modules.filter(module => module.status === 'AVAILABLE').length
 }
 
 function enterDomain(domain: PortalDomain) {
-  // 能力域页面在新浏览器窗口打开，当前统一门户保持不变
-  const href = router.resolve({ path: domain.route, query: { from: 'portal' } }).href
-  window.open(href, '_blank', 'noopener')
+  // 单窗口：能力域在当前窗口进入，左侧切换为该能力域的模块菜单
+  router.push({ path: domain.route })
 }
 
-function goDashboard() {
-  router.push('/dashboard')
+function goCockpit() {
+  router.push(userStore.homePath)
 }
 </script>
 

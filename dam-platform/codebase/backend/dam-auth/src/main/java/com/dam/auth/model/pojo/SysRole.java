@@ -36,6 +36,12 @@ public class SysRole {
     /** 状态：0-禁用，1-启用 */
     private Integer status;
 
+    /** 数据范围：ALL-全部，DEPARTMENT-本部门，SELF-仅本人 */
+    private String dataScope;
+
+    /** 默认驾驶舱编码：super/executive/department/ops/developer/governance/business/security */
+    private String defaultCockpit;
+
     /** 创建时间 */
     private LocalDateTime createdAt;
 

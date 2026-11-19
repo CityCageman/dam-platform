@@ -3,18 +3,18 @@
     <div class="page-head">
       <div>
         <el-button text class="back-link" @click="goPortal">
-          <el-icon><ArrowLeft /></el-icon>统一门户
+          <el-icon><ArrowLeft /></el-icon>产品中心
         </el-button>
         <h2 class="page-title">{{ domain ? domain.name : '能力域' }}</h2>
         <p class="page-desc">
-          {{ domain ? domain.description : '未找到对应的能力域，请返回统一门户重新选择。' }}
+          {{ domain ? domain.description : '未找到对应的能力域，请返回产品中心重新选择。' }}
         </p>
       </div>
       <div v-if="domain" class="head-actions">
         <el-tag size="small" effect="plain" type="success">{{ availableCount }} 个已上线</el-tag>
         <el-tag v-if="plannedCount" size="small" effect="plain" type="info">{{ plannedCount }} 个规划中</el-tag>
         <el-button @click="goPortal">
-          <el-icon><Back /></el-icon>返回统一门户
+          <el-icon><Back /></el-icon>返回产品中心
         </el-button>
       </div>
     </div>
@@ -100,10 +100,10 @@
       v-else
       icon="warning"
       title="能力域不存在"
-      sub-title="请从统一门户选择有效的能力域。"
+      sub-title="请从产品中心选择有效的能力域。"
     >
       <template #extra>
-        <el-button type="primary" @click="goPortal">返回统一门户</el-button>
+        <el-button type="primary" @click="goPortal">返回产品中心</el-button>
       </template>
     </el-result>
   </div>
@@ -114,12 +114,16 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, ArrowRight, Back, Clock, Link } from '@element-plus/icons-vue'
 import { getPortalDomain, resolvePortalIcon } from '@/config/portal'
+import { canAccessModule } from '@/config/roles'
+import { useUserStore } from '@/store/user'
 import type { PortalModule } from '@/config/portal'
 
 const route = useRoute()
 const router = useRouter()
 
-const domain = computed(() => getPortalDomain(String(route.params.domainCode || '')))
+const userStore = useUserStore()
+const rawDomain = computed(() => getPortalDomain(String(route.params.domainCode || '')))
+const domain = computed(() => rawDomain.value ? ({ ...rawDomain.value, modules: rawDomain.value.modules.filter(module => canAccessModule(module.code, userStore.roles)) }) : undefined)
 const availableCount = computed(
   () => domain.value?.modules.filter(module => module.status === 'AVAILABLE').length ?? 0
 )
@@ -133,15 +137,7 @@ function enterModule(module: PortalModule) {
 }
 
 function goPortal() {
-  // 从统一门户卡片打开的能力域窗口：关闭当前窗口，回到原来的统一门户。
-  if (route.query.from === 'portal' && window.opener !== undefined) {
-    window.close()
-    // 浏览器不允许脚本关闭时，退化为当前窗口返回门户，避免停在空白页。
-    window.setTimeout(() => {
-      if (!window.closed) router.push('/portal')
-    }, 120)
-    return
-  }
+  // 单窗口：能力域页面直接在当前窗口返回产品中心
   router.push('/portal')
 }
 </script>

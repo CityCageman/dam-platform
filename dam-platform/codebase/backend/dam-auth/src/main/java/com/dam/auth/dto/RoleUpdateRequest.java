@@ -31,4 +31,12 @@ public class RoleUpdateRequest {
     @Min(value = 0, message = "状态只能为0或1")
     @Max(value = 1, message = "状态只能为0或1")
     private Integer status;
+
+    /** 数据范围：ALL/DEPARTMENT/SELF（不传表示不修改） */
+    @Size(max = 16, message = "数据范围长度不能超过16")
+    private String dataScope;
+
+    /** 默认驾驶舱编码（不传表示不修改） */
+    @Size(max = 32, message = "默认驾驶舱长度不能超过32")
+    private String defaultCockpit;
 }

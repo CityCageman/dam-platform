@@ -110,11 +110,12 @@ async function handleLogin() {
       username: form.username,
       password: await encryptPassword(form.password, 'auth')
     })
-    userStore.setToken(res.data.token)
-    userStore.setUserInfo(res.data.userInfo)
+    // 登录返回可能携带 roles/dataScope/defaultCockpit/permissions/department，
+    // 统一交给 store 归一化；字段暂未就绪时按旧 role 兼容。
+    userStore.applyAuthPayload(res.data, { login: true })
     ElMessage.success('登录成功')
-    // 登录成功后默认进入运营看板
-    router.push('/dashboard')
+    // 登录后进入角色默认驾驶舱（兼容 / 与 /dashboard 的守卫重定向）
+    router.push(userStore.homePath)
   } catch (e: any) {
     ElMessage.error(e.message || '登录失败')
   } finally {

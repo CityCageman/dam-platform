@@ -27,7 +27,7 @@
           </div>
           <button type="button" class="back-portal domain-return" @click="goPortal">
             <el-icon><ArrowLeft /></el-icon>
-            <span>返回统一门户</span>
+            <span>返回产品中心</span>
           </button>
           <div class="nav-group">能力域模块</div>
           <el-menu-item
@@ -43,13 +43,15 @@
           </el-menu-item>
         </template>
 
-        <!-- 门户模式：登录后只展示四个固定入口 -->
+        <!-- 门户模式：按当前角色生成菜单（驾驶舱 / 产品中心 / 个人中心 / 系统配置） -->
         <template v-else-if="layoutMode === 'portal'">
-          <div class="nav-group">统一入口</div>
-          <el-menu-item v-for="item in portalFixedMenuItems" :key="item.path" :index="item.path">
-            <el-icon><component :is="resolvePortalIcon(item.icon)" /></el-icon>
-            <span>{{ item.title }}</span>
-          </el-menu-item>
+          <template v-for="group in roleMenuGroups" :key="group.title">
+            <div class="nav-group">{{ group.title }}</div>
+            <el-menu-item v-for="item in group.items" :key="item.path" :index="item.path">
+              <el-icon><component :is="resolvePortalIcon(item.icon)" /></el-icon>
+              <span>{{ item.title }}</span>
+            </el-menu-item>
+          </template>
         </template>
 
         <!-- 模块模式：由当前路由推导，刷新后仍展示该模块的详细菜单 -->
@@ -62,7 +64,7 @@
 
           <el-menu-item index="/portal" class="back-portal">
             <el-icon><ArrowLeft /></el-icon>
-            <span>返回统一门户</span>
+            <span>返回产品中心</span>
           </el-menu-item>
 
           <div class="nav-group">模块菜单</div>
@@ -83,7 +85,7 @@
         <div class="avatar-sm">{{ initial }}</div>
         <div class="who">
           <b>{{ userStore.userInfo?.realName || userStore.userInfo?.username || '管理员' }}</b>
-          <i>{{ userStore.userInfo?.department || '信息中心' }}</i>
+          <i>{{ sidebarDepartment }}</i>
         </div>
         <span class="online" title="服务运行中"></span>
       </div>
@@ -93,7 +95,7 @@
     <main class="main">
       <header class="topbar">
         <div class="crumb">
-          <!-- 门户/系统页面：固定入口 -> 当前页面 -->
+          <!-- 门户/驾驶舱/系统页面：根节点 -> 当前页面 -->
           <template v-if="layoutMode === 'portal'">
             <span :class="portalCurrentTitle ? 'crumb-root' : 'crumb-current'">{{ portalRootLabel }}</span>
             <template v-if="portalCurrentTitle">
@@ -102,16 +104,16 @@
             </template>
           </template>
 
-          <!-- 能力域窗口：统一门户 -> 当前能力域 -->
+          <!-- 能力域窗口：产品中心 -> 当前能力域 -->
           <template v-else-if="layoutMode === 'domain' && activeDomain">
-            <button type="button" class="crumb-link" @click="goPortal">统一门户</button>
+            <button type="button" class="crumb-link" @click="goPortal">产品中心</button>
             <el-icon class="crumb-sep"><ArrowRight /></el-icon>
             <span class="crumb-current">{{ activeDomain.name }}</span>
           </template>
 
-          <!-- 模块页面：统一门户 -> 能力域 -> 模块 -> 当前页面 -->
+          <!-- 模块页面：产品中心 -> 能力域 -> 模块 -> 当前页面 -->
           <template v-else-if="activeModule">
-            <button type="button" class="crumb-link" @click="goPortal">统一门户</button>
+            <button type="button" class="crumb-link" @click="goPortal">产品中心</button>
             <template v-if="activeModule.domainName">
               <el-icon class="crumb-sep"><ArrowRight /></el-icon>
               <button type="button" class="crumb-link" @click="goDomain">{{ activeModule.domainName }}</button>
@@ -125,7 +127,7 @@
           </template>
 
           <template v-else>
-            <span class="crumb-root">统一门户</span>
+            <span class="crumb-root">产品中心</span>
             <template v-if="route.meta.title">
               <el-icon class="crumb-sep"><ArrowRight /></el-icon>
               <span class="crumb-current">{{ route.meta.title }}</span>
@@ -144,13 +146,14 @@
               <el-avatar :size="30" class="avatar">{{ (userStore.userInfo?.realName || userStore.userInfo?.username || 'U').charAt(0).toUpperCase() }}</el-avatar>
               <div class="user-meta">
                 <span>{{ userStore.userInfo?.realName || userStore.userInfo?.username }}</span>
+                <i>{{ userRoleLabel }}</i>
               </div>
               <el-icon class="user-caret"><ArrowDown /></el-icon>
             </div>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="profile"><el-icon><User /></el-icon>个人中心</el-dropdown-item>
-                <el-dropdown-item command="system-config" divided><el-icon><Setting /></el-icon>系统配置</el-dropdown-item>
+                <el-dropdown-item v-if="showSystemConfig" command="system-config" divided><el-icon><Setting /></el-icon>系统配置</el-dropdown-item>
                 <el-dropdown-item command="logout" divided><el-icon><SwitchButton /></el-icon>退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -174,12 +177,11 @@ import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { authApi } from '@/api'
 import AgentFloat from '@/components/agent/AgentFloat.vue'
+import { resolveRoleMenuActive } from '@/config/roles'
 import {
   getModuleNavigation,
   isPortalLayoutPath,
-  portalFixedMenuItems,
-  resolveModuleMenu,
-  resolvePortalActiveMenu
+  resolveModuleMenu
 } from '@/config/navigation'
 import { getPortalDomain, resolvePortalIcon } from '@/config/portal'
 
@@ -189,9 +191,17 @@ const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 const initial = computed(() => (userStore.userInfo?.realName || userStore.userInfo?.username || '管').charAt(0).toUpperCase())
+const sidebarDepartment = computed(() => userStore.department || userStore.userInfo?.department || '未设置科室')
+const userRoleLabel = computed(() => userStore.roleNames.join(' / '))
 function showNotice() { ElMessage.info('暂无新的待处理通知') }
 
 const keyword = ref('')
+
+/** 左侧菜单按角色生成，超管为全量菜单 */
+const roleMenuGroups = computed(() => userStore.roleMenu)
+const showSystemConfig = computed(() =>
+  roleMenuGroups.value.some(group => group.items.some(item => item.path === '/system-config'))
+)
 
 /** 去除末尾斜杠后的当前路径，避免 /catalog/ 之类地址导致高亮丢失 */
 const currentPath = computed(() => route.path.replace(/\/+$/, '') || '/')
@@ -216,7 +226,7 @@ const activeModule = computed(() => getModuleNavigation(routeModuleCode.value))
 
 /**
  * 布局模式完全由当前路由推导：
- * - /dashboard、/portal、/domains/*、/profile、/system-config 为门户模式；
+ * - /cockpit/*、/portal、/domains/*、/profile、/system-config 为门户模式（展示角色菜单）；
  * - 其余带 moduleCode 的路由为模块模式；
  * 因此刷新模块页面不会丢失左侧详细菜单。
  */
@@ -232,20 +242,25 @@ const moduleMenuItems = computed(() =>
 
 const activeMenuIndex = computed(() => {
   if (layoutMode.value === 'domain') return ''
-  if (layoutMode.value === 'portal') return resolvePortalActiveMenu(route.path)
+  if (layoutMode.value === 'portal') return resolveRoleMenuActive(route.path, roleMenuGroups.value)
   return moduleMenuItems.value.find(item => item.active && !item.disabled)?.target || ''
 })
 
-/** 门户模式面包屑根节点：运营看板为固定首页，其余页面归属统一门户 */
-const portalRootLabel = computed(() => currentPath.value === '/dashboard' ? '运营看板' : '统一门户')
+/** 门户模式面包屑根节点：驾驶舱 / 个人中心 / 系统配置 / 产品中心 */
+const portalRootLabel = computed(() => {
+  if (currentPath.value.startsWith('/cockpit/')) return '驾驶舱'
+  if (currentPath.value === '/profile') return '个人中心'
+  if (currentPath.value === '/system-config') return '系统配置'
+  return '产品中心'
+})
 
 /** 门户页面顶部面包屑的当前节点 */
 const portalCurrentTitle = computed(() => {
-  if (currentPath.value === '/dashboard') return ''
+  if (currentPath.value.startsWith('/cockpit/')) return String(route.meta.title || '')
   if (currentPath.value.startsWith('/domains/')) {
     return getPortalDomain(String(route.params.domainCode || ''))?.name || '能力域'
   }
-  if (currentPath.value === '/portal') return ''
+  if (currentPath.value === '/portal' || currentPath.value === '/profile' || currentPath.value === '/system-config') return ''
   return String(route.meta.title || '')
 })
 
@@ -256,14 +271,7 @@ const showPageCrumb = computed(() => {
 })
 
 function goPortal() {
-  // 从统一门户卡片打开的能力域窗口：关闭当前窗口，回到原来的统一门户。
-  if (route.query.from === 'portal') {
-    window.close()
-    window.setTimeout(() => {
-      if (!window.closed) router.push('/portal')
-    }, 120)
-    return
-  }
+  // 单窗口模式：能力域/模块页面统一在当前窗口返回产品中心
   router.push('/portal')
 }
 
@@ -293,9 +301,14 @@ function handleHeaderCommand(command: string) {
 }
 
 async function handleLogout() {
-  await authApi.logout()
-  userStore.logout()
-  router.push('/login')
+  try {
+    await authApi.logout()
+  } catch {
+    // 后端登出失败也要清理本地登录态，避免停留在无效会话
+  } finally {
+    userStore.logout()
+    router.push('/login')
+  }
 }
 </script>
 

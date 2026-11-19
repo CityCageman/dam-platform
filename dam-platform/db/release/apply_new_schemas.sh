@@ -58,6 +58,7 @@ MIGRATIONS=(
   "v35_config_to_dict.sql"
   "v36_navigation.sql"
   "v37_data_access.sql"
+  "v38_role_scope.sql"
 )
 
 # 迁移完成后必须存在的 schema

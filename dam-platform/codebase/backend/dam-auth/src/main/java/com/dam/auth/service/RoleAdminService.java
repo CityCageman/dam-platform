@@ -35,7 +35,9 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 系统配置-角色管理服务
@@ -44,7 +46,10 @@ import java.util.Map;
  * 角色菜单授权采用全量替换语义，并在同一事务内先删后插保证原子性。
  * <p>
  * 管理接口由控制器调用 {@link AuthSupport#requireAdmin()} 校验登录态与系统配置管理角色
- * （当前接受 ADMIN/governor）；后续可替换为 RBAC 权限点。
+ * （当前接受 super_admin/admin/governor）；后续可替换为 RBAC 权限点。
+ * <p>
+ * 角色数据范围（data_scope）与默认驾驶舱（default_cockpit）在本服务统一做枚举校验，
+ * 保证写入值可被登录上下文与前端驾驶舱路由直接使用。
  *
  * @author DAM Platform
  */
@@ -58,6 +63,16 @@ public class RoleAdminService {
     private static final int MAX_PAGE_SIZE = 200;
     /** 关键字最大长度，避免超长 like 查询 */
     private static final int MAX_KEYWORD_LENGTH = 100;
+    /** 数据范围默认值 */
+    private static final String DEFAULT_DATA_SCOPE = "SELF";
+    /** 默认驾驶舱默认值 */
+    private static final String DEFAULT_COCKPIT = "business";
+    /** 允许的数据范围 */
+    private static final Set<String> DATA_SCOPES = Set.of("ALL", "DEPARTMENT", "SELF");
+    /** 允许的默认驾驶舱 */
+    private static final Set<String> COCKPITS = Set.of(
+            "super", "executive", "department", "ops",
+            "developer", "governance", "business", "security");
 
     /** 角色数据访问对象 */
     private final SysRoleMapper roleMapper;
@@ -186,6 +201,8 @@ public class RoleAdminService {
         role.setRoleName(req.getRoleName().trim());
         role.setDescription(trimToNull(req.getDescription()));
         role.setStatus(status);
+        role.setDataScope(resolveDataScope(req.getDataScope()));
+        role.setDefaultCockpit(resolveDefaultCockpit(req.getDefaultCockpit()));
         role.setCreatedAt(now);
         role.setCreatedBy(operator.getUsername());
         role.setUpdatedAt(now);
@@ -245,6 +262,12 @@ public class RoleAdminService {
         if (req.getStatus() != null) {
             validateStatus(req.getStatus());
             update.setStatus(req.getStatus());
+        }
+        if (req.getDataScope() != null) {
+            update.setDataScope(validateDataScope(req.getDataScope()));
+        }
+        if (req.getDefaultCockpit() != null) {
+            update.setDefaultCockpit(validateDefaultCockpit(req.getDefaultCockpit()));
         }
         update.setUpdatedAt(now);
         update.setUpdatedBy(operator.getUsername());
@@ -326,7 +349,7 @@ public class RoleAdminService {
     /**
      * 全量替换角色菜单授权
      * <p>
-     * 管理端接口，控制器已校验 ADMIN/governor 管理角色；先物理删除旧关联再批量插入，
+     * 管理端接口，控制器已校验 super_admin/admin/governor 管理角色；先物理删除旧关联再批量插入，
      * 整个过程在同一事务内保证原子性。
      *
      * @param id  角色ID
@@ -452,6 +475,49 @@ public class RoleAdminService {
     }
 
     /**
+     * 解析创建请求的数据范围：为空取默认值，否则校验枚举
+     */
+    private String resolveDataScope(String value) {
+        if (!StringUtils.hasText(value)) {
+            return DEFAULT_DATA_SCOPE;
+        }
+        return validateDataScope(value);
+    }
+
+    /**
+     * 校验数据范围枚举：仅允许 ALL/DEPARTMENT/SELF（忽略首尾空白与大小写）
+     */
+    private String validateDataScope(String value) {
+        String scope = value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+        if (!DATA_SCOPES.contains(scope)) {
+            throw new BusinessException(400, "数据范围只能为 ALL/DEPARTMENT/SELF");
+        }
+        return scope;
+    }
+
+    /**
+     * 解析创建请求的默认驾驶舱：为空取默认值，否则校验枚举
+     */
+    private String resolveDefaultCockpit(String value) {
+        if (!StringUtils.hasText(value)) {
+            return DEFAULT_COCKPIT;
+        }
+        return validateDefaultCockpit(value);
+    }
+
+    /**
+     * 校验默认驾驶舱枚举（忽略首尾空白与大小写）
+     */
+    private String validateDefaultCockpit(String value) {
+        String cockpit = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+        if (!COCKPITS.contains(cockpit)) {
+            throw new BusinessException(400,
+                    "默认驾驶舱只能为 super/executive/department/ops/developer/governance/business/security");
+        }
+        return cockpit;
+    }
+
+    /**
      * 去除首尾空白，空字符串返回 null
      */
     private String trimToNull(String value) {
@@ -471,6 +537,8 @@ public class RoleAdminService {
         vo.setRoleName(role.getRoleName());
         vo.setDescription(role.getDescription());
         vo.setStatus(role.getStatus());
+        vo.setDataScope(role.getDataScope());
+        vo.setDefaultCockpit(role.getDefaultCockpit());
         vo.setCreatedAt(role.getCreatedAt());
         vo.setCreatedBy(role.getCreatedBy());
         vo.setUpdatedAt(role.getUpdatedAt());

@@ -413,6 +413,8 @@ public class UserAdminService {
         vo.setRoleName(role.getRoleName());
         vo.setDescription(role.getDescription());
         vo.setStatus(role.getStatus());
+        vo.setDataScope(role.getDataScope());
+        vo.setDefaultCockpit(role.getDefaultCockpit());
         vo.setCreatedAt(role.getCreatedAt());
         vo.setCreatedBy(role.getCreatedBy());
         vo.setUpdatedAt(role.getUpdatedAt());

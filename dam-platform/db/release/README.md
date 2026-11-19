@@ -27,6 +27,7 @@
 | 15 | `v35_config_to_dict.sql` | 枚举配置迁移为字典 | `dam_sys` | 数据迁移 |
 | 16 | `v36_navigation.sql` | 按产品边界重建导航配置 | `dam_sys` | 数据替换 |
 | 17 | `v37_data_access.sql` | 数据源迁入 dam_access，保留只读视图 | `dam_access`/`dam_metadata` | 表迁移 |
+| 18 | `v38_role_scope.sql` | 角色数据范围、默认驾驶舱、超级管理员 | `dam_sys` | 加列/种子 |
 
 要点：
 

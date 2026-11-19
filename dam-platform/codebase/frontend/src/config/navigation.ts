@@ -2,24 +2,17 @@ import { getPortalDomain } from './portal'
 
 /**
  * 登录后的导航模型：
- * 1. 门户模式（/dashboard、/portal、/domains/*、/profile、/system-config）只展示四个固定入口；
+ * 1. 门户模式（/cockpit/*、/portal、/domains/*、/profile、/system-config）展示角色菜单；
  * 2. 模块模式由当前路由的 moduleCode 推导（系统配置的 SYS/MGW 使用独立路径与 meta），
  *    刷新页面后仍能恢复该模块的详细菜单，不依赖内存状态。
  */
 
-/** 门户模式下的四个固定入口（运营看板为默认首页） */
+/** 门户/固定入口的兼容类型（角色菜单已迁移到 config/roles.ts 的 buildRoleMenu） */
 export interface PortalFixedMenuItem {
   title: string
   path: string
   icon: string
 }
-
-export const portalFixedMenuItems: PortalFixedMenuItem[] = [
-  { title: '运营看板', path: '/dashboard', icon: 'DataAnalysis' },
-  { title: '统一门户', path: '/portal', icon: 'Grid' },
-  { title: '个人中心', path: '/profile', icon: 'User' },
-  { title: '系统配置', path: '/system-config', icon: 'Setting' }
-]
 
 /** 模块详细菜单项 */
 export interface ModuleMenuItem {
@@ -184,20 +177,21 @@ function normalizePath(path: string): string {
   return normalized || '/'
 }
 
-/** 是否是只展示四个固定入口的门户/系统页面 */
+/** 是否是展示角色菜单的门户/固定页面（含驾驶舱） */
 export function isPortalLayoutPath(path: string): boolean {
   const normalized = normalizePath(path)
   return normalized === '/dashboard'
     || normalized === '/portal'
     || normalized === '/profile'
     || normalized === '/system-config'
+    || normalized.startsWith('/cockpit/')
     || normalized.startsWith('/domains/')
 }
 
-/** 门户模式下需要高亮的固定入口 */
+/** 门户模式下需要高亮的固定入口（角色菜单由 resolveRoleMenuActive 处理） */
 export function resolvePortalActiveMenu(path: string): string {
   const normalized = normalizePath(path)
-  if (normalized === '/dashboard') return '/dashboard'
+  if (normalized.startsWith('/cockpit/')) return normalized
   if (normalized === '/profile') return '/profile'
   if (normalized === '/system-config') return '/system-config'
   return '/portal'

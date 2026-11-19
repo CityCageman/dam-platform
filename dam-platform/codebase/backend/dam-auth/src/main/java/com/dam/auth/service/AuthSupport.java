@@ -26,8 +26,9 @@ import java.util.Set;
  * 防止绕过网关直连 dam-auth 时未登录访问管理接口（未登录统一返回业务码 401）。
  * <p>
  * 用户/角色/授权管理再调用 {@link #requireAdmin()} 校验管理角色：当前平台尚未建立
- * 完整的 RBAC 权限点模型，暂以初始化脚本中的 ADMIN（系统管理员）或 governor（数据管理员）
- * 角色作为管理角色；后续引入权限点后可替换为权限码判断（例如 user:manage）。
+ * 完整的 RBAC 权限点模型，暂以初始化脚本中的 super_admin（超级管理员）、
+ * ADMIN（系统管理员）或 governor（数据管理员）角色作为管理角色；
+ * 后续引入权限点后可替换为权限码判断（例如 user:manage）。
  *
  * @author DAM Platform
  */
@@ -35,8 +36,8 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class AuthSupport {
 
-    /** 允许访问系统配置的初始化角色编码（兼容 init-all 的 ADMIN 与初始化.sql 的 governor） */
-    private static final Set<String> ADMIN_ROLE_CODES = Set.of("admin", "governor");
+    /** 允许访问系统配置的角色编码（兼容 super_admin、init-all 的 ADMIN 与初始化.sql 的 governor） */
+    private static final Set<String> ADMIN_ROLE_CODES = Set.of("super_admin", "admin", "governor");
 
     /** 用户数据访问对象 */
     private final SysUserMapper userMapper;
@@ -63,8 +64,9 @@ public class AuthSupport {
      * 校验当前登录用户具备系统配置管理权限
      * <p>
      * 系统配置包含用户、角色、菜单和授权管理，不能只依赖“已登录”。
-     * 当前平台尚无统一 ADMIN 权限点，使用角色编码 ADMIN（系统管理员）或
-     * governor（数据管理员）作为管理角色。仅统计未删除且启用的用户-角色关联。
+     * 当前平台尚无统一 ADMIN 权限点，使用角色编码 super_admin（超级管理员）、
+     * ADMIN（系统管理员）或 governor（数据管理员）作为管理角色。
+     * 仅统计未删除且启用的用户-角色关联。
      */
     public void requireAdmin() {
         long userId = currentUserId();

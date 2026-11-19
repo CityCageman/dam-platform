@@ -27,6 +27,12 @@ public class RoleResponse {
     /** 状态：0-禁用，1-启用 */
     private Integer status;
 
+    /** 数据范围：ALL/DEPARTMENT/SELF */
+    private String dataScope;
+
+    /** 默认驾驶舱编码 */
+    private String defaultCockpit;
+
     /** 创建时间 */
     private LocalDateTime createdAt;
 
