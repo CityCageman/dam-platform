@@ -1,0 +1,186 @@
+[
+  {
+    "configCode": "nav_dashboard",
+    "configName": "运营看板",
+    "configValue": "/dashboard",
+    "description": "平台管理/运营看板",
+    "sortOrder": 1,
+    "status": 1
+  },
+  {
+    "configCode": "nav_portal",
+    "configName": "统一门户",
+    "configValue": "/portal",
+    "description": "平台管理/统一门户",
+    "sortOrder": 2,
+    "status": 1
+  },
+  {
+    "configCode": "nav_profile",
+    "configName": "个人中心",
+    "configValue": "/profile",
+    "description": "平台管理/个人中心",
+    "sortOrder": 3,
+    "status": 1
+  },
+  {
+    "configCode": "nav_system_config",
+    "configName": "系统配置",
+    "configValue": "/system-config",
+    "description": "平台管理/系统配置",
+    "sortOrder": 4,
+    "status": 1
+  },
+  {
+    "configCode": "nav_catalog",
+    "configName": "资产目录",
+    "configValue": "/catalog",
+    "description": "数据资产/DAM 资产目录",
+    "sortOrder": 5,
+    "status": 1
+  },
+  {
+    "configCode": "nav_metadata",
+    "configName": "元数据管理",
+    "configValue": "/metadata",
+    "description": "数据资产/DAM 元数据管理",
+    "sortOrder": 6,
+    "status": 1
+  },
+  {
+    "configCode": "nav_integration",
+    "configName": "数据集成",
+    "configValue": "/integration",
+    "description": "数据接入/数据集成",
+    "sortOrder": 7,
+    "status": 1
+  },
+  {
+    "configCode": "nav_data_sources",
+    "configName": "数据源管理",
+    "configValue": "/data-sources",
+    "description": "数据接入/数据源连接",
+    "sortOrder": 8,
+    "status": 1
+  },
+  {
+    "configCode": "nav_models",
+    "configName": "模型管理",
+    "configValue": "/models",
+    "description": "数据处理/数据建模",
+    "sortOrder": 9,
+    "status": 1
+  },
+  {
+    "configCode": "nav_develop",
+    "configName": "数据开发",
+    "configValue": "/develop",
+    "description": "数据处理/数据开发",
+    "sortOrder": 10,
+    "status": 1
+  },
+  {
+    "configCode": "nav_scheduler",
+    "configName": "调度中心",
+    "configValue": "/scheduler",
+    "description": "平台管理/调度中心",
+    "sortOrder": 11,
+    "status": 1
+  },
+  {
+    "configCode": "nav_task_center",
+    "configName": "任务中心",
+    "configValue": "/task-center",
+    "description": "平台管理/任务中心",
+    "sortOrder": 12,
+    "status": 1
+  },
+  {
+    "configCode": "nav_standard",
+    "configName": "数据标准",
+    "configValue": "/standard",
+    "description": "数据治理/数据标准",
+    "sortOrder": 13,
+    "status": 1
+  },
+  {
+    "configCode": "nav_quality",
+    "configName": "数据质量",
+    "configValue": "/quality",
+    "description": "数据治理/数据质量",
+    "sortOrder": 14,
+    "status": 1
+  },
+  {
+    "configCode": "nav_security",
+    "configName": "安全管控",
+    "configValue": "/security",
+    "description": "数据治理/数据安全",
+    "sortOrder": 15,
+    "status": 1
+  },
+  {
+    "configCode": "nav_lifecycle",
+    "configName": "生命周期",
+    "configValue": "/lifecycle",
+    "description": "数据治理/生命周期",
+    "sortOrder": 16,
+    "status": 1
+  },
+  {
+    "configCode": "nav_lineage",
+    "configName": "数据血缘",
+    "configValue": "/lineage",
+    "description": "数据治理/数据血缘",
+    "sortOrder": 17,
+    "status": 1
+  },
+  {
+    "configCode": "nav_data_service",
+    "configName": "数据服务",
+    "configValue": "/data-service",
+    "description": "数据服务/API 服务",
+    "sortOrder": 18,
+    "status": 1
+  },
+  {
+    "configCode": "nav_metrics",
+    "configName": "指标管理",
+    "configValue": "/metrics",
+    "description": "数据分析/指标管理",
+    "sortOrder": 19,
+    "status": 1
+  },
+  {
+    "configCode": "nav_reports",
+    "configName": "报表体系",
+    "configValue": "/reports",
+    "description": "数据分析/报表体系",
+    "sortOrder": 20,
+    "status": 1
+  },
+  {
+    "configCode": "nav_knowledge",
+    "configName": "知识中心",
+    "configValue": "/knowledge",
+    "description": "数据分析/知识中心",
+    "sortOrder": 21,
+    "status": 1
+  },
+  {
+    "configCode": "nav_agent",
+    "configName": "AI 工作台",
+    "configValue": "/agent",
+    "description": "数据分析/AI 工作台",
+    "sortOrder": 22,
+    "status": 1
+  },
+  {
+    "configCode": "nav_operations",
+    "configName": "工单中心",
+    "configValue": "/operations",
+    "description": "平台管理/工单运维",
+    "sortOrder": 23,
+    "status": 1
+  }
+]
