@@ -3,11 +3,18 @@
     <div class="page-head">
       <div>
         <h2 class="page-title">运营看板</h2>
-        <p class="page-desc">一屏掌握资产规模、质量水位与平台运营概况。</p>
+        <p class="page-desc">{{ mode === 'dam' ? 'DAM 资产规模、质量水位与运营协同。' : '数据中台组件、任务与服务运行概览。' }}</p>
       </div>
-      <el-button :icon="Refresh" @click="load">刷新</el-button>
+      <div class="dashboard-actions">
+        <el-radio-group v-model="mode" size="small">
+          <el-radio-button label="dam">DAM 运营</el-radio-button>
+          <el-radio-button label="platform">数据中台运营</el-radio-button>
+        </el-radio-group>
+        <el-button v-if="mode === 'dam'" :icon="Refresh" @click="load">刷新</el-button>
+      </div>
     </div>
 
+    <template v-if="mode === 'dam'">
     <!-- 模块一：总览 -->
     <section class="module">
       <div class="module-head">
@@ -82,24 +89,8 @@
       </div>
     </section>
 
-    <!-- 模块四：治理能力 -->
-    <section class="module">
-      <div class="module-head">
-        <h3 class="module-title">治理能力</h3>
-        <span class="module-sub">常用治理模块快捷入口</span>
-      </div>
-      <div class="entry-grid">
-        <router-link v-for="e in entries" :key="e.path" :to="e.path" class="entry-card">
-          <div class="entry-icon" :style="{ background: e.color + '1a', color: e.color }">
-            <el-icon :size="20"><component :is="e.icon" /></el-icon>
-          </div>
-          <div class="entry-body">
-            <div class="entry-title">{{ e.title }}</div>
-            <div class="entry-desc">{{ e.desc }}</div>
-          </div>
-        </router-link>
-      </div>
-    </section>
+    </template>
+    <PlatformDashboard v-else />
   </div>
 </template>
 
@@ -108,9 +99,11 @@ import { ref, onMounted, shallowRef, onBeforeUnmount } from 'vue'
 import * as echarts from 'echarts'
 import { Refresh } from '@element-plus/icons-vue'
 import { operationsApi } from '@/api'
+import PlatformDashboard from './PlatformDashboard.vue'
 import { getChartTheme } from '@/utils/chartTheme'
 
 const loading = ref(false)
+const mode = ref<'dam' | 'platform'>('dam')
 const hasHot = ref(false)
 const stats = ref([
   { label: '资产总数', value: '-', foot: '已登记数据资产' },
@@ -119,21 +112,11 @@ const stats = ref([
   { label: '活跃用户', value: '-', foot: '近期有操作的用户' }
 ])
 
-// 治理能力快捷入口（与左侧导航大模块保持一致）
-const ct = getChartTheme()
-const entries = [
-  { title: '数据标准', desc: '标准制定与落标核查', path: '/standard', icon: 'Document', color: ct.primary },
-  { title: '数据质量', desc: '质量规则与稽核结果', path: '/quality', icon: 'List', color: ct.accent },
-  { title: '安全管控', desc: '分级分类与脱敏策略', path: '/security', icon: 'Lock', color: ct.gold },
-  { title: '生命周期', desc: '冷热分层与归档清理', path: '/lifecycle', icon: 'Timer', color: ct.green },
-  { title: '工单中心', desc: '治理工单协同处理', path: '/operations', icon: 'Tickets', color: ct.danger },
-  { title: 'AI 工作台', desc: '任务 · 知识 · 评估', path: '/agent', icon: 'ChatDotRound', color: ct.accent }
-]
-
 const trendChart = shallowRef<HTMLElement>()
 const hotChart = shallowRef<HTMLElement>()
 const ticketChart = shallowRef<HTMLElement>()
 const charts: echarts.ECharts[] = []
+const ct = getChartTheme()
 
 const AXIS_COLOR = ct.textLight
 const SPLIT_COLOR = ct.split

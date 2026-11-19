@@ -40,11 +40,11 @@ const routes = [
       // 统一门户：能力域总览与能力域模块入口
       { path: 'portal', component: () => import('@/views/portal/PortalHome.vue'), meta: { title: '统一门户', icon: 'Grid' } },
       { path: 'domains/:domainCode', component: () => import('@/views/portal/DomainHome.vue'), meta: { title: '能力域', icon: 'Grid', hidden: true } },
-      // 数据资产模块：左侧会显示资产目录 / 数据源 / 元数据采集 / 资产详情
+      // 数据资产模块：资产目录 / 元数据管理 / 资产详情
       { path: 'catalog', component: () => import('@/views/catalog/AssetList.vue'), meta: moduleMeta('DAM', '资产目录', 'FolderOpened') },
       { path: 'catalog-detail/:id', component: () => import('@/views/catalog/AssetDetail.vue'), meta: moduleMeta('DAM', '资产详情', 'Document') },
       { path: 'metadata', component: () => import('@/views/catalog/MetadataCollection.vue'), meta: moduleMeta('DAM', '元数据管理', 'DataBoard') },
-      { path: 'data-sources', component: () => import('@/views/catalog/DataSourceList.vue'), meta: moduleMeta('DAM', '数据源管理', 'Connection') },
+      { path: 'data-sources', component: () => import('@/views/catalog/DataSourceList.vue'), meta: moduleMeta('INT', '数据源管理', 'Connection') },
       // 标准与模型
       { path: 'models', component: () => import('@/views/catalog/ModelManagement.vue'), meta: moduleMeta('MDL', '模型管理', 'Collection') },
       { path: 'standard', component: () => import('@/views/standard/Index.vue'), meta: moduleMeta('STD', '数据标准', 'Document') },

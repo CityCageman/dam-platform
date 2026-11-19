@@ -90,8 +90,7 @@ export const moduleNavigations: Record<string, ModuleNavigation> = {
   // 数据资产与主数据
   DAM: defineModule('DAM', 'asset', '/catalog', [
     { title: '资产目录', icon: 'FolderOpened', path: '/catalog' },
-    { title: '数据源', icon: 'Connection', path: '/data-sources' },
-    { title: '元数据采集', icon: 'DataBoard', path: '/metadata' },
+    { title: '元数据管理', icon: 'DataBoard', path: '/metadata' },
     {
       title: '资产详情',
       icon: 'Document',
@@ -112,7 +111,8 @@ export const moduleNavigations: Record<string, ModuleNavigation> = {
 
   // 数据工程
   INT: defineModule('INT', 'engineering', '/integration', [
-    { title: '数据集成', icon: 'Connection', path: '/integration' }
+    { title: '数据集成', icon: 'Connection', path: '/integration' },
+    { title: '数据源管理', icon: 'Coin', path: '/data-sources' }
   ]),
   DEV: defineModule('DEV', 'engineering', '/develop', [
     { title: '数据开发', icon: 'Cpu', path: '/develop' }

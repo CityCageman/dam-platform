@@ -389,6 +389,17 @@ export const lifecycleApi = {
   getTierDistribution() { return request.get('/lifecycle/tiering/distribution') }
 }
 
+/** 数据中台运营看板：平台组件状态与任务/服务规模 */
+export const platformApi = {
+  getSchedulerStatus() { return request.get('/scheduler/status') },
+  getTaskCenterStatus() { return request.get('/task-center/status') },
+  getDataServiceStatus() { return request.get('/data-service/status') },
+  getIntegrationStatus() { return request.get('/integration/status') },
+  getTaskInstances(params: any = { page: 1, pageSize: 200 }) {
+    return request.get('/task-center/instances', { params })
+  }
+}
+
 export const operationsApi = {
   getDashboard() { return request.get('/operations/dashboard') },
   searchTickets(params: any) { return request.get('/operations/tickets', { params }) },
