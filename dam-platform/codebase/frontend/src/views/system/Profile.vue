@@ -71,7 +71,8 @@ async function refreshProfile() {
   refreshing.value = true
   try {
     const res: any = await authApi.getCurrentUser()
-    if (res.data) userStore.setUserInfo(res.data)
+    // /auth/me 同时刷新资料与角色上下文（roles/defaultCockpit/dataScope 等）
+    if (res.data) userStore.applyAuthPayload(res.data)
     ElMessage.success('资料已刷新')
   } catch (e: any) {
     ElMessage.error(e.message || '刷新失败')

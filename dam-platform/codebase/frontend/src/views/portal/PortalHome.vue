@@ -51,7 +51,7 @@
           <div class="domain-icon">
             <el-icon :size="24"><component :is="resolvePortalIcon(domain.icon)" /></el-icon>
           </div>
-          <el-tag size="small" effect="plain" class="domain-count">{{ domain.modules.length }} 个模块</el-tag>
+          <el-tag size="small" effect="plain" class="domain-count">{{ visibleModules(domain).length }} 个模块</el-tag>
         </div>
 
         <h3 class="domain-name">{{ domain.name }}</h3>
@@ -59,7 +59,7 @@
 
         <div class="domain-modules">
           <span
-            v-for="module in domain.modules"
+            v-for="module in visibleModules(domain)"
             :key="module.code"
             class="module-chip"
             :class="{ 'is-planned': module.status === 'PLANNED' }"
@@ -70,7 +70,7 @@
 
         <div class="domain-foot">
           <span class="domain-availability">
-            <i class="dot"></i>{{ availableCount(domain) }}/{{ domain.modules.length }} 已上线
+            <i class="dot"></i>{{ availableCount(domain) }}/{{ visibleModules(domain).length }} 已上线
           </span>
           <button type="button" class="domain-enter" @click.stop="enterDomain(domain)">
             进入能力域
@@ -88,7 +88,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { DataAnalysis } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
-import { canAccessModule } from '@/config/roles'
+import { canAccessModule, canAccessPath } from '@/config/roles'
 import {
   portalDomains,
   resolvePortalIcon
@@ -105,8 +105,12 @@ const visibleDomains = computed(() => portalDomains.map(domain => ({
 const visibleModuleTotal = computed(() => visibleDomains.value.reduce((sum, domain) => sum + domain.modules.length, 0))
 const visibleAvailableTotal = computed(() => visibleDomains.value.reduce((sum, domain) => sum + domain.modules.filter(module => module.status === 'AVAILABLE').length, 0))
 
+function visibleModules(domain: PortalDomain) {
+  return domain.modules.filter(module => canAccessPath(module.route, userStore.roles))
+}
+
 function availableCount(domain: PortalDomain): number {
-  return domain.modules.filter(module => module.status === 'AVAILABLE').length
+  return visibleModules(domain).filter(module => module.status === 'AVAILABLE').length
 }
 
 function enterDomain(domain: PortalDomain) {

@@ -230,6 +230,8 @@ export function normalizeCockpitPath(value: unknown): string | undefined {
  * 3. 最后回退超管驾驶舱。
  */
 export function resolveDefaultCockpit(roles: RoleCode[], defaultCockpit?: unknown): string {
+  // 超级管理员的默认驾驶舱固定为全量总览，避免角色行配置漂移
+  if (roles.includes('super_admin')) return ROLE_DEFINITIONS.super_admin.cockpitPath
   const explicit = normalizeCockpitPath(defaultCockpit)
   if (explicit) return explicit
   const primary = roles.find(role => ROLE_DEFINITIONS[role])
@@ -256,6 +258,21 @@ export function canManageSystem(roles: RoleCode[]): boolean {
 /** 判断角色是否具备超管全量视图 */
 export function isSuperAdmin(roles: RoleCode[]): boolean {
   return roles.includes('super_admin')
+}
+
+/** 受角色保护的产品路径（与 router meta.roles 保持一致，供产品中心过滤入口） */
+const PROTECTED_PRODUCT_ROUTES: Record<string, RoleCode[]> = {
+  '/system-config': SYSTEM_CONFIG_ROLES,
+  '/system-config/SYS': SYSTEM_CONFIG_ROLES,
+  '/system-config/MGW': SYSTEM_CONFIG_ROLES
+}
+
+/** 产品中心/能力域入口是否对当前角色可见（避免点击后被守门弹回） */
+export function canAccessPath(path: string, roles: RoleCode[]): boolean {
+  if (isSuperAdmin(roles)) return true
+  const normalized = path.replace(/\/+$/, '') || '/'
+  const allowed = PROTECTED_PRODUCT_ROUTES[normalized]
+  return !allowed || allowed.some(role => roles.includes(role))
 }
 
 /** 路由 meta.roles 匹配；未声明 roles 视为所有登录用户可访问 */

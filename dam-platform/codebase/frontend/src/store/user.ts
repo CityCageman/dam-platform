@@ -173,6 +173,7 @@ export const useUserStore = defineStore('user', () => {
   /** 是否具备权限码（后端未返回权限时保持宽松） */
   function hasPermission(code: string): boolean {
     if (!permissions.value.length) return true
+    if (permissions.value.includes('*')) return true
     return permissions.value.includes(code)
   }
 

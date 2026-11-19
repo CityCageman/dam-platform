@@ -32,7 +32,7 @@
         </div>
         <div class="hero-stats">
           <div class="hero-stat">
-            <b>{{ domain.modules.length }}</b>
+            <b>{{ visibleModules.length }}</b>
             <span>模块总数</span>
           </div>
           <div class="hero-stat">
@@ -53,7 +53,7 @@
 
       <section class="module-grid" aria-label="能力域模块列表">
         <article
-          v-for="module in domain.modules"
+          v-for="module in visibleModules"
           :key="module.code"
           class="module-card"
           :class="{ 'is-planned': module.status === 'PLANNED' }"
@@ -124,6 +124,8 @@ const router = useRouter()
 const userStore = useUserStore()
 const rawDomain = computed(() => getPortalDomain(String(route.params.domainCode || '')))
 const domain = computed(() => rawDomain.value ? ({ ...rawDomain.value, modules: rawDomain.value.modules.filter(module => canAccessModule(module.code, userStore.roles)) }) : undefined)
+/** 当前角色可见模块（domain 已按模块角色过滤） */
+const visibleModules = computed(() => domain.value?.modules ?? [])
 const availableCount = computed(
   () => domain.value?.modules.filter(module => module.status === 'AVAILABLE').length ?? 0
 )
@@ -133,7 +135,7 @@ const plannedCount = computed(
 
 function enterModule(module: PortalModule) {
   if (module.status !== 'AVAILABLE') return
-  router.push({ path: module.route, query: route.query })
+  router.push({ path: module.route })
 }
 
 function goPortal() {

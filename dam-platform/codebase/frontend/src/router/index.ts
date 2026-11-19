@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { getModuleNavigation } from '@/config/navigation'
-import { ALL_ROLES, SYSTEM_CONFIG_ROLES, rolesForModule } from '@/config/roles'
+import { SYSTEM_CONFIG_ROLES, rolesForModule } from '@/config/roles'
 import { useUserStore } from '@/store/user'
 
 declare module 'vue-router' {

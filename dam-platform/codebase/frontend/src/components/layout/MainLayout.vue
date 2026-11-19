@@ -31,7 +31,7 @@
           </button>
           <div class="nav-group">能力域模块</div>
           <el-menu-item
-            v-for="module in activeDomain.modules"
+            v-for="module in activeDomainModules"
             :key="module.code"
             :index="module.route"
             :route="{ path: module.route, query: route.query }"
@@ -177,7 +177,7 @@ import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { authApi } from '@/api'
 import AgentFloat from '@/components/agent/AgentFloat.vue'
-import { resolveRoleMenuActive } from '@/config/roles'
+import { canAccessModule, resolveRoleMenuActive } from '@/config/roles'
 import {
   getModuleNavigation,
   isPortalLayoutPath,
@@ -221,6 +221,13 @@ const activeDomain = computed(() => {
   const code = Array.isArray(route.params.domainCode) ? route.params.domainCode[0] : route.params.domainCode
   return getPortalDomain(code)
 })
+
+/** 能力域窗口只展示当前角色可访问的模块，避免点入后被路由守卫弹回 */
+const activeDomainModules = computed(() =>
+  activeDomain.value
+    ? activeDomain.value.modules.filter(module => canAccessModule(module.code, userStore.roles))
+    : []
+)
 
 const activeModule = computed(() => getModuleNavigation(routeModuleCode.value))
 
