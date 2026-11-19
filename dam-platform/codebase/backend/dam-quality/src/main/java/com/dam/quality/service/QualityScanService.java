@@ -2,6 +2,7 @@ package com.dam.quality.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dam.common.exception.BusinessException;
+import com.dam.common.security.DataScopeContext;
 import com.dam.quality.entity.DamQualityCheck;
 import com.dam.quality.entity.DamQualityRule;
 import com.dam.quality.repository.DamQualityCheckMapper;
@@ -181,8 +182,14 @@ public class QualityScanService {
      */
     public List<DamQualityCheck> executeAllEnabled() {
         // 查询所有启用中的规则
-        List<DamQualityRule> rules = ruleMapper.selectList(
-                new LambdaQueryWrapper<DamQualityRule>().eq(DamQualityRule::getStatus, 1));
+        LambdaQueryWrapper<DamQualityRule> ruleWrapper = new LambdaQueryWrapper<DamQualityRule>()
+                .eq(DamQualityRule::getStatus, 1);
+        List<Long> scopedIds = scopedRuleIds();
+        if (scopedIds != null) {
+            if (scopedIds.isEmpty()) return List.of();
+            ruleWrapper.in(DamQualityRule::getId, scopedIds);
+        }
+        List<DamQualityRule> rules = ruleMapper.selectList(ruleWrapper);
         // 逐条执行检测
         return rules.stream().map(r -> executeRule(r.getId())).collect(Collectors.toList());
     }
@@ -194,15 +201,36 @@ public class QualityScanService {
      * @param days   查询天数
      * @return 趋势数据 { dates, scores, avgScore }
      */
+    /** 当前 token 数据范围下的规则ID；返回 null 表示全院不限 */
+    private List<Long> scopedRuleIds() {
+        if (DataScopeContext.isAll()) return null;
+        LambdaQueryWrapper<DamQualityRule> w = new LambdaQueryWrapper<>();
+        if (DataScopeContext.isDepartment()) {
+            String dept = DataScopeContext.department();
+            if (dept.isBlank()) return List.of();
+            w.and(q -> q.eq(DamQualityRule::getDepartment, dept).or().isNull(DamQualityRule::getDepartment));
+        } else {
+            String username = DataScopeContext.username();
+            if (username.isBlank()) return List.of();
+            w.eq(DamQualityRule::getCreatedBy, username);
+        }
+        return ruleMapper.selectList(w).stream().map(DamQualityRule::getId).toList();
+    }
+
     public Map<String, Object> getQualityTrend(Long ruleId, int days) {
         // 查询起始时间
         LocalDateTime since = LocalDateTime.now().minusDays(days);
-        List<DamQualityCheck> checks = checkMapper.selectList(
-                new LambdaQueryWrapper<DamQualityCheck>()
-                        .eq(ruleId != null, DamQualityCheck::getRuleId, ruleId)
-                        .ge(DamQualityCheck::getCheckTime, since)
-                        .eq(DamQualityCheck::getStatus, 1)
-                        .orderByAsc(DamQualityCheck::getCheckTime));
+        List<Long> scopedIds = scopedRuleIds();
+        if (scopedIds != null && (scopedIds.isEmpty() || (ruleId != null && !scopedIds.contains(ruleId)))) {
+            return Map.of("dates", List.of(), "scores", List.of(), "avgScore", 0);
+        }
+        LambdaQueryWrapper<DamQualityCheck> checkWrapper = new LambdaQueryWrapper<DamQualityCheck>()
+                .eq(ruleId != null, DamQualityCheck::getRuleId, ruleId)
+                .ge(DamQualityCheck::getCheckTime, since)
+                .eq(DamQualityCheck::getStatus, 1)
+                .orderByAsc(DamQualityCheck::getCheckTime);
+        if (ruleId == null && scopedIds != null) checkWrapper.in(DamQualityCheck::getRuleId, scopedIds);
+        List<DamQualityCheck> checks = checkMapper.selectList(checkWrapper);
 
         // 组装日期与通过率序列
         List<String> dates = new ArrayList<>();
@@ -226,16 +254,21 @@ public class QualityScanService {
      * @return 概览统计 Map
      */
     public Map<String, Object> getQualityOverview() {
-        // 规则总数与启用数
-        long totalRules = ruleMapper.selectCount(null);
-        long enabledRules = ruleMapper.selectCount(
-                new LambdaQueryWrapper<DamQualityRule>().eq(DamQualityRule::getStatus, 1));
+        List<Long> scopedIds = scopedRuleIds();
+        if (scopedIds != null && scopedIds.isEmpty()) {
+            return Map.of("totalRules", 0, "enabledRules", 0, "avgScore", 0, "lastCheckTime", null);
+        }
+        LambdaQueryWrapper<DamQualityRule> ruleWrapper = new LambdaQueryWrapper<>();
+        if (scopedIds != null) ruleWrapper.in(DamQualityRule::getId, scopedIds);
+        long totalRules = ruleMapper.selectCount(ruleWrapper);
+        long enabledRules = ruleMapper.selectCount(ruleWrapper.clone().eq(DamQualityRule::getStatus, 1));
 
         // 最近 100 次成功检测的平均通过率
         LambdaQueryWrapper<DamQualityCheck> lastWrapper = new LambdaQueryWrapper<>();
         lastWrapper.eq(DamQualityCheck::getStatus, 1)
                 .orderByDesc(DamQualityCheck::getCheckTime)
                 .last("LIMIT 100");
+        if (scopedIds != null) lastWrapper.in(DamQualityCheck::getRuleId, scopedIds);
         List<DamQualityCheck> lastChecks = checkMapper.selectList(lastWrapper);
         double avgScore = lastChecks.stream()
                 .filter(c -> c.getPassRate() != null)
