@@ -14,6 +14,7 @@ import com.dam.catalog.asset.repository.AssetCategoryRelMapper;
 import com.dam.catalog.asset.repository.DamAssetMapper;
 import com.dam.catalog.asset.repository.DamCategoryMapper;
 import com.dam.common.exception.BusinessException;
+import com.dam.common.security.DataScopeContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -125,6 +126,16 @@ public class ReportCatalogService {
             w.and(q -> q.like(ReportCatalog::getReportName, keyword)
                     .or().like(ReportCatalog::getReportCode, keyword)
                     .or().like(ReportCatalog::getDescription, keyword));
+        }
+        // token 数据范围收敛
+        if (DataScopeContext.isDepartment()) {
+            String dept = DataScopeContext.department();
+            if (dept.isBlank()) w.eq(ReportCatalog::getId, -1L);
+            else w.and(q -> q.eq(ReportCatalog::getDepartment, dept).or().isNull(ReportCatalog::getDepartment));
+        } else if (DataScopeContext.isSelf()) {
+            String username = DataScopeContext.username();
+            if (username.isBlank()) w.eq(ReportCatalog::getId, -1L);
+            else w.eq(ReportCatalog::getCreatedBy, username);
         }
         // 角色可见主题域收敛
         if (visible != null) {
@@ -283,6 +294,7 @@ public class ReportCatalogService {
             rc.setReportCode(reportCode);
             rc.setCreatedAt(LocalDateTime.now());
             rc.setCreatedBy(operator);
+            if (StrUtil.isBlank(rc.getDepartment())) rc.setDepartment(DataScopeContext.department());
         }
         rc.setReportName(reportName);
         rc.setReportTypeId(str(body.get("reportTypeId")));

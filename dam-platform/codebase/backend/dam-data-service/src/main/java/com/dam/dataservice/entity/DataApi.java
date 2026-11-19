@@ -45,6 +45,9 @@ public class DataApi {
     /** API 描述 */
     private String description;
 
+    /** 归属部门，用于数据范围过滤 */
+    private String department;
+
     /** 上游类型（如 HTTP、SQL、MOCK） */
     private String upstreamType;
 

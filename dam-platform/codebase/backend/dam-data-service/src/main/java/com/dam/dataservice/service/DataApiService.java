@@ -7,6 +7,7 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dam.common.exception.BusinessException;
+import com.dam.common.security.DataScopeContext;
 import com.dam.common.security.CredentialCipher;
 import com.dam.common.vo.PageResult;
 import com.dam.dataservice.dto.DataApiRequest;
@@ -79,6 +80,15 @@ public class DataApiService {
         String normalizedStatus = trim(status);
         if (normalizedStatus != null && !normalizedStatus.isEmpty()) {
             wrapper.eq(DataApi::getStatus, normalizeStatus(normalizedStatus));
+        }
+        if (DataScopeContext.isDepartment()) {
+            String dept = DataScopeContext.department();
+            if (dept.isBlank()) wrapper.eq(DataApi::getId, -1L);
+            else wrapper.and(w -> w.eq(DataApi::getDepartment, dept).or().isNull(DataApi::getDepartment));
+        } else if (DataScopeContext.isSelf()) {
+            String username = DataScopeContext.username();
+            if (username.isBlank()) wrapper.eq(DataApi::getId, -1L);
+            else wrapper.eq(DataApi::getCreatedBy, username);
         }
         wrapper.orderByDesc(DataApi::getUpdatedAt).orderByDesc(DataApi::getId);
         return PageResult.of(dataApiMapper.selectPage(new Page<>(current, size), wrapper));
