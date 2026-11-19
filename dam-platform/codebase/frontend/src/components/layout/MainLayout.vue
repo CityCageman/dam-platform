@@ -18,8 +18,33 @@
         text-color="#A6B4CC"
         active-text-color="#FFFFFF"
       >
+        <!-- 能力域窗口：只展示当前能力域及其模块，不使用全局统一入口 -->
+        <template v-if="layoutMode === 'domain' && activeDomain">
+          <div class="nav-group">当前能力域</div>
+          <div class="module-summary">
+            <span class="module-domain">CAPABILITY DOMAIN</span>
+            <b class="module-name">{{ activeDomain.name }}</b>
+          </div>
+          <button type="button" class="back-portal domain-return" @click="goPortal">
+            <el-icon><ArrowLeft /></el-icon>
+            <span>返回统一门户</span>
+          </button>
+          <div class="nav-group">能力域模块</div>
+          <el-menu-item
+            v-for="module in activeDomain.modules"
+            :key="module.code"
+            :index="module.route"
+            :route="{ path: module.route, query: route.query }"
+            :disabled="module.status === 'PLANNED'"
+            :title="module.status === 'PLANNED' ? '规划中，暂未开放' : module.name"
+          >
+            <el-icon><component :is="resolvePortalIcon(module.icon)" /></el-icon>
+            <span>{{ module.name }}</span>
+          </el-menu-item>
+        </template>
+
         <!-- 门户模式：登录后只展示四个固定入口 -->
-        <template v-if="layoutMode === 'portal'">
+        <template v-else-if="layoutMode === 'portal'">
           <div class="nav-group">统一入口</div>
           <el-menu-item v-for="item in portalFixedMenuItems" :key="item.path" :index="item.path">
             <el-icon><component :is="resolvePortalIcon(item.icon)" /></el-icon>
@@ -28,7 +53,7 @@
         </template>
 
         <!-- 模块模式：由当前路由推导，刷新后仍展示该模块的详细菜单 -->
-        <template v-else-if="activeModule">
+        <template v-else-if="layoutMode === 'module' && activeModule">
           <div class="nav-group">当前模块</div>
           <div class="module-summary">
             <span v-if="activeModule.domainName" class="module-domain">{{ activeModule.domainName }}</span>
@@ -75,6 +100,13 @@
               <el-icon class="crumb-sep"><ArrowRight /></el-icon>
               <span class="crumb-current">{{ portalCurrentTitle }}</span>
             </template>
+          </template>
+
+          <!-- 能力域窗口：统一门户 -> 当前能力域 -->
+          <template v-else-if="layoutMode === 'domain' && activeDomain">
+            <button type="button" class="crumb-link" @click="goPortal">统一门户</button>
+            <el-icon class="crumb-sep"><ArrowRight /></el-icon>
+            <span class="crumb-current">{{ activeDomain.name }}</span>
           </template>
 
           <!-- 模块页面：统一门户 -> 能力域 -> 模块 -> 当前页面 -->
@@ -151,7 +183,7 @@ import {
 } from '@/config/navigation'
 import { getPortalDomain, resolvePortalIcon } from '@/config/portal'
 
-type LayoutMode = 'portal' | 'module'
+type LayoutMode = 'portal' | 'domain' | 'module'
 
 const router = useRouter()
 const route = useRoute()
@@ -173,6 +205,13 @@ const routeModuleCode = computed(() => {
   return paramCode || ''
 })
 
+/** 当前能力域窗口（/domains/:domainCode） */
+const activeDomain = computed(() => {
+  if (!currentPath.value.startsWith('/domains/')) return undefined
+  const code = Array.isArray(route.params.domainCode) ? route.params.domainCode[0] : route.params.domainCode
+  return getPortalDomain(code)
+})
+
 const activeModule = computed(() => getModuleNavigation(routeModuleCode.value))
 
 /**
@@ -182,6 +221,7 @@ const activeModule = computed(() => getModuleNavigation(routeModuleCode.value))
  * 因此刷新模块页面不会丢失左侧详细菜单。
  */
 const layoutMode = computed<LayoutMode>(() => {
+  if (activeDomain.value) return 'domain'
   if (isPortalLayoutPath(route.path)) return 'portal'
   return activeModule.value ? 'module' : 'portal'
 })
@@ -191,6 +231,7 @@ const moduleMenuItems = computed(() =>
 )
 
 const activeMenuIndex = computed(() => {
+  if (layoutMode.value === 'domain') return ''
   if (layoutMode.value === 'portal') return resolvePortalActiveMenu(route.path)
   return moduleMenuItems.value.find(item => item.active && !item.disabled)?.target || ''
 })
@@ -215,6 +256,14 @@ const showPageCrumb = computed(() => {
 })
 
 function goPortal() {
+  // 从统一门户卡片打开的能力域窗口：关闭当前窗口，回到原来的统一门户。
+  if (route.query.from === 'portal') {
+    window.close()
+    window.setTimeout(() => {
+      if (!window.closed) router.push('/portal')
+    }, 120)
+    return
+  }
   router.push('/portal')
 }
 
@@ -352,6 +401,19 @@ async function handleLogout() {
   margin-bottom: 4px;
   color: #D8C7D5 !important;
   border: 1px dashed rgba(255, 255, 255, .14);
+}
+.domain-return {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 9px;
+  background: transparent;
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
 }
 
 /* 侧栏底部用户 */

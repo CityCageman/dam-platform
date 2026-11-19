@@ -72,10 +72,10 @@
           <span class="domain-availability">
             <i class="dot"></i>{{ availableCount(domain) }}/{{ domain.modules.length }} 已上线
           </span>
-          <el-button type="primary" text @click.stop="enterDomain(domain)">
+          <button type="button" class="domain-enter" @click.stop="enterDomain(domain)">
             进入能力域
-            <el-icon class="el-icon--right"><ArrowRight /></el-icon>
-          </el-button>
+            <span class="domain-enter-arrow" aria-hidden="true">→</span>
+          </button>
         </div>
       </article>
     </section>
@@ -84,7 +84,7 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { ArrowRight, DataAnalysis } from '@element-plus/icons-vue'
+import { DataAnalysis } from '@element-plus/icons-vue'
 import {
   portalAvailableTotal,
   portalDomains,
@@ -101,7 +101,7 @@ function availableCount(domain: PortalDomain): number {
 
 function enterDomain(domain: PortalDomain) {
   // 能力域页面在新浏览器窗口打开，当前统一门户保持不变
-  const href = router.resolve(domain.route).href
+  const href = router.resolve({ path: domain.route, query: { from: 'portal' } }).href
   window.open(href, '_blank', 'noopener')
 }
 
@@ -340,11 +340,28 @@ function goDashboard() {
   border-radius: 50%;
   background: var(--med-green, #5bae47);
 }
-.domain-foot :deep(.el-button) {
-  padding: 4px 2px;
-  font-size: 12px;
+.domain-enter {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  min-width: 84px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
   color: var(--portal-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
 }
+.domain-enter:hover { background: var(--domain-soft); }
+.domain-enter-arrow { font-size: 14px; line-height: 1; }
 
 @media (max-width: 1100px) {
   .portal-hero {

@@ -129,10 +129,19 @@ const plannedCount = computed(
 
 function enterModule(module: PortalModule) {
   if (module.status !== 'AVAILABLE') return
-  router.push(module.route)
+  router.push({ path: module.route, query: route.query })
 }
 
 function goPortal() {
+  // 从统一门户卡片打开的能力域窗口：关闭当前窗口，回到原来的统一门户。
+  if (route.query.from === 'portal' && window.opener !== undefined) {
+    window.close()
+    // 浏览器不允许脚本关闭时，退化为当前窗口返回门户，避免停在空白页。
+    window.setTimeout(() => {
+      if (!window.closed) router.push('/portal')
+    }, 120)
+    return
+  }
   router.push('/portal')
 }
 </script>
