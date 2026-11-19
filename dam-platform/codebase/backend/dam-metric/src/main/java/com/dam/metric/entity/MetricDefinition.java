@@ -41,6 +41,9 @@ public class MetricDefinition {
     /** 业务域 */
     private String businessDomain;
 
+    /** 归属部门，用于数据范围过滤 */
+    private String department;
+
     /** 业务定义 */
     private String definition;
 

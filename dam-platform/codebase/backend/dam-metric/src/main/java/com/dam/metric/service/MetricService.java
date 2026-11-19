@@ -6,6 +6,7 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dam.common.exception.BusinessException;
+import com.dam.common.security.DataScopeContext;
 import com.dam.common.vo.PageResult;
 import com.dam.metric.client.CatalogMetricAiClient;
 import com.dam.metric.entity.MetricDefinition;
@@ -76,6 +77,17 @@ public class MetricService {
         if (status != null) {
             w.eq(MetricDefinition::getStatus, status);
         }
+        if (DataScopeContext.isDepartment()) {
+            String dept = DataScopeContext.department();
+            if (dept.isBlank()) w.eq(MetricDefinition::getId, -1L);
+            else w.and(q -> q.eq(MetricDefinition::getDepartment, dept)
+                    .or().isNull(MetricDefinition::getDepartment));
+        } else if (DataScopeContext.isSelf()) {
+            String username = DataScopeContext.username();
+            if (username.isBlank()) w.eq(MetricDefinition::getId, -1L);
+            else w.and(q -> q.eq(MetricDefinition::getCreatedBy, username)
+                    .or().isNull(MetricDefinition::getDepartment));
+        }
         w.orderByDesc(MetricDefinition::getUpdatedAt);
         return PageResult.of(metricMapper.selectPage(new Page<>(p, size), w));
     }
@@ -127,6 +139,7 @@ public class MetricService {
 
         String user = currentUser();
         LocalDateTime now = LocalDateTime.now();
+        if (StrUtil.isBlank(metric.getDepartment())) metric.setDepartment(DataScopeContext.department());
         if (id == null) {
             metric.setCreatedAt(now);
             metric.setCreatedBy(user);

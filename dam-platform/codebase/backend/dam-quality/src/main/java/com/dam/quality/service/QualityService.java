@@ -7,6 +7,7 @@ import com.dam.quality.entity.DamQualityCheck;
 import com.dam.quality.entity.DamQualityRule;
 import com.dam.quality.repository.DamQualityCheckMapper;
 import com.dam.quality.repository.DamQualityRuleMapper;
+import com.dam.common.security.DataScopeContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +54,16 @@ public class QualityService {
         if (StrUtil.isNotBlank(ruleType)) wrapper.eq(DamQualityRule::getRuleType, ruleType);
         // 按状态过滤（字符串转整数编码）
         if (StrUtil.isNotBlank(status)) wrapper.eq(DamQualityRule::getStatus, statusToCode(status));
+        if (DataScopeContext.isDepartment()) {
+            String dept = DataScopeContext.department();
+            if (dept.isBlank()) wrapper.eq(DamQualityRule::getId, -1L);
+            else wrapper.and(q -> q.eq(DamQualityRule::getDepartment, dept)
+                    .or().isNull(DamQualityRule::getDepartment));
+        } else if (DataScopeContext.isSelf()) {
+            String username = DataScopeContext.username();
+            if (username.isBlank()) wrapper.eq(DamQualityRule::getId, -1L);
+            else wrapper.eq(DamQualityRule::getCreatedBy, username);
+        }
         // 按创建时间倒序
         wrapper.orderByDesc(DamQualityRule::getCreatedAt);
         PageResult<DamQualityRule> result = PageResult.of(ruleMapper.selectPage(p, wrapper));
@@ -84,6 +95,7 @@ public class QualityService {
         rule.setUpdatedAt(now);
         if (rule.getCreatedBy() == null) rule.setCreatedBy("system");
         if (rule.getUpdatedBy() == null) rule.setUpdatedBy("system");
+        if (StrUtil.isBlank(rule.getDepartment())) rule.setDepartment(DataScopeContext.department());
         if (rule.getStatus() == null) rule.setStatus(1);
         ruleMapper.insert(rule);
         return rule;
