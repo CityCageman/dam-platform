@@ -26,6 +26,7 @@
 | 14 | `v34_scheduler_dolphin.sql` | DolphinScheduler 执行引擎字段 | `dam_scheduler` | 加列/索引 |
 | 15 | `v35_config_to_dict.sql` | 枚举配置迁移为字典 | `dam_sys` | 数据迁移 |
 | 16 | `v36_navigation.sql` | 按产品边界重建导航配置 | `dam_sys` | 数据替换 |
+| 17 | `v37_data_access.sql` | 数据源迁入 dam_access，保留只读视图 | `dam_access`/`dam_metadata` | 表迁移 |
 
 要点：
 

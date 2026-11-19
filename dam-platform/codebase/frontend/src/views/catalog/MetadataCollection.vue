@@ -2944,7 +2944,7 @@ async function testDsConnection() {
         databaseName: dsEditForm.value.databaseName,
         jdbcUrl: dsEditForm.value.jdbcUrl?.trim() || undefined,
         username: dsEditForm.value.username,
-        password: await encryptPassword(dsEditForm.value.password)
+        password: await encryptPassword(dsEditForm.value.password, 'access')
       })
     }
     ElMessage.success('连接成功！')
@@ -2965,7 +2965,7 @@ async function submitDsEdit() {
     // 密码用 catalog 服务 RSA 公钥加密传输；掩码/空表示不修改
     const payload: any = { ...dsEditForm.value }
     if (payload.password && payload.password !== PWD_MASK) {
-      payload.password = await encryptPassword(payload.password)
+      payload.password = await encryptPassword(payload.password, 'access')
     } else if (!isDsCreate.value) {
       delete payload.password
     }

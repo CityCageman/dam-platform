@@ -10,7 +10,6 @@ import com.dam.catalog.ai.service.AiWorkbenchTaskClient;
 import com.dam.catalog.asset.service.CatalogService;
 import com.dam.catalog.system.service.ConfigService;
 import com.dam.catalog.service.CryptoService;
-import com.dam.catalog.metadata.service.DataSourceTypeService;
 import com.dam.catalog.system.service.DictService;
 import com.dam.catalog.metadata.service.DiscoveryService;
 import com.dam.catalog.asset.service.ImportService;
@@ -42,7 +41,6 @@ public class CatalogController {
     private final ImportService importService;
     private final VersionService versionService;
     private final ConfigService configService;
-    private final DataSourceTypeService dataSourceTypeService;
     private final TechnicalMetadataService technicalMetadataService;
     private final DictService dictService;
     private final CryptoService cryptoService;
@@ -580,81 +578,6 @@ public class CatalogController {
     public Result<Void> deleteSourceSystem(@PathVariable Long id) {
         catalogService.deleteSourceSystem(id);
         return Result.success();
-    }
-
-    // ==================== 数据源管理 ====================
-
-    @GetMapping("/data-sources")
-    public Result<List<DamDataSource>> getDataSources() {
-        return Result.success(catalogService.getDataSources());
-    }
-
-    @GetMapping("/data-sources/{id}")
-    public Result<Map<String, Object>> getDataSourceDetail(@PathVariable Long id) {
-        return Result.success(catalogService.getDataSourceDetail(id));
-    }
-
-    @PostMapping("/data-sources")
-    public Result<DamDataSource> createDataSource(@RequestBody DamDataSource ds) {
-        return Result.success(catalogService.createDataSource(ds));
-    }
-
-    @PutMapping("/data-sources")
-    public Result<DamDataSource> updateDataSource(@RequestBody DamDataSource ds) {
-        return Result.success(catalogService.updateDataSource(ds));
-    }
-
-    @DeleteMapping("/data-sources/{id}")
-    public Result<Void> deleteDataSource(@PathVariable Long id) {
-        catalogService.deleteDataSource(id);
-        return Result.success();
-    }
-
-    @PostMapping("/data-sources/test-connection")
-    public Result<Void> testConnection(@RequestBody Map<String, Object> params) {
-        Number dataSourceId = (Number) params.get("dataSourceId");
-        if (dataSourceId != null) {
-            // 编辑场景：凭据由后端按ID安全读取，前端无需回传密码
-            discoveryService.testConnection(dataSourceId.longValue());
-            return Result.success();
-        }
-        discoveryService.testConnection(
-                toString(params.get("dsType")),
-                toString(params.get("dsIp")),
-                Integer.parseInt(toString(params.getOrDefault("dsPort", "3306"))),
-                toString(params.get("databaseName")),
-                toString(params.get("username")),
-                toString(params.get("password")),
-                toString(params.get("jdbcUrl")));
-        return Result.success();
-    }
-
-    // ==================== 数据源类型管理 ====================
-
-    @GetMapping("/data-source-types")
-    public Result<List<DamDataSourceType>> getDataSourceTypes() {
-        return Result.success(discoveryService.getDataSourceTypeList());
-    }
-
-    @PostMapping("/data-source-types")
-    public Result<DamDataSourceType> createDataSourceType(@RequestBody DamDataSourceType type) {
-        return Result.success(dataSourceTypeService.create(type));
-    }
-
-    @PutMapping("/data-source-types")
-    public Result<DamDataSourceType> updateDataSourceType(@RequestBody DamDataSourceType type) {
-        return Result.success(dataSourceTypeService.update(type));
-    }
-
-    @DeleteMapping("/data-source-types/{id}")
-    public Result<Void> deleteDataSourceType(@PathVariable Long id) {
-        dataSourceTypeService.delete(id);
-        return Result.success();
-    }
-
-    @GetMapping("/data-source-types/select")
-    public Result<List<Map<String, String>>> getDataSourceTypeSelect() {
-        return Result.success(discoveryService.getSupportedTypes());
     }
 
     // ==================== 基础配置 ====================

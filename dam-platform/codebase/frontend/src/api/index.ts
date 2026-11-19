@@ -150,18 +150,18 @@ export const catalogApi = {
   updateSourceSystem(data: any) { return request.put('/catalog/source-systems', data) },
   deleteSourceSystem(id: number) { return request.delete(`/catalog/source-systems/${id}`) },
   // 数据源
-  getDataSources() { return request.get('/catalog/data-sources') },
-  getDataSourceDetail(id: number) { return request.get(`/catalog/data-sources/${id}`) },
-  createDataSource(data: any) { return request.post('/catalog/data-sources', data) },
-  updateDataSource(data: any) { return request.put('/catalog/data-sources', data) },
-  deleteDataSource(id: number) { return request.delete(`/catalog/data-sources/${id}`) },
-  testDataSourceConnection(data: any) { return request.post('/catalog/data-sources/test-connection', data) },
+  getDataSources() { return request.get('/access/data-sources') },
+  getDataSourceDetail(id: number) { return request.get(`/access/data-sources/${id}`) },
+  createDataSource(data: any) { return request.post('/access/data-sources', data) },
+  updateDataSource(data: any) { return request.put('/access/data-sources', data) },
+  deleteDataSource(id: number) { return request.delete(`/access/data-sources/${id}`) },
+  testDataSourceConnection(data: any) { return request.post('/access/data-sources/test-connection', data) },
   // 数据源类型管理
   getDataSourceTypes() { return request.get('/catalog/data-source-types') },
   createDataSourceType(data: any) { return request.post('/catalog/data-source-types', data) },
   updateDataSourceType(data: any) { return request.put('/catalog/data-source-types', data) },
   deleteDataSourceType(id: number) { return request.delete(`/catalog/data-source-types/${id}`) },
-  getDataSourceTypeSelect() { return request.get('/catalog/data-source-types/select') },
+  getDataSourceTypeSelect() { return request.get('/access/data-source-types') },
   // 安全等级
   recalcSecurity(assetId?: number) {
     return request.post('/catalog/assets/recalc-security', assetId ? { assetId } : {})

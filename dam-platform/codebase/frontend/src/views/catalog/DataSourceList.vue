@@ -166,7 +166,7 @@ async function testConnection() {
         dsPort: form.value.dsPort,
         databaseName: form.value.databaseName,
         username: form.value.username,
-        password: await encryptPassword(form.value.password)
+        password: await encryptPassword(form.value.password, 'access')
       })
     }
     ElMessage.success('连接成功！')
@@ -182,7 +182,7 @@ async function submitForm() {
     // 密码用 catalog 服务 RSA 公钥加密传输；掩码/空表示不修改
     const payload: any = { ...form.value }
     if (payload.password && payload.password !== PWD_MASK) {
-      payload.password = await encryptPassword(payload.password)
+      payload.password = await encryptPassword(payload.password, 'access')
     } else if (isEdit.value) {
       delete payload.password
     }

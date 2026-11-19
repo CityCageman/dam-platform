@@ -64,6 +64,7 @@ services:
       - ../db/v34_scheduler_dolphin.sql:/docker-entrypoint-initdb.d/35_v34_scheduler_dolphin.sql:ro
       - ../db/v35_config_to_dict.sql:/docker-entrypoint-initdb.d/36_v35_config_to_dict.sql:ro
       - ../db/v36_navigation.sql:/docker-entrypoint-initdb.d/37_v36_navigation.sql:ro
+      - ../db/v37_data_access.sql:/docker-entrypoint-initdb.d/38_v37_data_access.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dam -d damplatform"]
       interval: 5s
