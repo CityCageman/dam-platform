@@ -15,6 +15,8 @@ public class DamTicket {
     private String ticketType;
     /** 工单标题 */
     private String title;
+    /** 申请部门，用于数据范围过滤 */
+    private String department;
     private String description;
     /** 优先级 */
     private String priority;

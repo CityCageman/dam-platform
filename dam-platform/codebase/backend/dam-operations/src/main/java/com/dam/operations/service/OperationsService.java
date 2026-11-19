@@ -3,6 +3,7 @@ package com.dam.operations.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dam.common.exception.BusinessException;
+import com.dam.common.security.DataScopeContext;
 import com.dam.common.vo.PageResult;
 import com.dam.operations.entity.DamTicket;
 import com.dam.operations.entity.DamTicketComment;
@@ -82,6 +83,16 @@ public class OperationsService {
         if (StrUtil.isNotBlank(status)) {
             wrapper.eq(DamTicket::getStatus, statusToCode(status));
         }
+        // 按 token 数据范围收敛
+        if (DataScopeContext.isDepartment()) {
+            String dept = DataScopeContext.department();
+            if (dept.isBlank()) wrapper.eq(DamTicket::getId, -1L);
+            else wrapper.eq(DamTicket::getDepartment, dept);
+        } else if (DataScopeContext.isSelf()) {
+            Long userId = DataScopeContext.userId();
+            if (userId == null) wrapper.eq(DamTicket::getId, -1L);
+            else wrapper.eq(DamTicket::getApplicantId, userId);
+        }
         // 按创建时间倒序排列
         wrapper.orderByDesc(DamTicket::getCreatedAt);
         return PageResult.of(ticketMapper.selectPage(p, wrapper));
@@ -104,6 +115,9 @@ public class OperationsService {
         // 补全审计字段（非空约束）
         if (ticket.getCreatedBy() == null) ticket.setCreatedBy("system");
         if (ticket.getUpdatedBy() == null) ticket.setUpdatedBy("system");
+        if (ticket.getDepartment() == null || ticket.getDepartment().isBlank()) {
+            ticket.setDepartment(DataScopeContext.department());
+        }
         ticketMapper.insert(ticket);
         return ticket;
     }

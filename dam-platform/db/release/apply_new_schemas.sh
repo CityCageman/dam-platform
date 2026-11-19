@@ -59,6 +59,7 @@ MIGRATIONS=(
   "v36_navigation.sql"
   "v37_data_access.sql"
   "v38_role_scope.sql"
+  "v39_ticket_department.sql"
 )
 
 # 迁移完成后必须存在的 schema

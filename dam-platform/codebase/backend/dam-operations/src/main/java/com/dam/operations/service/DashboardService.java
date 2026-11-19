@@ -62,11 +62,9 @@ public class DashboardService {
      */
     private Map<String, Object> getOverviewCards() {
         long totalAssets = assetMapper.selectCount(assetScope());
-        long totalTickets = ticketMapper.selectCount(null);
-        long pendingTickets = ticketMapper.selectCount(
-                new LambdaQueryWrapper<DamTicket>().eq(DamTicket::getStatus, 0));
-        long completedTickets = ticketMapper.selectCount(
-                new LambdaQueryWrapper<DamTicket>().eq(DamTicket::getStatus, 2));
+        long totalTickets = ticketMapper.selectCount(ticketScope());
+        long pendingTickets = ticketMapper.selectCount(ticketScope().eq(DamTicket::getStatus, 0));
+        long completedTickets = ticketMapper.selectCount(ticketScope().eq(DamTicket::getStatus, 2));
 
         // 平均质量评分 - 从 asset_info.quality_score 计算
         Double avgScore = getAverageScore();
@@ -218,6 +216,22 @@ public class DashboardService {
                 BigDecimal.valueOf((double) slaMet / totalCompleted * 100)
                         .setScale(1, RoundingMode.HALF_UP) : 0);
         return overview;
+    }
+
+    /** 按 token 数据范围构造工单过滤条件 */
+    private com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<DamTicket> ticketScope() {
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<DamTicket> wrapper =
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+        if (DataScopeContext.isDepartment()) {
+            String dept = DataScopeContext.department();
+            if (dept.isBlank()) wrapper.eq(DamTicket::getId, -1L);
+            else wrapper.eq(DamTicket::getDepartment, dept);
+        } else if (DataScopeContext.isSelf()) {
+            Long userId = DataScopeContext.userId();
+            if (userId == null) wrapper.eq(DamTicket::getId, -1L);
+            else wrapper.eq(DamTicket::getApplicantId, userId);
+        }
+        return wrapper;
     }
 
     /**

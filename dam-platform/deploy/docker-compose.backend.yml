@@ -90,6 +90,7 @@ services:
       - ../db/v36_navigation.sql:/docker-entrypoint-initdb.d/37_v36_navigation.sql:ro
       - ../db/v37_data_access.sql:/docker-entrypoint-initdb.d/38_v37_data_access.sql:ro
       - ../db/v38_role_scope.sql:/docker-entrypoint-initdb.d/39_v38_role_scope.sql:ro
+      - ../db/v39_ticket_department.sql:/docker-entrypoint-initdb.d/40_v39_ticket_department.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dam -d damplatform"]
       interval: 5s
