@@ -157,10 +157,7 @@ export const catalogApi = {
   deleteDataSource(id: number) { return request.delete(`/access/data-sources/${id}`) },
   testDataSourceConnection(data: any) { return request.post('/access/data-sources/test-connection', data) },
   // 数据源类型管理
-  getDataSourceTypes() { return request.get('/catalog/data-source-types') },
-  createDataSourceType(data: any) { return request.post('/catalog/data-source-types', data) },
-  updateDataSourceType(data: any) { return request.put('/catalog/data-source-types', data) },
-  deleteDataSourceType(id: number) { return request.delete(`/catalog/data-source-types/${id}`) },
+  getDataSourceTypes() { return request.get('/access/data-source-types') },
   getDataSourceTypeSelect() { return request.get('/access/data-source-types') },
   // 安全等级
   recalcSecurity(assetId?: number) {

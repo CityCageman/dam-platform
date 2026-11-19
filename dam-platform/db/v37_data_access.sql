@@ -88,6 +88,10 @@ BEGIN
 END;
 $v37$;
 
+-- 补齐历史表可能缺失的 data_layer，保证 catalog/lineage 的读取视图字段完整
+ALTER TABLE dam_access.metadata_datasource
+    ADD COLUMN IF NOT EXISTS data_layer varchar(16);
+
 -- 只读兼容视图：业务读取方仍可使用 dam_metadata.metadata_datasource。
 -- 使用 CREATE OR REPLACE，重复执行不会删除视图及其授权。
 CREATE OR REPLACE VIEW dam_metadata.metadata_datasource AS
