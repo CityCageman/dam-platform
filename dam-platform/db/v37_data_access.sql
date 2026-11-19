@@ -71,8 +71,7 @@ BEGIN
         ELSE
             -- 两个 schema 同时存在物理表：不做猜测性合并，直接失败，交由人工核对。
             RAISE EXCEPTION
-                'v37: dam_metadata.metadata_datasource 与 dam_access.metadata_datasource 同时存在，'
-                '为避免数据丢失已中止；请人工核对后保留其中一份再重跑本脚本';
+                'v37: dam_metadata.metadata_datasource 与 dam_access.metadata_datasource 同时存在，为避免数据丢失已中止；请人工核对后保留其中一份再重跑本脚本';
         END IF;
     ELSIF source_kind IS NULL OR source_kind = 'v' THEN
         -- 首次部署（不存在）或已迁移为视图：确保 dam_access 下有物理表。
@@ -86,12 +85,8 @@ BEGIN
         RAISE EXCEPTION
             'v37: dam_metadata.metadata_datasource 是未预期的关系类型(%)，已中止', source_kind;
     END IF;
-END
+END;
 $v37$;
-
--- 存量表可能没有 data_layer（老版本 DDL），补齐后再建视图
-ALTER TABLE dam_access.metadata_datasource
-    ADD COLUMN IF NOT EXISTS data_layer varchar(16);
 
 -- 只读兼容视图：业务读取方仍可使用 dam_metadata.metadata_datasource。
 -- 使用 CREATE OR REPLACE，重复执行不会删除视图及其授权。

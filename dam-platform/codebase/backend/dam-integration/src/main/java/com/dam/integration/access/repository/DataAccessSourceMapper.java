@@ -30,9 +30,10 @@ public interface DataAccessSourceMapper extends BaseMapper<DataAccessSource> {
     /**
      * 查询未删除的数据源列表
      *
-     * @param keyword 关键字（名称/编码/URL 模糊匹配），可为空
-     * @param dsType  数据源类型（忽略大小写精确匹配），可为空
-     * @param status  状态 0/1，可为空
+     * @param keyword    关键字（名称/编码/URL 模糊匹配），可为空
+     * @param dsType     数据源类型编码（忽略大小写精确匹配），可为空
+     * @param dsTypeName 数据源类型展示名（兼容历史展示名数据），可为空
+     * @param status     状态 0/1，可为空
      * @return 数据源列表（按创建时间升序）
      */
     @Select("<script>"
@@ -45,7 +46,7 @@ public interface DataAccessSourceMapper extends BaseMapper<DataAccessSource> {
             + "OR t.jdbc_url ILIKE '%' || #{keyword} || '%') "
             + "</if>"
             + "<if test='dsType != null and dsType != \"\"'>"
-            + "AND upper(t.ds_type) = upper(#{dsType}) "
+            + "AND upper(t.ds_type) IN (upper(#{dsType}), upper(#{dsTypeName})) "
             + "</if>"
             + "<if test='status != null'>"
             + "AND t.status = #{status} "
@@ -54,6 +55,7 @@ public interface DataAccessSourceMapper extends BaseMapper<DataAccessSource> {
             + "</script>")
     List<DataAccessSource> selectActiveList(@Param("keyword") String keyword,
                                             @Param("dsType") String dsType,
+                                            @Param("dsTypeName") String dsTypeName,
                                             @Param("status") Integer status);
 
     /**

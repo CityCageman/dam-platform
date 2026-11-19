@@ -7,6 +7,7 @@ import com.dam.integration.access.model.DataSourceTypeDefinition;
 import com.dam.integration.access.repository.DataAccessSourceMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,12 +56,16 @@ public class DataAccessSourceService {
         validateStatus(status);
         String keywordValue = trimToNull(keyword);
         String typeValue = trimToNull(dsType);
-        // 类型别名归一化为内置编码，便于过滤历史展示名数据
+        // 类型别名归一化为内置编码；同时带展示名，兼容历史以展示名存储的数据
+        String typeCode = typeValue;
+        String typeName = typeValue;
         DataSourceTypeDefinition definition = jdbcService.findType(typeValue);
         if (definition != null) {
-            typeValue = definition.code();
+            typeCode = definition.code();
+            typeName = definition.name();
         }
-        List<DataAccessSource> list = sourceMapper.selectActiveList(keywordValue, typeValue, status);
+        List<DataAccessSource> list = sourceMapper.selectActiveList(
+                keywordValue, typeCode, typeName, status);
         for (DataAccessSource source : list) {
             fillDerived(source);
         }
@@ -154,6 +159,7 @@ public class DataAccessSourceService {
             // password 列为 NOT NULL，空密码落空串；hasPassword 仍为 false
             request.setPassword("");
         }
+        requireMaxLen(request.getPassword(), "密码（AES密文）", 100);
 
         validateStatus(request.getStatus());
         if (request.getStatus() == null) {
@@ -172,7 +178,12 @@ public class DataAccessSourceService {
         request.setUpdatedAt(now);
         request.setUpdatedBy(user);
         request.setDeletedAt(null);
-        sourceMapper.insert(request);
+        try {
+            sourceMapper.insert(request);
+        } catch (DuplicateKeyException e) {
+            // 并发创建同一 dsCode 时由数据库唯一索引兜底
+            throw new BusinessException(409, "数据源代码已存在: " + code);
+        }
         fillDerived(request);
         return request;
     }
@@ -213,7 +224,7 @@ public class DataAccessSourceService {
         if (request.getDsPort() != null) {
             existing.setDsPort(request.getDsPort());
         }
-        if (request.getJdbcUrl() != null) {
+        if (request.getJdbcUrl() != null && !request.getJdbcUrl().isBlank()) {
             existing.setJdbcUrl(request.getJdbcUrl());
         }
         if (request.getUsername() != null) {
@@ -247,6 +258,7 @@ public class DataAccessSourceService {
         existing.setConnectionProps(trimToNull(existing.getConnectionProps()));
         existing.setDescription(trimToNull(existing.getDescription()));
         existing.setDataLayer(trimToNull(existing.getDataLayer()));
+        existing.setJdbcUrl(trimToNull(existing.getJdbcUrl()));
 
         String code = requireText(existing.getDsCode(), "数据源代码(dsCode)", 100);
         requireMaxLen(code, "数据源代码(dsCode)", 100);
@@ -320,6 +332,7 @@ public class DataAccessSourceService {
         if (rawPassword != null && !rawPassword.isEmpty()) {
             existing.setPassword(cryptoService.encryptStorage(
                     cryptoService.decryptTransport(rawPassword)));
+            requireMaxLen(existing.getPassword(), "密码（AES密文）", 100);
         }
 
         if (existing.getStatus() == null) {
@@ -334,7 +347,11 @@ public class DataAccessSourceService {
 
         existing.setUpdatedAt(LocalDateTime.now());
         existing.setUpdatedBy(currentUser());
-        sourceMapper.updateById(existing);
+        try {
+            sourceMapper.updateById(existing);
+        } catch (DuplicateKeyException e) {
+            throw new BusinessException(409, "数据源代码已存在: " + existing.getDsCode());
+        }
         fillDerived(existing);
         return existing;
     }
@@ -358,7 +375,6 @@ public class DataAccessSourceService {
      * @param params 连接参数
      * @return ok/databaseProduct/databaseVersion/driverName/elapsedMs
      */
-    @Transactional(readOnly = true)
     public Map<String, Object> testConnection(Map<String, Object> params) {
         Map<String, Object> safeParams = params == null ? Map.of() : params;
         Long id = parseLong(firstNonNull(safeParams, "id", "dataSourceId"));
@@ -400,17 +416,7 @@ public class DataAccessSourceService {
         DataSourceTypeDefinition definition = jdbcService.findType(source.getDsType());
         String jdbcUrl = trimToNull(source.getJdbcUrl());
         if (jdbcUrl == null) {
-            if (definition == null) {
-                throw new BusinessException(400,
-                        "数据源未配置 jdbcUrl 且类型未知，无法测试连接");
-            }
-            String databaseName = jdbcService.parseDatabaseName(source.getJdbcUrl());
-            if (databaseName == null) {
-                throw new BusinessException(400,
-                        "数据源未配置 jdbcUrl，且无法从现有配置解析数据库名/命名空间");
-            }
-            jdbcUrl = jdbcService.buildJdbcUrl(definition, source.getDsIp(),
-                    source.getDsPort(), databaseName);
+            throw new BusinessException(400, "数据源未配置 jdbcUrl，无法测试连接");
         }
         String driverClass = trimToNull(source.getDriverClass());
         if (driverClass == null) {
@@ -432,8 +438,9 @@ public class DataAccessSourceService {
         if (source == null) {
             return;
         }
-        if (source.getDatabaseName() == null) {
-            source.setDatabaseName(jdbcService.parseDatabaseName(source.getJdbcUrl()));
+        String databaseName = jdbcService.parseDatabaseName(source.getJdbcUrl());
+        if (databaseName != null) {
+            source.setDatabaseName(databaseName);
         }
         source.setHasPassword(source.getPassword() != null && !source.getPassword().isEmpty());
         source.setPassword(null);
@@ -524,7 +531,6 @@ public class DataAccessSourceService {
         requireMaxLen(source.getDsIp(), "dsIp", 20);
         requireMaxLen(source.getDsPort(), "dsPort", 10);
         requireMaxLen(source.getUsername(), "username", 100);
-        requireMaxLen(source.getPassword(), "密码（AES密文）", 100);
         requireMaxLen(source.getConnectionProps(), "connectionProps", 200);
         requireMaxLen(source.getDescription(), "description", 200);
         requireMaxLen(source.getDataLayer(), "dataLayer", 16);

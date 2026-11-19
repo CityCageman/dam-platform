@@ -12,6 +12,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
+import java.security.interfaces.RSAPrivateKey;
 import java.util.Arrays;
 import java.util.Base64;
 
@@ -25,7 +26,7 @@ import java.util.Base64;
  *   <li><b>存储加密</b>：AES{@code /ECB/PKCS5Padding}，密钥为
  *       {@code dam.security.crypto.secret} 的 SHA-256 前 16 字节，密文以 {@code ENC:} 前缀落库。</li>
  *   <li><b>历史兼容</b>：读取时不以 {@code ENC:} 开头的存量密码按明文处理；
- *       传输解密失败时按历史明文请求兼容处理。</li>
+ *       传输层非 RSA 密文块按历史明文请求兼容处理。</li>
  * </ul>
  *
  * @author DAM Platform
@@ -52,6 +53,9 @@ public class AccessCryptoService {
     /** 数据库存储加密用 AES 密钥 */
     private final SecretKeySpec aesKey;
 
+    /** RSA 密文字节长度（2048 位 = 256 字节），用于区分 RSA 密文与历史明文 */
+    private final int rsaBlockSize;
+
     /**
      * 初始化 RSA 密钥对与 AES 密钥
      *
@@ -71,6 +75,7 @@ public class AccessCryptoService {
         } catch (Exception e) {
             throw new IllegalStateException("数据接入密码加解密服务初始化失败", e);
         }
+        this.rsaBlockSize = ((RSAPrivateKey) this.rsaPrivateKey).getModulus().bitLength() / 8;
     }
 
     /**
@@ -84,7 +89,8 @@ public class AccessCryptoService {
 
     /**
      * RSA 解密前端传输的密码密文
-     * <p>为兼容历史前端/脚本直接提交明文密码，解密失败时原样返回入参。
+     * <p>兼容历史前端/脚本直接提交明文密码：仅当入参不是 2048 位 RSA 密文块时按明文原样返回；
+     * 若是 RSA 密文块但解密失败（典型为服务重启后前端仍持有旧公钥），明确报错而不是把密文当明文落库。
      *
      * @param encrypted RSA 密文或历史明文
      * @return 明文密码；入参为空时返回空串
@@ -93,15 +99,26 @@ public class AccessCryptoService {
         if (encrypted == null || encrypted.isEmpty()) {
             return "";
         }
+        byte[] cipherBytes;
+        try {
+            // 仅用于解码尝试，失败时仍按原始入参作为明文
+            cipherBytes = Base64.getDecoder().decode(encrypted.replaceAll("\\s+", ""));
+        } catch (IllegalArgumentException e) {
+            return encrypted;
+        }
+        if (cipherBytes.length != rsaBlockSize) {
+            // 非 RSA 块（如普通明文密码），按历史明文兼容
+            return encrypted;
+        }
         try {
             Cipher cipher = Cipher.getInstance(RSA_TRANSFORMATION);
             cipher.init(Cipher.DECRYPT_MODE, rsaPrivateKey);
-            byte[] plain = cipher.doFinal(Base64.getDecoder().decode(encrypted));
+            byte[] plain = cipher.doFinal(cipherBytes);
             return new String(plain, StandardCharsets.UTF_8);
         } catch (Exception e) {
-            // 不记录密码内容；仅记录兼容降级原因
-            log.debug("RSA 解密失败，按历史明文请求兼容处理: {}", e.getMessage());
-            return encrypted;
+            // 不记录密码/密文内容
+            log.warn("RSA 解密失败(可能服务已重启，前端仍使用旧公钥): {}", e.getMessage());
+            throw new BusinessException("密码解密失败，请刷新页面后重试；服务重启后旧的公钥会失效");
         }
     }
 

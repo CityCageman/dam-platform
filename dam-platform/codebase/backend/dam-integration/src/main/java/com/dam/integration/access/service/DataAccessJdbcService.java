@@ -12,7 +12,6 @@ import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -257,14 +256,22 @@ public class DataAccessJdbcService {
         if (queryIdx >= 0) {
             url = url.substring(0, queryIdx);
         }
-        int slashIdx = url.lastIndexOf('/');
-        if (slashIdx >= 0 && slashIdx < url.length() - 1) {
-            return trimToNull(url.substring(slashIdx + 1));
+        // 有 authority（//host:port）时只认 authority 之后的路径斜杠，
+        // 避免把 jdbc:postgresql://host:5432 里的 // 误判为数据库名
+        int authorityIdx = url.indexOf("//");
+        if (authorityIdx >= 0) {
+            int pathSlashIdx = url.indexOf('/', authorityIdx + 2);
+            if (pathSlashIdx >= 0 && pathSlashIdx < url.length() - 1) {
+                return trimToNull(url.substring(pathSlashIdx + 1));
+            }
+            return null;
         }
         // Oracle SID 形式：jdbc:oracle:thin:@host:1521:ORCL
-        int colonIdx = url.lastIndexOf(':');
-        if (colonIdx >= 0 && colonIdx < url.length() - 1) {
-            return trimToNull(url.substring(colonIdx + 1));
+        if (url.toLowerCase(Locale.ROOT).startsWith("jdbc:oracle:")) {
+            int colonIdx = url.lastIndexOf(':');
+            if (colonIdx >= 0 && colonIdx < url.length() - 1) {
+                return trimToNull(url.substring(colonIdx + 1));
+            }
         }
         return null;
     }
@@ -398,18 +405,5 @@ public class DataAccessJdbcService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
-    }
-
-    /**
-     * 类型编码列表（调试/测试辅助）
-     *
-     * @return 类型编码列表
-     */
-    public List<String> listTypeCodes() {
-        List<String> codes = new ArrayList<>();
-        for (DataSourceTypeDefinition definition : TYPE_LIST) {
-            codes.add(definition.code());
-        }
-        return codes;
     }
 }
