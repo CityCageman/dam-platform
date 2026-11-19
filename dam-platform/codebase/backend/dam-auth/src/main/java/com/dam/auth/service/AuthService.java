@@ -1,6 +1,7 @@
 package com.dam.auth.service;
 
 import cn.dev33.satoken.secure.BCrypt;
+import cn.dev33.satoken.stp.SaLoginModel;
 import cn.dev33.satoken.stp.SaTokenInfo;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -125,12 +126,23 @@ public class AuthService {
         user.setLastLoginIp(resolveClientIp());
         userMapper.updateById(user);
 
-        // 签发 Sa-Token 会话
-        StpUtil.login(user.getId());
+        // 先计算角色上下文，再签发携带数据范围声明的 Sa-Token。
+        // 下游服务通过 StpUtil.getExtra 读取 dataScope/department/roles，不信任前端参数。
+        Map<String, Object> userInfo = buildUserInfo(user);
+        SaLoginModel loginModel = SaLoginModel.create()
+                .setExtra("dataScope", userInfo.get("dataScope"))
+                .setExtra("department", userInfo.get("department"))
+                .setExtra("userId", user.getId())
+                .setExtra("username", user.getUsername())
+                .setExtra("roles", userInfo.get("roles"));
+        StpUtil.login(user.getId(), loginModel);
         SaTokenInfo tokenInfo = StpUtil.getTokenInfo();
 
         // 返回 token 与用户信息
-        return Result.success(buildLoginResult(tokenInfo.getTokenValue(), user));
+        Map<String, Object> result = new HashMap<>();
+        result.put("token", tokenInfo.getTokenValue());
+        result.put("userInfo", userInfo);
+        return Result.success(result);
     }
 
     /**

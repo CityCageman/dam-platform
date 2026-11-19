@@ -3,6 +3,7 @@ package com.dam.security.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dam.common.exception.BusinessException;
+import com.dam.common.security.DataScopeContext;
 import com.dam.common.vo.PageResult;
 import com.dam.security.entity.DamDataAccessRequest;
 import com.dam.security.repository.DamDataAccessRequestMapper;
@@ -50,7 +51,8 @@ public class DataAccessRequestService {
         if (StrUtil.isNotBlank(applicantId)) wrapper.eq(DamDataAccessRequest::getApplicantId, applicantId);
         // 按状态过滤（字符串转整数编码）
         if (StrUtil.isNotBlank(status)) wrapper.eq(DamDataAccessRequest::getStatus, statusToCode(status));
-        // 按创建时间倒序
+        // 按 token 数据范围收敛，再按创建时间倒序
+        applyScope(wrapper);
         wrapper.orderByDesc(DamDataAccessRequest::getCreatedAt);
         return PageResult.of(requestMapper.selectPage(p, wrapper));
     }
@@ -114,10 +116,30 @@ public class DataAccessRequestService {
      * @return 待审批申请列表
      */
     public List<DamDataAccessRequest> getPendingRequests() {
-        return requestMapper.selectList(
-                new LambdaQueryWrapper<DamDataAccessRequest>()
-                        .eq(DamDataAccessRequest::getStatus, 0)
-                        .orderByDesc(DamDataAccessRequest::getCreatedAt));
+        LambdaQueryWrapper<DamDataAccessRequest> wrapper = new LambdaQueryWrapper<DamDataAccessRequest>()
+                .eq(DamDataAccessRequest::getStatus, 0)
+                .orderByDesc(DamDataAccessRequest::getCreatedAt);
+        applyScope(wrapper);
+        return requestMapper.selectList(wrapper);
+    }
+
+    /** 按 token 数据范围收敛申请：DEPARTMENT 只看本科室，SELF 只看本人 */
+    private void applyScope(LambdaQueryWrapper<DamDataAccessRequest> wrapper) {
+        if (DataScopeContext.isDepartment()) {
+            String dept = DataScopeContext.department();
+            if (dept.isBlank()) {
+                wrapper.eq(DamDataAccessRequest::getId, -1L);
+            } else {
+                wrapper.eq(DamDataAccessRequest::getDepartment, dept);
+            }
+        } else if (DataScopeContext.isSelf()) {
+            Long userId = DataScopeContext.userId();
+            if (userId == null) {
+                wrapper.eq(DamDataAccessRequest::getId, -1L);
+            } else {
+                wrapper.eq(DamDataAccessRequest::getApplicantId, userId);
+            }
+        }
     }
 
     /**

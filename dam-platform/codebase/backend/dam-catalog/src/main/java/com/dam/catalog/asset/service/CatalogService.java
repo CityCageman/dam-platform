@@ -17,6 +17,7 @@ import com.dam.catalog.asset.repository.*;
 import com.dam.catalog.system.repository.*;
 import com.dam.catalog.system.service.ConfigService;
 import com.dam.common.exception.BusinessException;
+import com.dam.common.security.DataScopeContext;
 import com.dam.common.vo.PageResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -1028,6 +1029,21 @@ public class CatalogService {
             }
             wrapper.in(DamAsset::getId, assetIds);
         }
+        // 数据范围：由登录 token 的 dataScope 声明决定，不能由前端参数绕过
+        String dataScope = DataScopeContext.scope();
+        if (DataScopeContext.isDepartment()) {
+            String dept = DataScopeContext.department();
+            if (dept.isBlank()) {
+                return PageResult.of(new Page<DamAsset>().setRecords(Collections.emptyList()));
+            }
+            wrapper.eq(DamAsset::getDepartment, dept);
+        } else if (DataScopeContext.isSelf()) {
+            String username = DataScopeContext.username();
+            if (username.isBlank()) {
+                return PageResult.of(new Page<DamAsset>().setRecords(Collections.emptyList()));
+            }
+            wrapper.eq(DamAsset::getCreatedBy, username);
+        }
         // 角色可见主题域限制：仅资产目录场景生效（受限用户只能看到被授权主题域下的资产）
         Set<Long> visibleDomainIds = enforceDomainPermission ? resolveVisibleDomainIds(currentUserId()) : null;
         if (visibleDomainIds != null) {
@@ -1140,6 +1156,18 @@ public class CatalogService {
         DamAsset asset = assetMapper.selectById(id);
         if (asset == null) {
             throw new BusinessException("资产不存在");
+        }
+        // 数据范围校验：防止通过详情 URL 绕过列表过滤
+        if (DataScopeContext.isDepartment()) {
+            String dept = DataScopeContext.department();
+            if (dept.isBlank() || !dept.equals(asset.getDepartment())) {
+                throw new BusinessException(403, "无权查看其他科室的资产");
+            }
+        } else if (DataScopeContext.isSelf()) {
+            String username = DataScopeContext.username();
+            if (username.isBlank() || !username.equals(asset.getCreatedBy())) {
+                throw new BusinessException(403, "无权查看其他用户的资产");
+            }
         }
         // 角色可见主题域校验：受限用户只能查看被授权主题域下的资产
         Set<Long> visibleDomainIds = resolveVisibleDomainIds(currentUserId());
