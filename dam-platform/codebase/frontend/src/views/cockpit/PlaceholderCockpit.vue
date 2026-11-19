@@ -35,10 +35,14 @@
 
       <section class="ck-card">
         <div class="ck-card-head">
-          <h3 class="ck-card-title">驾驶舱建设说明</h3>
+          <h3 class="ck-card-title">{{ config.focusTitle }}</h3>
+          <span class="ck-card-sub">按当前角色展示</span>
         </div>
-        <div class="ck-empty-block">
-          <el-empty :description="config.emptyText" :image-size="64" />
+        <div class="ck-list">
+          <router-link v-for="item in config.focusItems" :key="item.title" :to="item.path" class="ck-list-item">
+            <div><b>{{ item.title }}</b><span>{{ item.desc }}</span></div>
+            <em>进入</em>
+          </router-link>
         </div>
         <div class="ck-kv">
           <div class="ck-kv-row"><span>质量达标率</span><b>{{ qualityRate }}</b></div>
@@ -50,7 +54,7 @@
     <section class="ck-card">
       <div class="ck-card-head">
         <h3 class="ck-card-title">{{ config.roleName }}待办与风险</h3>
-        <span class="ck-card-sub">通用数据概览，后续按角色细化</span>
+        <span class="ck-card-sub">角色关注与待办</span>
       </div>
       <div class="ck-list">
         <router-link to="/operations" class="ck-list-item">
@@ -102,6 +106,8 @@ interface VariantConfig {
   roleName: string
   description: string
   emptyText: string
+  focusTitle: string
+  focusItems: Array<{ title: string; desc: string; path: string }>
   entries: PlaceholderEntry[]
 }
 
@@ -112,7 +118,13 @@ const CONFIG: Record<Variant, VariantConfig> = {
     title: '数据管家驾驶舱',
     roleName: '数据管家',
     description: '数据质量、标准与治理协同概览。',
-    emptyText: '数据管家驾驶舱正在细化建设，当前展示质量与治理通用概览',
+    emptyText: '暂无治理数据',
+    focusTitle: '治理关注',
+    focusItems: [
+      { title: '质量异常', desc: '查看规则、检测结果与异常样例', path: '/quality' },
+      { title: '标准落标', desc: '标准、码表与偏差核查', path: '/standard' },
+      { title: '血缘影响', desc: '查看上下游与字段级影响', path: '/lineage' }
+    ],
     entries: [
       { title: '数据质量', desc: '规则配置与稽核结果', path: '/quality', icon: 'Histogram' },
       { title: '数据标准', desc: '标准、码表与偏差', path: '/standard', icon: 'Document' },
@@ -124,7 +136,13 @@ const CONFIG: Record<Variant, VariantConfig> = {
     title: '业务驾驶舱',
     roleName: '业务用户',
     description: '可申请资产、数据服务与个人待办概览。',
-    emptyText: '业务驾驶舱正在细化建设，当前展示资产与服务通用概览',
+    emptyText: '暂无可访问数据',
+    focusTitle: '我的数据',
+    focusItems: [
+      { title: '查找资产', desc: '按主题、部门、标签检索数据', path: '/catalog' },
+      { title: '可用服务', desc: '查看已发布的数据 API', path: '/data-service' },
+      { title: '业务指标', desc: '查看指标口径与指标值', path: '/metrics' }
+    ],
     entries: [
       { title: '产品中心', desc: '按能力域查找数据产品', path: '/portal', icon: 'Grid' },
       { title: '资产目录', desc: '搜索与申请数据资产', path: '/catalog', icon: 'FolderOpened' },
@@ -136,7 +154,13 @@ const CONFIG: Record<Variant, VariantConfig> = {
     title: '安全驾驶舱',
     roleName: '安全管理员',
     description: '数据访问审批、安全规则与审计概览。',
-    emptyText: '安全驾驶舱正在细化建设，当前展示审批与安全通用概览',
+    emptyText: '暂无安全待办',
+    focusTitle: '安全关注',
+    focusItems: [
+      { title: '访问审批', desc: '处理数据使用申请与授权', path: '/security' },
+      { title: '敏感数据', desc: '查看识别规则与脱敏策略', path: '/security' },
+      { title: '审计追踪', desc: '检索数据访问审计日志', path: '/security' }
+    ],
     entries: [
       { title: '安全管控', desc: '分级分类与脱敏策略', path: '/security', icon: 'Lock' },
       { title: '工单中心', desc: '数据申请与处理进度', path: '/operations', icon: 'Tools' },
