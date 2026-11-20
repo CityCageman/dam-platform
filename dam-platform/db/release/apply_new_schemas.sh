@@ -62,6 +62,7 @@ MIGRATIONS=(
   "v39_ticket_department.sql"
   "v40_metric_quality_department.sql"
   "v41_report_api_department.sql"
+  "v42_demo_role_users.sql"
 )
 
 # 迁移完成后必须存在的 schema

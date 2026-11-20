@@ -31,6 +31,7 @@
 | 19 | `v39_ticket_department.sql` | 工单部门字段 | `dam_ticket` | 加列/索引 |
 | 20 | `v40_metric_quality_department.sql` | 指标/质量规则部门字段 | `dam_metric`/`dam_quality` | 加列/索引 |
 | 21 | `v41_report_api_department.sql` | 报表/数据 API 部门字段 | `dam_report`/`dam_data_service` | 加列/索引 |
+| 22 | `v42_demo_role_users.sql` | 8 角色测试账号 | `dam_sys` | 种子用户 |
 
 要点：
 
