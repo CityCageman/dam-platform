@@ -72,7 +72,7 @@ public class DamAsset {
     private String tableName;
     @TableField(exist = false)
     private Long ownerId;
-    @TableField(exist = false)
+    /** 归属部门（asset_info.department，用于数据范围过滤） */
     private String department;
     @TableField(exist = false)
     private String securityLevel;

@@ -61,6 +61,7 @@ services:
       - ../db/v40_metric_quality_department.sql:/docker-entrypoint-initdb.d/41_v40_metric_quality_department.sql:ro
       - ../db/v41_report_api_department.sql:/docker-entrypoint-initdb.d/42_v41_report_api_department.sql:ro
       - ../db/v42_demo_role_users.sql:/docker-entrypoint-initdb.d/43_v42_demo_role_users.sql:ro
+      - ../db/v43_asset_department.sql:/docker-entrypoint-initdb.d/44_v43_asset_department.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dam -d damplatform"]
       interval: 5s

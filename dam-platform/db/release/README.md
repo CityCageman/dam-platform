@@ -32,6 +32,7 @@
 | 20 | `v40_metric_quality_department.sql` | 指标/质量规则部门字段 | `dam_metric`/`dam_quality` | 加列/索引 |
 | 21 | `v41_report_api_department.sql` | 报表/数据 API 部门字段 | `dam_report`/`dam_data_service` | 加列/索引 |
 | 22 | `v42_demo_role_users.sql` | 8 角色测试账号 | `dam_sys` | 种子用户 |
+| 23 | `v43_asset_department.sql` | 资产部门字段与回填 | `dam_asset` | 加列/索引 |
 
 要点：
 

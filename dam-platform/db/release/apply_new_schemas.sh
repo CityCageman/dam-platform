@@ -63,6 +63,7 @@ MIGRATIONS=(
   "v40_metric_quality_department.sql"
   "v41_report_api_department.sql"
   "v42_demo_role_users.sql"
+  "v43_asset_department.sql"
 )
 
 # 迁移完成后必须存在的 schema

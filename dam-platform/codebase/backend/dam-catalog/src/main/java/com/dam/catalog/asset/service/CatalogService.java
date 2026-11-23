@@ -554,6 +554,7 @@ public class CatalogService {
             asset.setUpdatedAt(now);
             asset.setCreatedBy(currentUser());
             asset.setUpdatedBy(currentUser());
+            if (StrUtil.isBlank(asset.getDepartment())) asset.setDepartment(DataScopeContext.department());
             assetMapper.insert(asset);
         } else {
             asset.setUpdatedAt(LocalDateTime.now());
@@ -1244,6 +1245,7 @@ public class CatalogService {
                     asset.getTableName(), asset.getSourceMetadataType(), asset.getSchemaName(),
                     asset.getDataSourceId(), asset.getDescription()));
         }
+        if (StrUtil.isBlank(asset.getDepartment())) asset.setDepartment(DataScopeContext.department());
         assetMapper.insert(asset);
         calculateAssetSecurityLevel(asset.getId());
         return assetMapper.selectById(asset.getId());
