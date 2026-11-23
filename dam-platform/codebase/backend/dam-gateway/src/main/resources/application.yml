@@ -49,10 +49,10 @@ spring:
               predicates:
                 - Path=/api/operations/**
             - id: dam-model-gateway
-              uri: ${DAM_ROUTE_MODEL_GATEWAY:${DAM_ROUTE_AGENT:lb://dam-model-gateway}}
+              uri: ${DAM_ROUTE_MODEL_GATEWAY:${DAM_ROUTE_AGENT:http://localhost:8089}}
               predicates:
-                - Path=/api/model-gateway/**
-                - Path=/api/agent/**
+                # 两个前缀必须放在同一个 Path 谓词里；分开写会被 Gateway 按 AND 处理
+                - Path=/api/model-gateway/**,/api/agent/**
             - id: dam-ai-workbench
               uri: ${DAM_ROUTE_AI_WORKBENCH:http://localhost:8090}
               predicates:
