@@ -17,14 +17,14 @@ FRONTEND_DIR="$REPO_ROOT/codebase/frontend"
 
 # 阶段 1 新增的后端模块（目录名与微服务名一致）
 MODULES=(
-  dam-portal
-  dam-metric
+  platform-portal
+  analytics-metric
   ai-knowledge
   access-integration
-  dam-scheduler
-  dam-data-service
+  platform-scheduler
+  service-api
   ai-workbench
-  dam-task-center
+  platform-task-center
   processing-develop
 )
 
@@ -95,8 +95,8 @@ for module in "${MODULES[@]}"; do
 done
 
 # 后端门户 PLANNED 集合必须与前端一致：只剩 MDM/DEV/STO/MKT/OBS
-if [ -f "$BACKEND_DIR/dam-portal/src/main/java/com/dam/portal/service/PortalCatalogService.java" ]; then
-  if grep -q 'Set.of("MDM", "STO", "MKT", "OBS")' "$BACKEND_DIR/dam-portal/src/main/java/com/dam/portal/service/PortalCatalogService.java"; then
+if [ -f "$BACKEND_DIR/platform-portal/src/main/java/com/dam/portal/service/PortalCatalogService.java" ]; then
+  if grep -q 'Set.of("MDM", "STO", "MKT", "OBS")' "$BACKEND_DIR/platform-portal/src/main/java/com/dam/portal/service/PortalCatalogService.java"; then
     ok "后端门户 PLANNED 集合已同步"
   else
     fail "后端 PortalCatalogService PLANNED 集合未同步（应为 MDM/DEV/STO/MKT/OBS）"

@@ -1,0 +1,40 @@
+server:
+  port: 8097
+
+spring:
+  application:
+    name: service-api
+  profiles:
+    active: dev
+  config:
+    import:
+      # Nacos 配置中心为可选项：无 Nacos 时使用本地配置启动
+      - optional:nacos:${spring.application.name}.yml
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+  datasource:
+    # 数据 API 管理库；可通过 SPRING_DATASOURCE_* 覆盖
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://10.162.3.16:11001/damplatform?currentSchema=dam_data_service}
+    username: ${SPRING_DATASOURCE_USERNAME:dam}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  jdbc:
+    template:
+      fetch-size: 100
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      # 本服务所有表统一位于 dam_data_service schema
+      schema: dam_data_service
+
+# 数据服务只管理 API 元数据，不向真实网关注册；网关运行时不在本服务实现
+dam:
+  data-service:
+    api-publish-enabled: false

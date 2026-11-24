@@ -1,0 +1,47 @@
+server:
+  port: 8094
+
+spring:
+  application:
+    name: analytics-metric
+  config:
+    import:
+      # Nacos 配置中心为可选项：无 Nacos 时使用本地配置启动
+      - optional:nacos:${spring.application.name}.yml
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+  datasource:
+    # 指标库；表已由 db/v21 迁移到 dam_metric schema，可通过 SPRING_DATASOURCE_* 覆盖
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://10.162.3.16:11001/damplatform?currentSchema=dam_metric}
+    username: ${SPRING_DATASOURCE_USERNAME:dam}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      schema: dam_metric
+  jdbc:
+    template:
+      fetch-size: 100
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      # metric_definition / metric_value 归 dam-metric 独占，统一位于 dam_metric schema
+      schema: dam_metric
+
+sa-token:
+  token-name: token
+  timeout: 86400
+  is-concurrent: true
+  is-share: false
+  token-style: jwt
+  jwt-secret-key: ${SA_TOKEN_JWT_SECRET_KEY}
+
+dam:
+  # catalog 内部 AI 工具地址；指标 SQL 生成仍然复用 catalog 的模型/知识库能力
+  catalog-url: ${DAM_CATALOG_URL:http://127.0.0.1:8092}

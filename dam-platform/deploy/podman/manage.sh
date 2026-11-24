@@ -114,7 +114,7 @@ start_backend() {
                -e "DAM_ROUTE_QUALITY=http://governance-quality:8085"
                -e "DAM_ROUTE_SECURITY=http://governance-security:8086"
                -e "DAM_ROUTE_LIFECYCLE=http://governance-lifecycle:8087"
-               -e "DAM_ROUTE_OPERATIONS=http://dam-operations:8088"
+               -e "DAM_ROUTE_OPERATIONS=http://platform-operations:8088"
                -e "DAM_ROUTE_MODEL_GATEWAY=http://ai-model-gateway:8089")
         ;;
     esac
@@ -137,7 +137,7 @@ start_frontend() {
 }
 
 stop_all() {
-  for name in dam-frontend dam-gateway ai-model-gateway dam-operations governance-lifecycle governance-security \
+  for name in dam-frontend dam-gateway ai-model-gateway platform-operations governance-lifecycle governance-security \
               governance-quality governance-standard governance-lineage dam-catalog dam-auth; do
     if podman container exists "$name" >/dev/null 2>&1; then
       podman rm -f "$name" >/dev/null 2>&1 || true

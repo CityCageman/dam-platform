@@ -33,7 +33,7 @@ spring:
               uri: http://localhost:8087
               predicates:
                 - Path=/api/lifecycle/**
-            - id: dam-operations
+            - id: platform-operations
               uri: http://localhost:8088
               predicates:
                 - Path=/api/operations/**
@@ -50,7 +50,7 @@ spring:
               uri: ${DAM_ROUTE_KNOWLEDGE:http://localhost:8098}
               predicates:
                 - Path=/api/knowledge/**
-            - id: dam-metric
+            - id: analytics-metric
               uri: ${DAM_ROUTE_METRIC:http://localhost:8094}
               predicates:
                 - Path=/api/metrics/**
@@ -58,11 +58,11 @@ spring:
               uri: ${DAM_ROUTE_INTEGRATION:http://localhost:8095}
               predicates:
                 - Path=/api/integration/**
-            - id: dam-scheduler
+            - id: platform-scheduler
               uri: ${DAM_ROUTE_SCHEDULER:http://localhost:8096}
               predicates:
                 - Path=/api/scheduler/**
-            - id: dam-data-service
+            - id: service-api
               uri: ${DAM_ROUTE_DATA_SERVICE:http://localhost:8097}
               predicates:
                 - Path=/api/data-service/**
@@ -70,7 +70,7 @@ spring:
               uri: ${DAM_ROUTE_DATA_SERVICE:http://localhost:8097}
               predicates:
                 - Path=/open-api/**
-            - id: dam-task-center
+            - id: platform-task-center
               uri: ${DAM_ROUTE_TASK_CENTER:http://localhost:8099}
               predicates:
                 - Path=/api/task-center/**
@@ -78,7 +78,7 @@ spring:
               uri: ${DAM_ROUTE_DEVELOP:http://localhost:8100}
               predicates:
                 - Path=/api/dev/**
-            - id: dam-portal
+            - id: platform-portal
               uri: ${DAM_ROUTE_PORTAL:http://localhost:8091}
               predicates:
                 - Path=/api/portal/**

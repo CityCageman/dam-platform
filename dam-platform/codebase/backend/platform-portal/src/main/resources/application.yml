@@ -1,0 +1,31 @@
+server:
+  port: 8091
+
+spring:
+  application:
+    name: platform-portal
+  profiles:
+    active: dev
+  config:
+    import:
+      # Nacos 配置中心为可选项：无 Nacos 时使用本地配置启动
+      - optional:nacos:${spring.application.name}.yml
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+  autoconfigure:
+    # 门户 BFF 不连接数据库，排除数据源/MyBatis-Plus 自动装配
+    # （dam-common 依赖传递了 mybatis-plus 与 spring-boot-starter-jdbc 相关配置）
+    exclude:
+      # Spring Boot 4 中 DataSource 自动装配迁移至 spring-boot-jdbc 模块，包路径为 org.springframework.boot.jdbc.autoconfigure
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      - com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration
+
+# 门户能力域/模块目录为静态配置（阶段 1 不落库，后续可切换为 dam_sys.sys_domain/sys_module）
+dam:
+  portal:
+    # 门户首页展示名称
+    title: 统一数据门户

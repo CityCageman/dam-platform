@@ -141,7 +141,7 @@ services:
       # 报表 SQL 生成调用编码智能体（容器网络内用服务名）
       DAM_MODEL_GATEWAY_URL: http://ai-model-gateway:8089
       # 指标/知识/质量只读接口均走容器服务名，避免默认 127.0.0.1
-      DAM_METRIC_URL: http://dam-metric:8094
+      DAM_METRIC_URL: http://analytics-metric:8094
       DAM_KNOWLEDGE_URL: http://ai-knowledge:8098
       DAM_QUALITY_URL: http://governance-quality:8085
     depends_on:
@@ -240,13 +240,13 @@ services:
       nacos:
         condition: service_healthy
 
-  dam-operations:
+  platform-operations:
     build:
       context: ../codebase/backend
       dockerfile: Dockerfile
       args:
-        JAR_FILE: dam-operations/target/dam-operations-1.0.0-exec.jar
-    container_name: dam-operations
+        JAR_FILE: platform-operations/target/platform-operations-1.0.0-exec.jar
+    container_name: platform-operations
     restart: unless-stopped
     environment:
       <<: *pg-env
@@ -302,13 +302,13 @@ services:
         condition: service_healthy
 
   # 统一门户 BFF：静态目录配置，不连库
-  dam-portal:
+  platform-portal:
     build:
       context: ../codebase/backend
       dockerfile: Dockerfile
       args:
-        JAR_FILE: dam-portal/target/dam-portal-1.0.0-exec.jar
-    container_name: dam-portal
+        JAR_FILE: platform-portal/target/platform-portal-1.0.0-exec.jar
+    container_name: platform-portal
     restart: unless-stopped
     environment:
       TZ: Asia/Shanghai
@@ -318,13 +318,13 @@ services:
         condition: service_healthy
 
   # 指标中心：dam_metric schema（v21）
-  dam-metric:
+  analytics-metric:
     build:
       context: ../codebase/backend
       dockerfile: Dockerfile
       args:
-        JAR_FILE: dam-metric/target/dam-metric-1.0.0-exec.jar
-    container_name: dam-metric
+        JAR_FILE: analytics-metric/target/analytics-metric-1.0.0-exec.jar
+    container_name: analytics-metric
     restart: unless-stopped
     environment:
       <<: *pg-env
@@ -355,7 +355,7 @@ services:
       DAM_WEKNORA_EMBEDDING_MODEL: ${DAM_WEKNORA_EMBEDDING_MODEL:-bge-m3}
       NACOS_SERVER_ADDR: nacos:8848
       SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
-      DAM_METRIC_URL: http://dam-metric:8094
+      DAM_METRIC_URL: http://analytics-metric:8094
     depends_on:
       postgres:
         condition: service_healthy
@@ -373,7 +373,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *pg-env
-      DAM_TASK_CENTER_URL: http://dam-task-center:8099
+      DAM_TASK_CENTER_URL: http://platform-task-center:8099
       NACOS_SERVER_ADDR: nacos:8848
       DAM_CREDENTIAL_SECRET: ${DAM_CREDENTIAL_SECRET:?DAM_CREDENTIAL_SECRET is required}
       SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
@@ -384,13 +384,13 @@ services:
         condition: service_healthy
 
   # 调度中心：dam_scheduler schema（v24）
-  dam-scheduler:
+  platform-scheduler:
     build:
       context: ../codebase/backend
       dockerfile: Dockerfile
       args:
-        JAR_FILE: dam-scheduler/target/dam-scheduler-1.0.0-exec.jar
-    container_name: dam-scheduler
+        JAR_FILE: platform-scheduler/target/platform-scheduler-1.0.0-exec.jar
+    container_name: platform-scheduler
     restart: unless-stopped
     environment:
       DAM_SCHEDULER_ENGINE: ${DAM_SCHEDULER_ENGINE:-LOCAL}
@@ -400,7 +400,7 @@ services:
       DAM_DOLPHIN_PROJECT_CODE: ${DAM_DOLPHIN_PROJECT_CODE:-}
       DAM_DOLPHIN_TENANT: ${DAM_DOLPHIN_TENANT:-}
       <<: *pg-env
-      DAM_TASK_CENTER_URL: http://dam-task-center:8099
+      DAM_TASK_CENTER_URL: http://platform-task-center:8099
       NACOS_SERVER_ADDR: nacos:8848
       DAM_CREDENTIAL_SECRET: ${DAM_CREDENTIAL_SECRET:?DAM_CREDENTIAL_SECRET is required}
       SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
@@ -411,13 +411,13 @@ services:
         condition: service_healthy
 
   # 数据服务：dam_data_service schema（v25）
-  dam-data-service:
+  service-api:
     build:
       context: ../codebase/backend
       dockerfile: Dockerfile
       args:
-        JAR_FILE: dam-data-service/target/dam-data-service-1.0.0-exec.jar
-    container_name: dam-data-service
+        JAR_FILE: service-api/target/service-api-1.0.0-exec.jar
+    container_name: service-api
     restart: unless-stopped
     environment:
       <<: *pg-env
@@ -431,13 +431,13 @@ services:
         condition: service_healthy
 
   # 统一任务中心：dam_task schema（v26）
-  dam-task-center:
+  platform-task-center:
     build:
       context: ../codebase/backend
       dockerfile: Dockerfile
       args:
-        JAR_FILE: dam-task-center/target/dam-task-center-1.0.0-exec.jar
-    container_name: dam-task-center
+        JAR_FILE: platform-task-center/target/platform-task-center-1.0.0-exec.jar
+    container_name: platform-task-center
     restart: unless-stopped
     environment:
       <<: *pg-env
@@ -496,17 +496,17 @@ services:
       DAM_ROUTE_QUALITY: http://governance-quality:8085
       DAM_ROUTE_SECURITY: http://governance-security:8086
       DAM_ROUTE_LIFECYCLE: http://governance-lifecycle:8087
-      DAM_ROUTE_OPERATIONS: http://dam-operations:8088
+      DAM_ROUTE_OPERATIONS: http://platform-operations:8088
       DAM_ROUTE_MODEL_GATEWAY: http://ai-model-gateway:8089
       DAM_ROUTE_AI_WORKBENCH: http://ai-workbench:8090
-      DAM_ROUTE_PORTAL: http://dam-portal:8091
-      DAM_ROUTE_METRIC: http://dam-metric:8094
+      DAM_ROUTE_PORTAL: http://platform-portal:8091
+      DAM_ROUTE_METRIC: http://analytics-metric:8094
       DAM_ROUTE_KNOWLEDGE: http://ai-knowledge:8098
       DAM_ROUTE_INTEGRATION: http://access-integration:8095
-      DAM_ROUTE_SCHEDULER: http://dam-scheduler:8096
-      DAM_ROUTE_DATA_SERVICE: http://dam-data-service:8097
-      DAM_ROUTE_OPEN_API: http://dam-data-service:8097
-      DAM_ROUTE_TASK_CENTER: http://dam-task-center:8099
+      DAM_ROUTE_SCHEDULER: http://platform-scheduler:8096
+      DAM_ROUTE_DATA_SERVICE: http://service-api:8097
+      DAM_ROUTE_OPEN_API: http://service-api:8097
+      DAM_ROUTE_TASK_CENTER: http://platform-task-center:8099
       DAM_ROUTE_DEVELOP: http://processing-develop:8100
     # 对外暴露 8080，供前端服务器 Nginx 反代 /api 访问
     ports:
@@ -519,16 +519,16 @@ services:
       - governance-quality
       - governance-security
       - governance-lifecycle
-      - dam-operations
+      - platform-operations
       - ai-model-gateway
       - ai-workbench
-      - dam-portal
-      - dam-metric
+      - platform-portal
+      - analytics-metric
       - ai-knowledge
       - access-integration
-      - dam-scheduler
-      - dam-data-service
-      - dam-task-center
+      - platform-scheduler
+      - service-api
+      - platform-task-center
       - processing-develop
 
 volumes:
