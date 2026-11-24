@@ -1,12 +1,12 @@
 package com.dam.governance.security.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.catalog.asset.entity.DamAsset;
-import com.dam.catalog.entity.DamField;
-import com.dam.catalog.system.entity.DamConfig;
-import com.dam.catalog.asset.repository.DamAssetMapper;
-import com.dam.catalog.repository.DamFieldMapper;
-import com.dam.catalog.system.repository.DamConfigMapper;
+import com.dam.asset.asset.entity.DamAsset;
+import com.dam.asset.entity.DamField;
+import com.dam.asset.system.entity.DamConfig;
+import com.dam.asset.asset.repository.DamAssetMapper;
+import com.dam.asset.repository.DamFieldMapper;
+import com.dam.asset.system.repository.DamConfigMapper;
 import com.dam.platform.common.exception.BusinessException;
 import com.dam.governance.security.entity.DamSensitiveRule;
 import com.dam.governance.security.repository.DamSensitiveRuleMapper;

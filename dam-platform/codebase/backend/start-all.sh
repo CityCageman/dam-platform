@@ -10,7 +10,7 @@ fi
 SERVICES=(
   "platform-gateway:8080"
   "platform-auth:8081"
-  "dam-catalog:8092"
+  "asset-catalog:8092"
   "governance-lineage:8093"
   "governance-standard:8084"
   "governance-quality:8085"

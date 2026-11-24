@@ -16,7 +16,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  */
 @SpringBootApplication(scanBasePackages = {"com.dam.governance.standard", "com.dam.platform.common"})
 @EnableScheduling
-@MapperScan({"com.dam.governance.standard.repository", "com.dam.catalog.repository", "com.dam.catalog.asset.repository", "com.dam.platform.operations.repository"})
+@MapperScan({"com.dam.governance.standard.repository", "com.dam.asset.repository", "com.dam.asset.asset.repository", "com.dam.platform.operations.repository"})
 public class GovernanceStandardApplication {
     /**
      * 服务入口

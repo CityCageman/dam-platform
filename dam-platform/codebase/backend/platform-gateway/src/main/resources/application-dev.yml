@@ -9,7 +9,7 @@ spring:
               uri: http://localhost:8081
               predicates:
                 - Path=/api/auth/**
-            - id: dam-catalog
+            - id: asset-catalog
               uri: http://localhost:8092
               predicates:
                 - Path=/api/catalog/**

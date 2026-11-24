@@ -11,7 +11,7 @@
 #   bash manage.sh start-backend           # 启动 10 个后端服务（含网关 8080）
 #   bash manage.sh start-frontend          # 启动前端 Nginx（80）
 #   bash manage.sh status                  # 查看容器状态
-#   bash manage.sh logs dam-catalog        # 跟踪某个服务日志
+#   bash manage.sh logs asset-catalog        # 跟踪某个服务日志
 #   bash manage.sh stop                    # 停止并移除全部容器
 #
 # 说明：
@@ -108,7 +108,7 @@ start_backend() {
       gateway)
         args+=(-p "${GATEWAY_PORT}:8080")
         envs+=(-e "DAM_ROUTE_AUTH=http://platform-auth:8081"
-               -e "DAM_ROUTE_CATALOG=http://dam-catalog:8092"
+               -e "DAM_ROUTE_CATALOG=http://asset-catalog:8092"
                -e "DAM_ROUTE_LINEAGE=http://governance-lineage:8093"
                -e "DAM_ROUTE_STANDARD=http://governance-standard:8084"
                -e "DAM_ROUTE_QUALITY=http://governance-quality:8085"
@@ -138,7 +138,7 @@ start_frontend() {
 
 stop_all() {
   for name in dam-frontend platform-gateway ai-model-gateway platform-operations governance-lifecycle governance-security \
-              governance-quality governance-standard governance-lineage dam-catalog platform-auth; do
+              governance-quality governance-standard governance-lineage asset-catalog platform-auth; do
     if podman container exists "$name" >/dev/null 2>&1; then
       podman rm -f "$name" >/dev/null 2>&1 || true
       echo "removed $name"
@@ -156,7 +156,7 @@ case "${1:-}" in
   start-frontend)  start_frontend ;;
   stop)            stop_all ;;
   status)          status ;;
-  logs)            podman logs -f --tail 200 "dam-${2:?用法: manage.sh logs dam-catalog}" ;;
+  logs)            podman logs -f --tail 200 "dam-${2:?用法: manage.sh logs asset-catalog}" ;;
   *)
     echo "用法: bash manage.sh {load [tar-dir]|start-backend|start-frontend|status|logs <svc>|stop}"
     exit 1

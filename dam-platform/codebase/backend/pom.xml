@@ -74,7 +74,7 @@
         <module>platform-common</module>
         <module>platform-gateway</module>
         <module>platform-auth</module>
-        <module>dam-catalog</module>
+        <module>asset-catalog</module>
         <module>platform-task-center</module>
         <module>processing-develop</module>
         <module>analytics-metric</module>
@@ -214,7 +214,7 @@
             </dependency>
             <dependency>
                 <groupId>com.dam</groupId>
-                <artifactId>dam-catalog</artifactId>
+                <artifactId>asset-catalog</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

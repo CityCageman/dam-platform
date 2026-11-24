@@ -124,13 +124,13 @@ services:
       nacos:
         condition: service_healthy
 
-  dam-catalog:
+  asset-catalog:
     build:
       context: ../codebase/backend
       dockerfile: Dockerfile
       args:
-        JAR_FILE: dam-catalog/target/dam-catalog-1.0.0-exec.jar
-    container_name: dam-catalog
+        JAR_FILE: asset-catalog/target/asset-catalog-1.0.0-exec.jar
+    container_name: asset-catalog
     restart: unless-stopped
     environment:
       <<: *pg-env
@@ -296,7 +296,7 @@ services:
       # 模型调用经 model-gateway，不直接持有模型 API Key
       DAM_MODEL_GATEWAY_URL: http://ai-model-gateway:8089
       # 元数据/报表/SQL 执行经 catalog 内部工具接口
-      DAM_CATALOG_URL: http://dam-catalog:8092
+      DAM_CATALOG_URL: http://asset-catalog:8092
     depends_on:
       nacos:
         condition: service_healthy
@@ -331,7 +331,7 @@ services:
       NACOS_SERVER_ADDR: nacos:8848
       SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
       # 指标 SQL 生成复用 catalog 的模型/知识库能力
-      DAM_CATALOG_URL: http://dam-catalog:8092
+      DAM_CATALOG_URL: http://asset-catalog:8092
     depends_on:
       postgres:
         condition: service_healthy
@@ -490,7 +490,7 @@ services:
       DAM_CORS_ORIGINS: ${DAM_CORS_ORIGINS:-http://localhost:5173}
       # 路由地址：全部改为容器服务名，避免 localhost 指向网关自身
       DAM_ROUTE_AUTH: http://platform-auth:8081
-      DAM_ROUTE_CATALOG: http://dam-catalog:8092
+      DAM_ROUTE_CATALOG: http://asset-catalog:8092
       DAM_ROUTE_LINEAGE: http://governance-lineage:8093
       DAM_ROUTE_STANDARD: http://governance-standard:8084
       DAM_ROUTE_QUALITY: http://governance-quality:8085
@@ -513,7 +513,7 @@ services:
       - "8080:8080"
     depends_on:
       - platform-auth
-      - dam-catalog
+      - asset-catalog
       - governance-lineage
       - governance-standard
       - governance-quality

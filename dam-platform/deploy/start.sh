@@ -17,7 +17,7 @@ JAVA_OPTS="${JAVA_OPTS:--Xmx512m -Xms256m -XX:+UseParallelGC}"
 # 启动顺序：先起业务服务，最后起网关（网关只验证 token 存在，不强依赖，但放在最后更稳）
 SERVICES=(
   "platform-auth:8081"
-  "dam-catalog:8092"
+  "asset-catalog:8092"
   "governance-lineage:8093"
   "governance-standard:8084"
   "governance-quality:8085"

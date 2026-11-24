@@ -1,8 +1,8 @@
 package com.dam.platform.operations.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.catalog.asset.entity.DamAsset;
-import com.dam.catalog.asset.repository.DamAssetMapper;
+import com.dam.asset.asset.entity.DamAsset;
+import com.dam.asset.asset.repository.DamAssetMapper;
 import com.dam.platform.operations.entity.DamUsageStats;
 import com.dam.platform.operations.repository.DamUsageStatsMapper;
 import lombok.RequiredArgsConstructor;

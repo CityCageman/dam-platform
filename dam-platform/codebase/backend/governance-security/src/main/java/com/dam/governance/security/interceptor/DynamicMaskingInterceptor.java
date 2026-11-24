@@ -1,7 +1,7 @@
 package com.dam.governance.security.interceptor;
 
-import com.dam.catalog.asset.entity.DamAsset;
-import com.dam.catalog.entity.DamField;
+import com.dam.asset.asset.entity.DamAsset;
+import com.dam.asset.entity.DamField;
 import com.dam.governance.security.entity.DamSensitiveRule;
 import com.dam.governance.security.repository.DamSensitiveRuleMapper;
 import com.dam.governance.security.service.AbacPermissionService;

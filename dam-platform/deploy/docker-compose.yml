@@ -97,13 +97,13 @@ services:
       postgres:
         condition: service_healthy
 
-  dam-catalog:
+  asset-catalog:
     build:
       context: ../codebase/backend
       dockerfile: Dockerfile
       args:
-        JAR_FILE: dam-catalog/target/dam-catalog-1.0.0-exec.jar
-    container_name: dam-catalog
+        JAR_FILE: asset-catalog/target/asset-catalog-1.0.0-exec.jar
+    container_name: asset-catalog
     restart: unless-stopped
     environment:
       <<: *pg-env
@@ -241,7 +241,7 @@ services:
       TZ: Asia/Shanghai
       SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
       DAM_MODEL_GATEWAY_URL: http://ai-model-gateway:8089
-      DAM_CATALOG_URL: http://dam-catalog:8092
+      DAM_CATALOG_URL: http://asset-catalog:8092
 
   # 统一门户 BFF：静态目录配置，不连库
   platform-portal:
@@ -267,7 +267,7 @@ services:
     environment:
       <<: *pg-env
       SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
-      DAM_CATALOG_URL: http://dam-catalog:8092
+      DAM_CATALOG_URL: http://asset-catalog:8092
     depends_on:
       postgres:
         condition: service_healthy
@@ -404,7 +404,7 @@ services:
       DAM_CORS_ORIGINS: ${DAM_CORS_ORIGINS:-http://localhost:5173}
       # 路由地址：全部改为容器服务名
       DAM_ROUTE_AUTH: http://platform-auth:8081
-      DAM_ROUTE_CATALOG: http://dam-catalog:8092
+      DAM_ROUTE_CATALOG: http://asset-catalog:8092
       DAM_ROUTE_LINEAGE: http://governance-lineage:8093
       DAM_ROUTE_STANDARD: http://governance-standard:8084
       DAM_ROUTE_QUALITY: http://governance-quality:8085
@@ -426,7 +426,7 @@ services:
       - "8080:8080"
     depends_on:
       - platform-auth
-      - dam-catalog
+      - asset-catalog
       - governance-lineage
       - governance-standard
       - governance-quality

@@ -1,6 +1,6 @@
 package com.dam.platform.operations.controller;
 
-import com.dam.catalog.asset.repository.DamAssetMapper;
+import com.dam.asset.asset.repository.DamAssetMapper;
 import com.dam.platform.common.vo.PageResult;
 import com.dam.platform.common.vo.Result;
 import com.dam.platform.operations.entity.DamTicket;
@@ -145,7 +145,7 @@ public class OperationsController {
     @GetMapping("/valuation/{assetId}")
     public Result<Map<String, Object>> evaluateAsset(@PathVariable Long assetId) {
         // 先校验资产是否存在
-        com.dam.catalog.asset.entity.DamAsset asset = assetMapper.selectById(assetId);
+        com.dam.asset.asset.entity.DamAsset asset = assetMapper.selectById(assetId);
         if (asset == null) {
             return Result.error("资产不存在");
         }

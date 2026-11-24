@@ -20,8 +20,8 @@ spring:
               uri: ${DAM_ROUTE_AUTH:lb://platform-auth}
               predicates:
                 - Path=/api/auth/**
-            - id: dam-catalog
-              uri: ${DAM_ROUTE_CATALOG:lb://dam-catalog}
+            - id: asset-catalog
+              uri: ${DAM_ROUTE_CATALOG:lb://asset-catalog}
               predicates:
                 - Path=/api/catalog/**
             - id: governance-lineage
