@@ -91,7 +91,7 @@ start_backend() {
 
     case "$svc" in
       catalog)
-        envs+=(-e "DAM_LINEAGE_URL=http://dam-lineage:8093" -e "DAM_MODEL_GATEWAY_URL=http://dam-model-gateway:8089")
+        envs+=(-e "DAM_LINEAGE_URL=http://dam-lineage:8093" -e "DAM_MODEL_GATEWAY_URL=http://ai-model-gateway:8089")
         ;;
       agent)
                -e "DAM_MODEL_GATEWAY_CODE_BASE_URL=${DAM_MODEL_GATEWAY_CODE_BASE_URL}"
@@ -110,12 +110,12 @@ start_backend() {
         envs+=(-e "DAM_ROUTE_AUTH=http://dam-auth:8081"
                -e "DAM_ROUTE_CATALOG=http://dam-catalog:8092"
                -e "DAM_ROUTE_LINEAGE=http://dam-lineage:8093"
-               -e "DAM_ROUTE_STANDARD=http://dam-standard:8084"
+               -e "DAM_ROUTE_STANDARD=http://governance-standard:8084"
                -e "DAM_ROUTE_QUALITY=http://dam-quality:8085"
                -e "DAM_ROUTE_SECURITY=http://dam-security:8086"
                -e "DAM_ROUTE_LIFECYCLE=http://dam-lifecycle:8087"
                -e "DAM_ROUTE_OPERATIONS=http://dam-operations:8088"
-               -e "DAM_ROUTE_MODEL_GATEWAY=http://dam-model-gateway:8089")
+               -e "DAM_ROUTE_MODEL_GATEWAY=http://ai-model-gateway:8089")
         ;;
     esac
 
@@ -137,8 +137,8 @@ start_frontend() {
 }
 
 stop_all() {
-  for name in dam-frontend dam-gateway dam-model-gateway dam-operations dam-lifecycle dam-security \
-              dam-quality dam-standard dam-lineage dam-catalog dam-auth; do
+  for name in dam-frontend dam-gateway ai-model-gateway dam-operations dam-lifecycle dam-security \
+              dam-quality governance-standard dam-lineage dam-catalog dam-auth; do
     if podman container exists "$name" >/dev/null 2>&1; then
       podman rm -f "$name" >/dev/null 2>&1 || true
       echo "removed $name"

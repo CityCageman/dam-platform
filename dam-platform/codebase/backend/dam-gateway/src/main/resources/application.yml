@@ -28,8 +28,8 @@ spring:
               uri: ${DAM_ROUTE_LINEAGE:lb://dam-lineage}
               predicates:
                 - Path=/api/lineage/**
-            - id: dam-standard
-              uri: ${DAM_ROUTE_STANDARD:lb://dam-standard}
+            - id: governance-standard
+              uri: ${DAM_ROUTE_STANDARD:lb://governance-standard}
               predicates:
                 - Path=/api/standard/**
             - id: dam-quality
@@ -48,12 +48,12 @@ spring:
               uri: ${DAM_ROUTE_OPERATIONS:lb://dam-operations}
               predicates:
                 - Path=/api/operations/**
-            - id: dam-model-gateway
+            - id: ai-model-gateway
               uri: ${DAM_ROUTE_MODEL_GATEWAY:${DAM_ROUTE_AGENT:http://localhost:8089}}
               predicates:
                 # 两个前缀必须放在同一个 Path 谓词里；分开写会被 Gateway 按 AND 处理
                 - Path=/api/model-gateway/**,/api/agent/**
-            - id: dam-ai-workbench
+            - id: ai-workbench
               uri: ${DAM_ROUTE_AI_WORKBENCH:http://localhost:8090}
               predicates:
                 - Path=/api/ai-workbench/**

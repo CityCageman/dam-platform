@@ -1,0 +1,44 @@
+server:
+  port: 8090
+spring:
+  application:
+    name: ai-workbench
+  profiles:
+    active: dev
+  config:
+    import:
+      - optional:nacos:${spring.application.name}.yml
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+  datasource:
+    # AI 工作台使用独立数据库账号，只授权 dam_ai schema
+    url: ${DAM_AI_DB_URL:${SPRING_DATASOURCE_URL:jdbc:postgresql://10.162.3.16:11001/damplatform}}
+    username: ${DAM_AI_DB_USERNAME:${SPRING_DATASOURCE_USERNAME:dam}}
+    password: ${DAM_AI_DB_PASSWORD:${SPRING_DATASOURCE_PASSWORD:}}
+    driver-class-name: org.postgresql.Driver
+  jdbc:
+    template:
+      fetch-size: 100
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+
+sa-token:
+  token-name: token
+  timeout: 86400
+  is-concurrent: true
+  is-share: false
+  token-style: jwt
+  jwt-secret-key: ${SA_TOKEN_JWT_SECRET_KEY}
+
+dam:
+  ai-workbench:
+    # 模型网关地址；AI 编排服务不直接持有模型 API Key
+    model-gateway-url: ${DAM_MODEL_GATEWAY_URL:http://127.0.0.1:8089}
+    # 下游 catalog 工具服务
+    catalog-url: ${DAM_CATALOG_URL:http://127.0.0.1:8092}

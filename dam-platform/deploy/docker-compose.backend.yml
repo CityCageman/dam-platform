@@ -139,7 +139,7 @@ services:
       # 外键血缘自动落库调用 lineage 服务（容器网络内用服务名，可改为从 Nacos 配置下发）
       DAM_LINEAGE_URL: http://dam-lineage:8093
       # 报表 SQL 生成调用编码智能体（容器网络内用服务名）
-      DAM_MODEL_GATEWAY_URL: http://dam-model-gateway:8089
+      DAM_MODEL_GATEWAY_URL: http://ai-model-gateway:8089
       # 指标/知识/质量只读接口均走容器服务名，避免默认 127.0.0.1
       DAM_METRIC_URL: http://dam-metric:8094
       DAM_KNOWLEDGE_URL: http://ai-knowledge:8098
@@ -168,13 +168,13 @@ services:
       nacos:
         condition: service_healthy
 
-  dam-standard:
+  governance-standard:
     build:
       context: ../codebase/backend
       dockerfile: Dockerfile
       args:
-        JAR_FILE: dam-standard/target/dam-standard-1.0.0-exec.jar
-    container_name: dam-standard
+        JAR_FILE: governance-standard/target/governance-standard-1.0.0-exec.jar
+    container_name: governance-standard
     restart: unless-stopped
     environment:
       <<: *pg-env
@@ -258,14 +258,14 @@ services:
       nacos:
         condition: service_healthy
 
-  # 智能体网关：不连库，仅外呼 LLM，密钥由 .env 注入（亦可迁移到 Nacos dam-model-gateway.yml）
-  dam-model-gateway:
+  # 智能体网关：不连库，仅外呼 LLM，密钥由 .env 注入（亦可迁移到 Nacos ai-model-gateway.yml）
+  ai-model-gateway:
     build:
       context: ../codebase/backend
       dockerfile: Dockerfile
       args:
-        JAR_FILE: dam-model-gateway/target/dam-model-gateway-1.0.0-exec.jar
-    container_name: dam-model-gateway
+        JAR_FILE: ai-model-gateway/target/ai-model-gateway-1.0.0-exec.jar
+    container_name: ai-model-gateway
     restart: unless-stopped
     environment:
       TZ: Asia/Shanghai
@@ -280,13 +280,13 @@ services:
 
   # ==================== 新增服务（按数据中台边界拆分） ====================
   # AI 工作台：AI 任务编排，模型调用走 model-gateway，元数据工具走 catalog，不直连数据库
-  dam-ai-workbench:
+  ai-workbench:
     build:
       context: ../codebase/backend
       dockerfile: Dockerfile
       args:
-        JAR_FILE: dam-ai-workbench/target/dam-ai-workbench-1.0.0-exec.jar
-    container_name: dam-ai-workbench
+        JAR_FILE: ai-workbench/target/ai-workbench-1.0.0-exec.jar
+    container_name: ai-workbench
     restart: unless-stopped
     environment:
       <<: *pg-env
@@ -294,7 +294,7 @@ services:
       NACOS_SERVER_ADDR: nacos:8848
       SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
       # 模型调用经 model-gateway，不直接持有模型 API Key
-      DAM_MODEL_GATEWAY_URL: http://dam-model-gateway:8089
+      DAM_MODEL_GATEWAY_URL: http://ai-model-gateway:8089
       # 元数据/报表/SQL 执行经 catalog 内部工具接口
       DAM_CATALOG_URL: http://dam-catalog:8092
     depends_on:
@@ -492,13 +492,13 @@ services:
       DAM_ROUTE_AUTH: http://dam-auth:8081
       DAM_ROUTE_CATALOG: http://dam-catalog:8092
       DAM_ROUTE_LINEAGE: http://dam-lineage:8093
-      DAM_ROUTE_STANDARD: http://dam-standard:8084
+      DAM_ROUTE_STANDARD: http://governance-standard:8084
       DAM_ROUTE_QUALITY: http://dam-quality:8085
       DAM_ROUTE_SECURITY: http://dam-security:8086
       DAM_ROUTE_LIFECYCLE: http://dam-lifecycle:8087
       DAM_ROUTE_OPERATIONS: http://dam-operations:8088
-      DAM_ROUTE_MODEL_GATEWAY: http://dam-model-gateway:8089
-      DAM_ROUTE_AI_WORKBENCH: http://dam-ai-workbench:8090
+      DAM_ROUTE_MODEL_GATEWAY: http://ai-model-gateway:8089
+      DAM_ROUTE_AI_WORKBENCH: http://ai-workbench:8090
       DAM_ROUTE_PORTAL: http://dam-portal:8091
       DAM_ROUTE_METRIC: http://dam-metric:8094
       DAM_ROUTE_KNOWLEDGE: http://ai-knowledge:8098
@@ -515,13 +515,13 @@ services:
       - dam-auth
       - dam-catalog
       - dam-lineage
-      - dam-standard
+      - governance-standard
       - dam-quality
       - dam-security
       - dam-lifecycle
       - dam-operations
-      - dam-model-gateway
-      - dam-ai-workbench
+      - ai-model-gateway
+      - ai-workbench
       - dam-portal
       - dam-metric
       - ai-knowledge

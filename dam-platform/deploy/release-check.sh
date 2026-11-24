@@ -23,7 +23,7 @@ MODULES=(
   dam-integration
   dam-scheduler
   dam-data-service
-  dam-ai-workbench
+  ai-workbench
   dam-task-center
   dam-develop
 )

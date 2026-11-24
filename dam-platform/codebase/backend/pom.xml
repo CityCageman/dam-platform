@@ -80,13 +80,13 @@
         <module>dam-metric</module>
         <module>ai-knowledge</module>
         <module>dam-lineage</module>
-        <module>dam-standard</module>
+        <module>governance-standard</module>
         <module>dam-quality</module>
         <module>dam-security</module>
         <module>dam-lifecycle</module>
         <module>dam-operations</module>
-        <module>dam-model-gateway</module>
-        <module>dam-ai-workbench</module>
+        <module>ai-model-gateway</module>
+        <module>ai-workbench</module>
         <module>dam-integration</module>
         <module>dam-scheduler</module>
         <module>dam-data-service</module>
