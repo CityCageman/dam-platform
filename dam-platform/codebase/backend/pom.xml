@@ -75,6 +75,7 @@
         <module>platform-gateway</module>
         <module>platform-auth</module>
         <module>asset-catalog</module>
+        <module>asset-mdm</module>
         <module>platform-task-center</module>
         <module>processing-develop</module>
         <module>processing-model</module>
