@@ -11,8 +11,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  *
  * @author DAM Platform
  */
-@SpringBootApplication(scanBasePackages = {"com.dam.governance.lifecycle", "com.dam.common"})
-@MapperScan({"com.dam.governance.lifecycle.repository", "com.dam.catalog.repository", "com.dam.catalog.asset.repository", "com.dam.operations.repository"})
+@SpringBootApplication(scanBasePackages = {"com.dam.governance.lifecycle", "com.dam.platform.common"})
+@MapperScan({"com.dam.governance.lifecycle.repository", "com.dam.catalog.repository", "com.dam.catalog.asset.repository", "com.dam.platform.operations.repository"})
 public class GovernanceLifecycleApplication {
     /**
      * 服务入口

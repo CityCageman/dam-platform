@@ -2,7 +2,7 @@ package com.dam.governance.security.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.dam.common.vo.PageResult;
+import com.dam.platform.common.vo.PageResult;
 import com.dam.governance.security.entity.DamAuditLog;
 import com.dam.governance.security.entity.DamMaskingPolicy;
 import com.dam.governance.security.entity.DamSensitiveRule;

@@ -1,6 +1,6 @@
 package com.dam.access.integration.service;
 
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import com.dam.access.integration.entity.IntegrationJob;
 import com.dam.access.integration.entity.IntegrationRun;
 import jakarta.annotation.Resource;

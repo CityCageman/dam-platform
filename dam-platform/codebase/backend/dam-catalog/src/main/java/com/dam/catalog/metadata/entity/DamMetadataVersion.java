@@ -1,7 +1,7 @@
 package com.dam.catalog.metadata.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import com.dam.common.config.JsonbTypeHandler;
+import com.dam.platform.common.config.JsonbTypeHandler;
 import lombok.Data;
 import java.time.LocalDateTime;
 

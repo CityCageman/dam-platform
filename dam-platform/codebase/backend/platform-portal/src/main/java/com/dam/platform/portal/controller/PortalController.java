@@ -1,6 +1,6 @@
 package com.dam.platform.portal.controller;
 
-import com.dam.common.vo.Result;
+import com.dam.platform.common.vo.Result;
 import com.dam.platform.portal.model.PortalDomain;
 import com.dam.platform.portal.service.PortalCatalogService;
 import lombok.RequiredArgsConstructor;

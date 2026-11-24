@@ -16,7 +16,7 @@ import com.dam.catalog.repository.DamFieldMapper;
 import com.dam.catalog.metadata.repository.*;
 import com.dam.catalog.asset.repository.*;
 import com.dam.catalog.service.adapter.*;
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

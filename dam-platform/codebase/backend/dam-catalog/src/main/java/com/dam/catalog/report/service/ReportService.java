@@ -16,7 +16,7 @@ import com.dam.catalog.metadata.repository.MetadataSchemaMapper;
 import com.dam.catalog.metadata.repository.MetadataTableMapper;
 import com.dam.catalog.shared.port.MetricLookupPort;
 import com.dam.catalog.shared.port.KnowledgeSearchPort;
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;

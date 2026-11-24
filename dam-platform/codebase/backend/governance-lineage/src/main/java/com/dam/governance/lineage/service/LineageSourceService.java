@@ -2,7 +2,7 @@ package com.dam.governance.lineage.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.dam.common.vo.PageResult;
+import com.dam.platform.common.vo.PageResult;
 import com.dam.governance.lineage.entity.MetadataLineageSource;
 import com.dam.governance.lineage.entity.SourceSystem;
 import com.dam.governance.lineage.repository.MetadataLineageSourceMapper;

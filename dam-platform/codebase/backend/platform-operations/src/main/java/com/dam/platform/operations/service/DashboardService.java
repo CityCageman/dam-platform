@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.dam.catalog.asset.entity.DamAsset;
 import com.dam.catalog.asset.repository.DamAssetMapper;
-import com.dam.common.security.DataScopeContext;
+import com.dam.platform.common.security.DataScopeContext;
 import com.dam.platform.operations.entity.DamTicket;
 import com.dam.platform.operations.entity.DamUsageStats;
 import com.dam.platform.operations.repository.DamTicketMapper;

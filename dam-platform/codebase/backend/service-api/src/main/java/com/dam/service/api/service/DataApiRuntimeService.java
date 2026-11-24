@@ -2,8 +2,8 @@ package com.dam.service.api.service;
 
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import com.dam.common.exception.BusinessException;
-import com.dam.common.security.CredentialCipher;
+import com.dam.platform.common.exception.BusinessException;
+import com.dam.platform.common.security.CredentialCipher;
 import com.dam.service.api.dto.DataApiColumn;
 import com.dam.service.api.dto.DataApiExecutionResult;
 import com.dam.service.api.dto.DataApiSchemaResult;

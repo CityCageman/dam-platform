@@ -1,7 +1,7 @@
 package com.dam.service.api.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import com.dam.service.api.dto.DataApiExecutionResult;
 import com.dam.service.api.dto.DataApiSchemaResult;
 import com.dam.service.api.entity.DataApi;

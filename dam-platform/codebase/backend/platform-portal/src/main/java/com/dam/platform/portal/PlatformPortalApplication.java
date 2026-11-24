@@ -11,7 +11,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  *
  * @author DAM Platform
  */
-@SpringBootApplication(scanBasePackages = {"com.dam.platform.portal", "com.dam.common"})
+@SpringBootApplication(scanBasePackages = {"com.dam.platform.portal", "com.dam.platform.common"})
 public class PlatformPortalApplication {
 
     /**

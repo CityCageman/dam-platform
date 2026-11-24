@@ -1,7 +1,7 @@
 package com.dam.platform.taskcenter.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import com.dam.platform.taskcenter.dto.TaskLogRequest;
 import com.dam.platform.taskcenter.entity.TaskInstance;
 import com.dam.platform.taskcenter.entity.TaskLog;

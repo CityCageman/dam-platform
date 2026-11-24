@@ -2,7 +2,7 @@ package com.dam.service.api.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import com.dam.service.api.dto.DataApiKeyCreateRequest;
 import com.dam.service.api.dto.DataApiKeyCreateResult;
 import com.dam.service.api.dto.DataApiKeyView;

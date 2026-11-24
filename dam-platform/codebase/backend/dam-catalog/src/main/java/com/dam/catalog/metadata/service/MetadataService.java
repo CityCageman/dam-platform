@@ -9,7 +9,7 @@ import com.dam.catalog.asset.entity.*;
 import com.dam.catalog.repository.DamFieldMapper;
 import com.dam.catalog.metadata.repository.*;
 import com.dam.catalog.asset.repository.*;
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -1,7 +1,7 @@
 package com.dam.catalog.shared.client;
 
 import cn.dev33.satoken.context.SaHolder;
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;

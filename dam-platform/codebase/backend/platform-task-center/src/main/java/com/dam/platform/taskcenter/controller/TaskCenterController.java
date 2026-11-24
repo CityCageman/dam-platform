@@ -2,9 +2,9 @@ package com.dam.platform.taskcenter.controller;
 
 import cn.dev33.satoken.exception.NotLoginException;
 import cn.dev33.satoken.stp.StpUtil;
-import com.dam.common.exception.BusinessException;
-import com.dam.common.vo.PageResult;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.exception.BusinessException;
+import com.dam.platform.common.vo.PageResult;
+import com.dam.platform.common.vo.Result;
 import com.dam.platform.taskcenter.dto.TaskCallbackFinishRequest;
 import com.dam.platform.taskcenter.dto.TaskCallbackRequest;
 import com.dam.platform.taskcenter.dto.TaskCallbackResponse;

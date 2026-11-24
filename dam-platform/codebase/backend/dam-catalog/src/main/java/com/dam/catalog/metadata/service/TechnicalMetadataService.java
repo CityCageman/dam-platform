@@ -5,7 +5,7 @@ import com.dam.catalog.entity.*;
 import com.dam.catalog.metadata.entity.*;
 import com.dam.catalog.repository.DamFieldMapper;
 import com.dam.catalog.metadata.repository.*;
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

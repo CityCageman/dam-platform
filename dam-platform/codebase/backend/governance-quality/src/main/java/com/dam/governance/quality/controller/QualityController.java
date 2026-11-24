@@ -1,7 +1,7 @@
 package com.dam.governance.quality.controller;
 
-import com.dam.common.vo.PageResult;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.vo.PageResult;
+import com.dam.platform.common.vo.Result;
 import com.dam.governance.quality.entity.DamQualityCheck;
 import com.dam.governance.quality.entity.DamQualityRule;
 import com.dam.governance.quality.service.QualityScanService;

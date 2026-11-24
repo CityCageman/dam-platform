@@ -4,7 +4,7 @@ import cn.hutool.crypto.digest.DigestUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import com.dam.platform.taskcenter.dto.TaskCallbackFinishRequest;
 import com.dam.platform.taskcenter.dto.TaskCallbackRequest;
 import com.dam.platform.taskcenter.dto.TaskCallbackResponse;

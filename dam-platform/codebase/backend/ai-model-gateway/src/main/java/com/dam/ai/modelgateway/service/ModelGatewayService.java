@@ -4,7 +4,7 @@ import com.dam.ai.modelgateway.config.ModelConfigProperties;
 import com.dam.ai.modelgateway.config.ModelGatewayProperties;
 import com.dam.ai.modelgateway.dto.ChatCompletionResponse;
 import com.dam.ai.modelgateway.dto.ChatRequest;
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

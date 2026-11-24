@@ -13,7 +13,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  *
  * @author DAM Platform
  */
-@SpringBootApplication(scanBasePackages = {"com.dam.processing.develop", "com.dam.common"})
+@SpringBootApplication(scanBasePackages = {"com.dam.processing.develop", "com.dam.platform.common"})
 @MapperScan("com.dam.processing.develop.repository")
 public class ProcessingDevelopApplication {
 

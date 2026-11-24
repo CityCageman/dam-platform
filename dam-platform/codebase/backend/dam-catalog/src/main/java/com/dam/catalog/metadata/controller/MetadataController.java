@@ -4,12 +4,12 @@ import com.dam.catalog.metadata.entity.DamDataSource;
 import com.dam.catalog.metadata.entity.DamMetadataExt;
 import com.dam.catalog.metadata.entity.MetadataManagement;
 import com.dam.catalog.metadata.entity.MetadataSchema;
-import com.dam.common.service.AiRateLimiter;
+import com.dam.platform.common.service.AiRateLimiter;
 import com.dam.catalog.ai.service.AiWorkbenchTaskClient;
 import com.dam.catalog.ai.service.MetadataAiService;
 import com.dam.catalog.metadata.service.MetadataService;
 import com.dam.catalog.metadata.service.TechnicalMetadataService;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -140,7 +140,7 @@ public class MetadataController {
         Long taskId = body.get("taskId") instanceof Number n ? n.longValue() : null;
         Long dataSourceId = body.get("dataSourceId") instanceof Number n ? n.longValue() : null;
         if (taskId == null) {
-            throw new com.dam.common.exception.BusinessException("缺少任务ID");
+            throw new com.dam.platform.common.exception.BusinessException("缺少任务ID");
         }
         boolean pendingOnly = Boolean.TRUE.equals(body.get("pendingOnly"))
                 || "true".equalsIgnoreCase(String.valueOf(body.get("pendingOnly")));

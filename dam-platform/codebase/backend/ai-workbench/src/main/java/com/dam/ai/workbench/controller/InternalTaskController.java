@@ -4,7 +4,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.dam.ai.workbench.entity.AiTask;
 import com.dam.ai.workbench.service.AiTaskRunner;
 import com.dam.ai.workbench.service.AiTaskService;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

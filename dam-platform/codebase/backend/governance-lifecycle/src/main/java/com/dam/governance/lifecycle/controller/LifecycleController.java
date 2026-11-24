@@ -1,6 +1,6 @@
 package com.dam.governance.lifecycle.controller;
 
-import com.dam.common.vo.Result;
+import com.dam.platform.common.vo.Result;
 import com.dam.governance.lifecycle.entity.DamDestructionRecord;
 import com.dam.governance.lifecycle.entity.DamLifecyclePolicy;
 import com.dam.governance.lifecycle.service.LifecycleService;

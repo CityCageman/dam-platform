@@ -8,7 +8,7 @@ import com.dam.catalog.metadata.entity.MetadataTable;
 import com.dam.catalog.metadata.repository.MetadataColumnMapper;
 import com.dam.catalog.metadata.repository.MetadataSchemaMapper;
 import com.dam.catalog.metadata.repository.MetadataTableMapper;
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;

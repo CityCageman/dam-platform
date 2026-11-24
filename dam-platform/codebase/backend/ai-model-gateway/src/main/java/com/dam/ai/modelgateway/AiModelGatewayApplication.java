@@ -11,7 +11,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  *
  * @author DAM Platform
  */
-@SpringBootApplication(scanBasePackages = {"com.dam.ai.modelgateway", "com.dam.common"})
+@SpringBootApplication(scanBasePackages = {"com.dam.ai.modelgateway", "com.dam.platform.common"})
 public class AiModelGatewayApplication {
 
     public static void main(String[] args) {

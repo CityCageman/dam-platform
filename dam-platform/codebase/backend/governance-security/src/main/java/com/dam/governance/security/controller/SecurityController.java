@@ -1,7 +1,7 @@
 package com.dam.governance.security.controller;
 
-import com.dam.common.vo.PageResult;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.vo.PageResult;
+import com.dam.platform.common.vo.Result;
 import com.dam.governance.security.entity.DamAuditLog;
 import com.dam.governance.security.entity.DamDataAccessRequest;
 import com.dam.governance.security.entity.DamDataPermission;

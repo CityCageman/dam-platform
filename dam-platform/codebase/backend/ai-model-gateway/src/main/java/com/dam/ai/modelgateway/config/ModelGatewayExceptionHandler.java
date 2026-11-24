@@ -1,7 +1,7 @@
 package com.dam.ai.modelgateway.config;
 
 import cn.dev33.satoken.exception.NotLoginException;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.vo.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;

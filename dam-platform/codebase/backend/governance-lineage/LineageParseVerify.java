@@ -1,4 +1,4 @@
-import com.dam.lineage.service.LineageSQLParser;
+import com.dam.governance.lineage.service.LineageSQLParser;
 
 /**
  * 临时验证类：用真实"门诊工作量报表"SQL 验证 JOIN 溯源解析（验证后删除）

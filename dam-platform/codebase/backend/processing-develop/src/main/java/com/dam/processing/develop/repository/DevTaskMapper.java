@@ -1,7 +1,7 @@
 package com.dam.processing.develop.repository;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.dam.common.config.JsonbTypeHandler;
+import com.dam.platform.common.config.JsonbTypeHandler;
 import com.dam.processing.develop.entity.DevTask;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;

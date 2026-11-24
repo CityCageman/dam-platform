@@ -1,8 +1,8 @@
 package com.dam.service.api.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
-import com.dam.common.vo.PageResult;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.vo.PageResult;
+import com.dam.platform.common.vo.Result;
 import com.dam.service.api.dto.DataApiExecuteRequest;
 import com.dam.service.api.dto.DataApiExecutionResult;
 import com.dam.service.api.dto.DataApiRequest;

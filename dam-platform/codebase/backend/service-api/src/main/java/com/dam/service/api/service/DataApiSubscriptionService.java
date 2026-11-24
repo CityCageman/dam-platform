@@ -2,8 +2,8 @@ package com.dam.service.api.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.dam.common.exception.BusinessException;
-import com.dam.common.vo.PageResult;
+import com.dam.platform.common.exception.BusinessException;
+import com.dam.platform.common.vo.PageResult;
 import com.dam.service.api.entity.DataApi;
 import com.dam.service.api.entity.DataApiSubscription;
 import com.dam.service.api.repository.DataApiMapper;

@@ -18,7 +18,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  *
  * @author DAM Platform
  */
-@SpringBootApplication(scanBasePackages = {"com.dam.ai.knowledge", "com.dam.common"})
+@SpringBootApplication(scanBasePackages = {"com.dam.ai.knowledge", "com.dam.platform.common"})
 @MapperScan("com.dam.ai.knowledge.repository")
 @EnableScheduling
 public class AiKnowledgeApplication {

@@ -7,7 +7,7 @@ import com.dam.catalog.system.entity.DamConfig;
 import com.dam.catalog.asset.repository.DamAssetMapper;
 import com.dam.catalog.repository.DamFieldMapper;
 import com.dam.catalog.system.repository.DamConfigMapper;
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import com.dam.governance.security.entity.DamSensitiveRule;
 import com.dam.governance.security.repository.DamSensitiveRuleMapper;
 import com.dam.governance.security.repository.DynamicQueryMapper;

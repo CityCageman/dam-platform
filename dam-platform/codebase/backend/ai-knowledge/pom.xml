@@ -39,7 +39,7 @@
         </dependency>
         <dependency>
             <groupId>com.dam</groupId>
-            <artifactId>dam-common</artifactId>
+            <artifactId>platform-common</artifactId>
         </dependency>
         <!-- 与 catalog/metric 透传的 JWT token 使用同一套 Sa-Token 鉴权配置 -->
         <dependency>

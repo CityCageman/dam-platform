@@ -41,7 +41,7 @@ NACOS_ENABLED="${NACOS_ENABLED:-false}"
 NACOS_SERVER_ADDR="${NACOS_SERVER_ADDR:-}"
 GATEWAY_PORT="${GATEWAY_PORT:-8080}"
 FRONTEND_PORT="${FRONTEND_PORT:-80}"
-BACKEND_GATEWAY="${BACKEND_GATEWAY:-dam-gateway:8080}"
+BACKEND_GATEWAY="${BACKEND_GATEWAY:-platform-gateway:8080}"
 DAM_MODEL_GATEWAY_CODE_BASE_URL="${DAM_MODEL_GATEWAY_CODE_BASE_URL:-}"
 DAM_MODEL_GATEWAY_CODE_API_KEY="${DAM_MODEL_GATEWAY_CODE_API_KEY:-}"
 DAM_MODEL_GATEWAY_CODE_MODEL="${DAM_MODEL_GATEWAY_CODE_MODEL:-}"
@@ -107,7 +107,7 @@ start_backend() {
         ;;
       gateway)
         args+=(-p "${GATEWAY_PORT}:8080")
-        envs+=(-e "DAM_ROUTE_AUTH=http://dam-auth:8081"
+        envs+=(-e "DAM_ROUTE_AUTH=http://platform-auth:8081"
                -e "DAM_ROUTE_CATALOG=http://dam-catalog:8092"
                -e "DAM_ROUTE_LINEAGE=http://governance-lineage:8093"
                -e "DAM_ROUTE_STANDARD=http://governance-standard:8084"
@@ -137,8 +137,8 @@ start_frontend() {
 }
 
 stop_all() {
-  for name in dam-frontend dam-gateway ai-model-gateway platform-operations governance-lifecycle governance-security \
-              governance-quality governance-standard governance-lineage dam-catalog dam-auth; do
+  for name in dam-frontend platform-gateway ai-model-gateway platform-operations governance-lifecycle governance-security \
+              governance-quality governance-standard governance-lineage dam-catalog platform-auth; do
     if podman container exists "$name" >/dev/null 2>&1; then
       podman rm -f "$name" >/dev/null 2>&1 || true
       echo "removed $name"

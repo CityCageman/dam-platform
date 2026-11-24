@@ -6,7 +6,7 @@ import com.dam.catalog.asset.entity.DamAsset;
 import com.dam.catalog.entity.DamField;
 import com.dam.catalog.asset.repository.DamAssetMapper;
 import com.dam.catalog.repository.DamFieldMapper;
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;

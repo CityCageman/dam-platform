@@ -3,7 +3,7 @@ package com.dam.ai.knowledge.service;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import com.dam.ai.knowledge.client.MetricReadClient;
 import com.dam.ai.knowledge.dto.MetricDefinition;
 import com.dam.ai.knowledge.entity.KnowledgeCategory;

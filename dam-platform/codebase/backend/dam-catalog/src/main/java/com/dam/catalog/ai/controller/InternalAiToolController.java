@@ -7,7 +7,7 @@ import com.dam.catalog.ai.service.MetadataAiService;
 import com.dam.catalog.metric.entity.MetricDefinition;
 import com.dam.catalog.report.service.ReportCatalogService;
 import com.dam.catalog.report.service.ReportService;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

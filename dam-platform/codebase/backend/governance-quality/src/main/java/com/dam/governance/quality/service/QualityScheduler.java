@@ -1,8 +1,8 @@
 package com.dam.governance.quality.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.operations.entity.DamTicket;
-import com.dam.operations.repository.DamTicketMapper;
+import com.dam.platform.operations.entity.DamTicket;
+import com.dam.platform.operations.repository.DamTicketMapper;
 import com.dam.governance.quality.entity.DamQualityCheck;
 import com.dam.governance.quality.entity.DamQualityRule;
 import com.dam.governance.quality.repository.DamQualityCheckMapper;

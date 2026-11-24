@@ -3,7 +3,7 @@ package com.dam.catalog.controller;
 import com.dam.catalog.entity.DamDataModel;
 import com.dam.catalog.entity.DamModelField;
 import com.dam.catalog.service.ModelService;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

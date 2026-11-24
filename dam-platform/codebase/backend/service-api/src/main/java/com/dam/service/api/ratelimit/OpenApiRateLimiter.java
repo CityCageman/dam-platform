@@ -1,6 +1,6 @@
 package com.dam.service.api.ratelimit;
 
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayDeque;

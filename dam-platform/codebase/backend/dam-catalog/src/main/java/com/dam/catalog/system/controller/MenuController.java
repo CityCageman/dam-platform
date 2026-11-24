@@ -1,7 +1,7 @@
 package com.dam.catalog.system.controller;
 
 import com.dam.catalog.system.service.MenuService;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

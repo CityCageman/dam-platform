@@ -15,7 +15,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  *
  * @author DAM Platform
  */
-@SpringBootApplication(scanBasePackages = {"com.dam.access.integration", "com.dam.common"})
+@SpringBootApplication(scanBasePackages = {"com.dam.access.integration", "com.dam.platform.common"})
 @MapperScan({"com.dam.access.integration.repository", "com.dam.access.integration.access.repository"})
 @EnableScheduling
 public class AccessIntegrationApplication {

@@ -1,8 +1,8 @@
 package com.dam.governance.quality.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.common.exception.BusinessException;
-import com.dam.common.security.DataScopeContext;
+import com.dam.platform.common.exception.BusinessException;
+import com.dam.platform.common.security.DataScopeContext;
 import com.dam.governance.quality.entity.DamQualityCheck;
 import com.dam.governance.quality.entity.DamQualityRule;
 import com.dam.governance.quality.repository.DamQualityCheckMapper;

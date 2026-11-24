@@ -2,12 +2,12 @@ package com.dam.governance.quality.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.dam.common.vo.PageResult;
+import com.dam.platform.common.vo.PageResult;
 import com.dam.governance.quality.entity.DamQualityCheck;
 import com.dam.governance.quality.entity.DamQualityRule;
 import com.dam.governance.quality.repository.DamQualityCheckMapper;
 import com.dam.governance.quality.repository.DamQualityRuleMapper;
-import com.dam.common.security.DataScopeContext;
+import com.dam.platform.common.security.DataScopeContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

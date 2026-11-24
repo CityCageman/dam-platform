@@ -1,7 +1,7 @@
 package com.dam.access.integration.controller;
 
-import com.dam.common.vo.PageResult;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.vo.PageResult;
+import com.dam.platform.common.vo.Result;
 import com.dam.access.integration.entity.IntegrationJob;
 import com.dam.access.integration.entity.IntegrationRun;
 import com.dam.access.integration.model.ConnectorDefinition;

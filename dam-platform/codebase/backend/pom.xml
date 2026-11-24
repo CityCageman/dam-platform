@@ -71,9 +71,9 @@
     </properties>
 
     <modules>
-        <module>dam-common</module>
-        <module>dam-gateway</module>
-        <module>dam-auth</module>
+        <module>platform-common</module>
+        <module>platform-gateway</module>
+        <module>platform-auth</module>
         <module>dam-catalog</module>
         <module>platform-task-center</module>
         <module>processing-develop</module>
@@ -209,7 +209,7 @@
             </dependency>
             <dependency>
                 <groupId>com.dam</groupId>
-                <artifactId>dam-common</artifactId>
+                <artifactId>platform-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -219,7 +219,7 @@
             </dependency>
             <dependency>
                 <groupId>com.dam</groupId>
-                <artifactId>dam-operations</artifactId>
+                <artifactId>platform-operations</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>

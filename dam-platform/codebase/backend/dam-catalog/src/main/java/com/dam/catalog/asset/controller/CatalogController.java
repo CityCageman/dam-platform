@@ -4,7 +4,7 @@ import com.dam.catalog.entity.*;
 import com.dam.catalog.metadata.entity.*;
 import com.dam.catalog.asset.entity.*;
 import com.dam.catalog.system.entity.*;
-import com.dam.common.service.AiRateLimiter;
+import com.dam.platform.common.service.AiRateLimiter;
 import com.dam.catalog.ai.service.AssetClassifyAiService;
 import com.dam.catalog.ai.service.AiWorkbenchTaskClient;
 import com.dam.catalog.asset.service.CatalogService;
@@ -15,9 +15,9 @@ import com.dam.catalog.metadata.service.DiscoveryService;
 import com.dam.catalog.asset.service.ImportService;
 import com.dam.catalog.metadata.service.TechnicalMetadataService;
 import com.dam.catalog.metadata.service.VersionService;
-import com.dam.common.exception.BusinessException;
-import com.dam.common.vo.PageResult;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.exception.BusinessException;
+import com.dam.platform.common.vo.PageResult;
+import com.dam.platform.common.vo.Result;
 import cn.hutool.core.util.StrUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -281,7 +281,7 @@ public class CatalogController {
         Long taskId = body.get("taskId") instanceof Number n ? n.longValue() : null;
         Long dataSourceId = body.get("dataSourceId") instanceof Number n ? n.longValue() : null;
         if (taskId == null) {
-            throw new com.dam.common.exception.BusinessException("缺少任务ID");
+            throw new com.dam.platform.common.exception.BusinessException("缺少任务ID");
         }
         boolean pendingOnly = Boolean.TRUE.equals(body.get("pendingOnly"))
                 || "true".equalsIgnoreCase(String.valueOf(body.get("pendingOnly")));

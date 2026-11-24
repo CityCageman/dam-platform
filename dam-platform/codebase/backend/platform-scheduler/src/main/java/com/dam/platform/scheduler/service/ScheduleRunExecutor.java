@@ -2,7 +2,7 @@ package com.dam.platform.scheduler.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.dam.common.security.CredentialCipher;
+import com.dam.platform.common.security.CredentialCipher;
 import com.dam.platform.scheduler.client.DolphinSchedulerClient;
 import com.dam.platform.scheduler.client.TaskCenterClient;
 import com.dam.platform.scheduler.config.DolphinSchedulerProperties;

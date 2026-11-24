@@ -11,7 +11,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
  * 负责 AI 任务中心、Prompt/RAG 编排、报表草稿和审核；
  * 领域数据工具通过 catalog 内部接口调用，模型调用通过 ai-model-gateway。
  */
-@SpringBootApplication(scanBasePackages = {"com.dam.ai.workbench", "com.dam.common"})
+@SpringBootApplication(scanBasePackages = {"com.dam.ai.workbench", "com.dam.platform.common"})
 @MapperScan("com.dam.ai.workbench.repository")
 @EnableAsync
 public class AiWorkbenchApplication {

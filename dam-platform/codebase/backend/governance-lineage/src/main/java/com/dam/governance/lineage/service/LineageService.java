@@ -3,7 +3,7 @@ package com.dam.governance.lineage.service;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.dam.common.vo.PageResult;
+import com.dam.platform.common.vo.PageResult;
 import com.dam.governance.lineage.entity.DamLineage;
 import com.dam.governance.lineage.entity.MetadataColumnLineage;
 import com.dam.governance.lineage.entity.MetadataLineageSource;

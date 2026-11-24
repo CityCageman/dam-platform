@@ -19,13 +19,13 @@ x-nacos-env: &nacos-env
 
 services:
   # ==================== 既有后端微服务 ====================
-  dam-auth:
+  platform-auth:
     build:
       context: ../codebase/backend
       dockerfile: Dockerfile
       args:
-        JAR_FILE: dam-auth/target/dam-auth-1.0.0-exec.jar
-    container_name: dam-auth
+        JAR_FILE: platform-auth/target/platform-auth-1.0.0-exec.jar
+    container_name: platform-auth
     restart: unless-stopped
     environment:
       <<: *pg-env
@@ -298,13 +298,13 @@ services:
 
   # ==================== 网关 ====================
   # 网关：对外唯一 API 入口；容器内路由必须显式指向服务名，默认 localhost 会指向网关自身。
-  dam-gateway:
+  platform-gateway:
     build:
       context: ../codebase/backend
       dockerfile: Dockerfile
       args:
-        JAR_FILE: dam-gateway/target/dam-gateway-1.0.0-exec.jar
-    container_name: dam-gateway
+        JAR_FILE: platform-gateway/target/platform-gateway-1.0.0-exec.jar
+    container_name: platform-gateway
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -314,7 +314,7 @@ services:
       SA_TOKEN_JWT_SECRET_KEY: ${SA_TOKEN_JWT_SECRET_KEY:?SA_TOKEN_JWT_SECRET_KEY is required}
       DAM_CORS_ORIGINS: ${DAM_CORS_ORIGINS:-http://localhost:5173}
       # 路由地址：全部改为容器服务名
-      DAM_ROUTE_AUTH: http://dam-auth:8081
+      DAM_ROUTE_AUTH: http://platform-auth:8081
       DAM_ROUTE_CATALOG: http://dam-catalog:8092
       DAM_ROUTE_LINEAGE: http://governance-lineage:8093
       DAM_ROUTE_STANDARD: http://governance-standard:8084
@@ -337,7 +337,7 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - dam-auth
+      - platform-auth
       - dam-catalog
       - governance-lineage
       - governance-standard

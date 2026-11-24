@@ -8,8 +8,8 @@ if [ -z "${SA_TOKEN_JWT_SECRET_KEY:-}" ]; then
 fi
 
 SERVICES=(
-  "dam-gateway:8080"
-  "dam-auth:8081"
+  "platform-gateway:8080"
+  "platform-auth:8081"
   "dam-catalog:8092"
   "governance-lineage:8093"
   "governance-standard:8084"

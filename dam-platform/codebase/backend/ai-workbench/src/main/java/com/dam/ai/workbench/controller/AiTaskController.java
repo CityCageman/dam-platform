@@ -2,10 +2,10 @@ package com.dam.ai.workbench.controller;
 
 import com.dam.ai.workbench.entity.AiTask;
 import com.dam.ai.workbench.entity.AiTaskItem;
-import com.dam.common.service.AiRateLimiter;
+import com.dam.platform.common.service.AiRateLimiter;
 import com.dam.ai.workbench.service.AiTaskService;
-import com.dam.common.vo.PageResult;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.vo.PageResult;
+import com.dam.platform.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

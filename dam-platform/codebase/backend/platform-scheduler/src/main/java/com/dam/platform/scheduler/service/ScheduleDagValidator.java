@@ -1,7 +1,7 @@
 package com.dam.platform.scheduler.service;
 
-import com.dam.common.exception.BusinessException;
-import com.dam.common.security.CredentialCipher;
+import com.dam.platform.common.exception.BusinessException;
+import com.dam.platform.common.security.CredentialCipher;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ObjectNode;

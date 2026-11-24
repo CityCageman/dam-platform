@@ -1,7 +1,7 @@
 package com.dam.ai.workbench.service;
 
 import cn.dev33.satoken.stp.StpUtil;
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;

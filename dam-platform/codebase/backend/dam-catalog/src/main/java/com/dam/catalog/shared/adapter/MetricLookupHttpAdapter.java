@@ -4,7 +4,7 @@ import cn.dev33.satoken.context.SaHolder;
 import cn.hutool.core.util.StrUtil;
 import com.dam.catalog.metric.entity.MetricDefinition;
 import com.dam.catalog.shared.port.MetricLookupPort;
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;

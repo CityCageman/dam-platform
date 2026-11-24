@@ -17,7 +17,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  *
  * @author DAM Platform
  */
-@SpringBootApplication(scanBasePackages = {"com.dam.platform.taskcenter", "com.dam.common"})
+@SpringBootApplication(scanBasePackages = {"com.dam.platform.taskcenter", "com.dam.platform.common"})
 @MapperScan("com.dam.platform.taskcenter.repository")
 @EnableScheduling
 public class PlatformTaskCenterApplication {

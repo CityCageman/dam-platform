@@ -17,7 +17,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  *
  * @author DAM Platform
  */
-@SpringBootApplication(scanBasePackages = {"com.dam.analytics.metric", "com.dam.common"})
+@SpringBootApplication(scanBasePackages = {"com.dam.analytics.metric", "com.dam.platform.common"})
 @MapperScan("com.dam.analytics.metric.repository")
 public class AnalyticsMetricApplication {
 

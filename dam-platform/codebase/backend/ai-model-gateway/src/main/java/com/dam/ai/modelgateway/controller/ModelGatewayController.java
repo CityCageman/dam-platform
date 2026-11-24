@@ -4,7 +4,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.dam.ai.modelgateway.dto.ChatCompletionResponse;
 import com.dam.ai.modelgateway.dto.ChatRequest;
 import com.dam.ai.modelgateway.service.ModelGatewayService;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.vo.Result;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;

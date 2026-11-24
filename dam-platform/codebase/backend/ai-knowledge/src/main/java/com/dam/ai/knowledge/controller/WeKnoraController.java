@@ -1,7 +1,7 @@
 package com.dam.ai.knowledge.controller;
 
 import com.dam.ai.knowledge.service.WeKnoraKnowledgeService;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

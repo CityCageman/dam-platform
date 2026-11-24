@@ -1,7 +1,7 @@
 package com.dam.analytics.metric.controller;
 
-import com.dam.common.vo.PageResult;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.vo.PageResult;
+import com.dam.platform.common.vo.Result;
 import com.dam.analytics.metric.entity.MetricDefinition;
 import com.dam.analytics.metric.entity.MetricValue;
 import com.dam.analytics.metric.service.MetricService;

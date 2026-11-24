@@ -6,8 +6,8 @@ import com.dam.governance.lineage.service.LineagePersistService;
 import com.dam.governance.lineage.service.LineageSearchService;
 import com.dam.governance.lineage.service.LineageService;
 import com.dam.governance.lineage.service.LineageSourceService;
-import com.dam.common.vo.PageResult;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.vo.PageResult;
+import com.dam.platform.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

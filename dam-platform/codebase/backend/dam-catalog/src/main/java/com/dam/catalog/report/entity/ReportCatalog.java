@@ -3,7 +3,7 @@ package com.dam.catalog.report.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.dam.common.config.JsonbTypeHandler;
+import com.dam.platform.common.config.JsonbTypeHandler;
 import com.baomidou.mybatisplus.annotation.TableField;
 import lombok.Data;
 

@@ -16,7 +16,7 @@ JAVA_OPTS="${JAVA_OPTS:--Xmx512m -Xms256m -XX:+UseParallelGC}"
 
 # 启动顺序：先起业务服务，最后起网关（网关只验证 token 存在，不强依赖，但放在最后更稳）
 SERVICES=(
-  "dam-auth:8081"
+  "platform-auth:8081"
   "dam-catalog:8092"
   "governance-lineage:8093"
   "governance-standard:8084"
@@ -34,7 +34,7 @@ SERVICES=(
   "ai-knowledge:8098"
   "platform-task-center:8099"
   "processing-develop:8100"
-  "dam-gateway:8080"
+  "platform-gateway:8080"
 )
 
 for svc in "${SERVICES[@]}"; do

@@ -1,7 +1,7 @@
 package com.dam.catalog.ai.service;
 
 import cn.dev33.satoken.stp.StpUtil;
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;

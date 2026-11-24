@@ -45,7 +45,7 @@
         </dependency>
         <dependency>
             <groupId>com.dam</groupId>
-            <artifactId>dam-common</artifactId>
+            <artifactId>platform-common</artifactId>
         </dependency>
     </dependencies>
 </project>

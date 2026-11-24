@@ -3,7 +3,7 @@ package com.dam.ai.knowledge.controller;
 import com.dam.ai.knowledge.entity.KnowledgeCategory;
 import com.dam.ai.knowledge.entity.KnowledgeEntry;
 import com.dam.ai.knowledge.service.KnowledgeService;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

@@ -1,6 +1,6 @@
 package com.dam.access.integration.access.service;
 
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import com.dam.access.integration.access.config.AccessDriverLoader;
 import com.dam.access.integration.access.model.DataSourceTypeDefinition;
 import lombok.RequiredArgsConstructor;

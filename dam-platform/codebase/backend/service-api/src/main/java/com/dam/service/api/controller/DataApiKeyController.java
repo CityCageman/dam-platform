@@ -2,8 +2,8 @@ package com.dam.service.api.controller;
 
 import cn.dev33.satoken.exception.NotLoginException;
 import cn.dev33.satoken.stp.StpUtil;
-import com.dam.common.exception.BusinessException;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.exception.BusinessException;
+import com.dam.platform.common.vo.Result;
 import com.dam.service.api.dto.DataApiKeyCreateRequest;
 import com.dam.service.api.dto.DataApiKeyCreateResult;
 import com.dam.service.api.dto.DataApiKeyView;

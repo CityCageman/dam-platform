@@ -2,8 +2,8 @@ package com.dam.platform.taskcenter.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.dam.common.exception.BusinessException;
-import com.dam.common.vo.PageResult;
+import com.dam.platform.common.exception.BusinessException;
+import com.dam.platform.common.vo.PageResult;
 import com.dam.platform.taskcenter.dto.TaskInstanceCancelRequest;
 import com.dam.platform.taskcenter.dto.TaskStatusRequest;
 import com.dam.platform.taskcenter.entity.TaskDefinition;

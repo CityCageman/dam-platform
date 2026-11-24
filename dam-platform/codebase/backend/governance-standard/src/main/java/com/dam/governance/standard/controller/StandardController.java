@@ -1,7 +1,7 @@
 package com.dam.governance.standard.controller;
 
-import com.dam.common.vo.PageResult;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.vo.PageResult;
+import com.dam.platform.common.vo.Result;
 import com.dam.governance.standard.entity.DamDeviationReport;
 import com.dam.governance.standard.entity.DamStandard;
 import com.dam.governance.standard.entity.DamStandardMapping;

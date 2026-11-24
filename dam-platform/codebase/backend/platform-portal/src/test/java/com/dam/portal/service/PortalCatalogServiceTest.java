@@ -1,6 +1,6 @@
 package com.dam.platform.portal.service;
 
-import com.dam.common.exception.BusinessException;
+import com.dam.platform.common.exception.BusinessException;
 import com.dam.platform.portal.model.PortalDomain;
 import com.dam.platform.portal.model.PortalModule;
 import org.junit.jupiter.api.DisplayName;

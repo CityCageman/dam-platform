@@ -5,8 +5,8 @@ import com.dam.ai.workbench.entity.AiTask;
 import com.dam.ai.workbench.service.AiTaskRunner;
 import com.dam.ai.workbench.service.AiTaskService;
 import com.dam.ai.workbench.service.CatalogToolClient;
-import com.dam.common.exception.BusinessException;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.exception.BusinessException;
+import com.dam.platform.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

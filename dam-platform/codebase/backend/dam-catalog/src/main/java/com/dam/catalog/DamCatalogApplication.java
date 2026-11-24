@@ -9,11 +9,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * 数据目录（Catalog）服务启动类
  * <p>
  * 核心服务，提供资产目录、元数据管理、模型管理、数据源扫描、字段同步、批量导入等能力；
- * 扫描 com.dam.catalog 与 com.dam.common（公共组件）。
+ * 扫描 com.dam.catalog 与 com.dam.platform.common（公共组件）。
  *
  * @author DAM Platform
  */
-@SpringBootApplication(scanBasePackages = {"com.dam.catalog", "com.dam.common"})
+@SpringBootApplication(scanBasePackages = {"com.dam.catalog", "com.dam.platform.common"})
 @MapperScan({"com.dam.catalog.repository", "com.dam.catalog.report.repository", "com.dam.catalog.system.repository", "com.dam.catalog.asset.repository", "com.dam.catalog.metadata.repository"})
 @EnableScheduling
 public class DamCatalogApplication {

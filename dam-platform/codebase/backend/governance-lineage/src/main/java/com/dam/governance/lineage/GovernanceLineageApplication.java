@@ -8,11 +8,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * 数据血缘服务启动类
  * <p>
  * 提供表级血缘关系的查询、SQL 解析构建血缘、影响分析能力；
- * 扫描 com.dam.governance.lineage 与 com.dam.common（公共组件）。
+ * 扫描 com.dam.governance.lineage 与 com.dam.platform.common（公共组件）。
  *
  * @author DAM Platform
  */
-@SpringBootApplication(scanBasePackages = {"com.dam.governance.lineage", "com.dam.common"})
+@SpringBootApplication(scanBasePackages = {"com.dam.governance.lineage", "com.dam.platform.common"})
 @MapperScan("com.dam.governance.lineage.repository")
 public class GovernanceLineageApplication {
     /**

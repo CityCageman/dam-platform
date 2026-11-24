@@ -2,9 +2,9 @@ package com.dam.governance.security.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.dam.common.exception.BusinessException;
-import com.dam.common.security.DataScopeContext;
-import com.dam.common.vo.PageResult;
+import com.dam.platform.common.exception.BusinessException;
+import com.dam.platform.common.security.DataScopeContext;
+import com.dam.platform.common.vo.PageResult;
 import com.dam.governance.security.entity.DamDataAccessRequest;
 import com.dam.governance.security.repository.DamDataAccessRequestMapper;
 import lombok.RequiredArgsConstructor;

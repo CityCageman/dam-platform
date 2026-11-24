@@ -2,8 +2,8 @@ package com.dam.access.integration.access.controller;
 
 import cn.dev33.satoken.exception.NotLoginException;
 import cn.dev33.satoken.stp.StpUtil;
-import com.dam.common.exception.BusinessException;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.exception.BusinessException;
+import com.dam.platform.common.vo.Result;
 import com.dam.access.integration.access.entity.DataAccessSource;
 import com.dam.access.integration.access.model.DataSourceTypeDefinition;
 import com.dam.access.integration.access.service.AccessCryptoService;

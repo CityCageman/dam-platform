@@ -1,8 +1,8 @@
 package com.dam.platform.operations.controller;
 
 import com.dam.catalog.asset.repository.DamAssetMapper;
-import com.dam.common.vo.PageResult;
-import com.dam.common.vo.Result;
+import com.dam.platform.common.vo.PageResult;
+import com.dam.platform.common.vo.Result;
 import com.dam.platform.operations.entity.DamTicket;
 import com.dam.platform.operations.entity.DamTicketComment;
 import com.dam.platform.operations.entity.DamUsageStats;
