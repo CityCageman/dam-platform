@@ -522,7 +522,7 @@ public class ScheduleRunExecutor {
         properties.setProperty("socketTimeout", String.valueOf(
                 (QUERY_TIMEOUT_SECONDS + SOCKET_TIMEOUT_MARGIN_SECONDS) * 1000L));
         properties.setProperty("tcpKeepAlive", "true");
-        properties.setProperty("ApplicationName", "dam-scheduler-dag");
+        properties.setProperty("ApplicationName", "platform-scheduler-dag");
 
         try (Connection connection = DriverManager.getConnection(node.url(), properties)) {
             requirePostgres(connection);

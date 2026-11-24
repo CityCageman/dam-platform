@@ -65,7 +65,7 @@ spring:
               uri: ${DAM_ROUTE_METRIC:http://localhost:8094}
               predicates:
                 - Path=/api/metrics/**
-            - id: dam-access
+            - id: access-integration
               uri: ${DAM_ROUTE_ACCESS:http://localhost:8095}
               predicates:
                 - Path=/api/access/**
@@ -81,7 +81,7 @@ spring:
               uri: ${DAM_ROUTE_DATA_SERVICE:http://localhost:8097}
               predicates:
                 - Path=/api/data-service/**
-            - id: dam-open-api
+            - id: service-open-api
               uri: ${DAM_ROUTE_DATA_SERVICE:http://localhost:8097}
               predicates:
                 - Path=/open-api/**

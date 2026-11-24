@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  * 任务定义。
  * <p>
  * 对应 {@code dam_task.task_definition}：统一登记集成、调度、开发、质量与 AI 任务的
- * 元数据。{@code config} 为 PostgreSQL jsonb，使用 dam-common 的
+ * 元数据。{@code config} 为 PostgreSQL jsonb，使用 platform-common 的
  * {@link JsonbTypeHandler} 读写；{@code deleted_at} 使用 MyBatis-Plus 逻辑删除，
  * 未删除为 NULL，删除时置 now()。
  *
@@ -38,7 +38,7 @@ public class TaskDefinition {
     /** 任务类型：INTEGRATION/SCHEDULER/DEV/QUALITY/AI */
     private String taskType;
 
-    /** 来源服务（如 dam-integration、dam-scheduler） */
+    /** 来源服务（如 access-integration、platform-scheduler） */
     private String sourceService;
 
     /** 状态：DRAFT/ENABLED/DISABLED */

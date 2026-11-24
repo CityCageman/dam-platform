@@ -18,7 +18,7 @@ import java.util.Map;
 /**
  * catalog 指标 AI 能力客户端。
  * <p>
- * dam-metric 拆出后不再依赖 catalog 的 ReportService，也不再访问 catalog 的数据源/表结构表。
+ * analytics-metric 拆出后不再依赖 catalog 的 ReportService，也不再访问 catalog 的数据源/表结构表。
  * 指标 SQL 生成统一调用 catalog 的内部 AI 工具接口：
  * <pre>
  * POST ${DAM_CATALOG_URL:http://127.0.0.1:8092}/api/catalog/internal/ai/metrics/sql

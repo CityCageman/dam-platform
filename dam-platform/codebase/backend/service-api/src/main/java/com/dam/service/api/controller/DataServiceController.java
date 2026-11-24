@@ -59,7 +59,7 @@ public class DataServiceController {
     @GetMapping("/status")
     public Result<Map<String, Object>> status() {
         Map<String, Object> status = new LinkedHashMap<>();
-        status.put("service", "dam-data-service");
+        status.put("service", "service-api");
         status.put("status", "UP");
         status.put("role", "data service");
         return Result.success(status);

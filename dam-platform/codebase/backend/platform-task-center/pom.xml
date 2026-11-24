@@ -29,13 +29,13 @@
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
         </dependency>
-        <!-- 仅运行期需要 PostgreSQL 驱动；JSONB 通过 dam-common 的 JsonbTypeHandler 反射写入 -->
+        <!-- 仅运行期需要 PostgreSQL 驱动；JSONB 通过 platform-common 的 JsonbTypeHandler 反射写入 -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
-        <!-- dam-common 的 SaTokenConfig 需要 Sa-Token Web 组件，与其他业务服务保持一致 -->
+        <!-- platform-common 的 SaTokenConfig 需要 Sa-Token Web 组件，与其他业务服务保持一致 -->
         <dependency>
             <groupId>cn.dev33</groupId>
             <artifactId>sa-token-spring-boot3-starter</artifactId>

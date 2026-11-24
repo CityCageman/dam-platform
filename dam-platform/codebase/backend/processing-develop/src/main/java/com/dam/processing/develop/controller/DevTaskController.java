@@ -59,7 +59,7 @@ public class DevTaskController {
     @GetMapping("/status")
     public Result<Map<String, Object>> status() {
         Map<String, Object> status = new LinkedHashMap<>();
-        status.put("service", "dam-develop");
+        status.put("service", "processing-develop");
         status.put("status", "UP");
         status.put("role", "data development");
         // 能力边界：仅支持已发布 SQL 任务的只读 SELECT/WITH 执行，Python/Shell 未实现

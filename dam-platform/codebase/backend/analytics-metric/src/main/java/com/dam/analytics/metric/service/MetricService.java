@@ -25,7 +25,7 @@ import java.util.Map;
 /**
  * 指标中心领域服务：指标定义 + 手工填报值 + AI 生成指标 SQL。
  * <p>
- * {@code dam_metric.metric_definition}、{@code dam_metric.metric_value} 归 dam-metric 独占；
+ * {@code dam_metric.metric_definition}、{@code dam_metric.metric_value} 归 analytics-metric 独占；
  * 本服务是这两张表的唯一读写入口。catalog 的指标读取需求通过内部只读接口
  * {@code /api/metrics/internal/**} 满足，指标 SQL 生成通过 {@link CatalogMetricAiClient}
  * 调用 catalog 内部 AI 接口，不再依赖 catalog 的 ReportService。

@@ -11,7 +11,7 @@ import java.util.Map;
 
 /**
  * 报表 SQL 安全执行接口。
- * AI 报表生成编排已迁移到 dam-ai-workbench，catalog 只保留领域执行能力。
+ * AI 报表生成编排已迁移到 ai-workbench，catalog 只保留领域执行能力。
  */
 @RestController
 @RequestMapping("/api/catalog/report")

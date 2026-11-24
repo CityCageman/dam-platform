@@ -33,7 +33,7 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
         </dependency>
-        <!-- dam-common 的鉴权/拦截器配置需要 Sa-Token Web 组件，与其他业务服务保持一致 -->
+        <!-- platform-common 的鉴权/拦截器配置需要 Sa-Token Web 组件，与其他业务服务保持一致 -->
         <dependency>
             <groupId>cn.dev33</groupId>
             <artifactId>sa-token-spring-boot3-starter</artifactId>

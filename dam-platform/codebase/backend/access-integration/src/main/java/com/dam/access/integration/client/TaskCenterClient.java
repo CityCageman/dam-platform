@@ -14,7 +14,7 @@ import org.springframework.web.client.RestClient;
 /**
  * 统一任务中心回调客户端（尽力而为）。
  * <p>
- * 集成执行器在运行开始/结束时调用 dam-task-center 的回调接口，把运行登记为统一任务实例：
+ * 集成执行器在运行开始/结束时调用 platform-task-center 的回调接口，把运行登记为统一任务实例：
  * <ul>
  *   <li>{@code POST /api/task-center/callbacks/start} 登记开始，返回实例 ID；</li>
  *   <li>{@code POST /api/task-center/callbacks/{instanceId}/finish} 回填终态与读写行数。</li>
@@ -34,7 +34,7 @@ import org.springframework.web.client.RestClient;
 public class TaskCenterClient {
 
     /** 来源服务标识，与任务中心约定一致 */
-    private static final String SOURCE_SERVICE = "dam-integration";
+    private static final String SOURCE_SERVICE = "access-integration";
 
     /** 统一任务类型：数据集成 */
     private static final String TASK_TYPE_INTEGRATION = "INTEGRATION";
@@ -84,7 +84,7 @@ public class TaskCenterClient {
     /**
      * 登记集成运行开始。
      * <p>
-     * 以 {@code sourceService=dam-integration}、{@code sourceTaskCode=jobCode}、
+     * 以 {@code sourceService=access-integration}、{@code sourceTaskCode=jobCode}、
      * {@code sourceRunId=runId} 作为幂等键；任务中心返回的实例 ID 由调用方保存为局部变量，
      * 不透传到数据库。
      *

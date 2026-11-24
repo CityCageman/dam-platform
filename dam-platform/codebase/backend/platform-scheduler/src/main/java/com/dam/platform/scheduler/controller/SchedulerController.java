@@ -53,7 +53,7 @@ public class SchedulerController {
     /**
      * 查询调度服务状态。
      *
-     * @return service=dam-scheduler、status=UP、role=data scheduler
+     * @return service=platform-scheduler、status=UP、role=data scheduler
      */
     @GetMapping("/status")
     public Result<Map<String, Object>> status() {

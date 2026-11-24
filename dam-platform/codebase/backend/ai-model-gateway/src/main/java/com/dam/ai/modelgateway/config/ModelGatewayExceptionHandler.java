@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
- * 智能体模块异常处理（补充 dam-common 的全局处理器）
+ * 智能体模块异常处理（补充 platform-common 的全局处理器）
  * <p>
  * 将 sa-token 未登录异常转换为统一的 401 响应。
  */

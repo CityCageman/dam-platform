@@ -324,7 +324,7 @@ public class SchedulerService {
      */
     public Map<String, Object> getStatus() {
         Map<String, Object> status = new LinkedHashMap<>();
-        status.put("service", "dam-scheduler");
+        status.put("service", "platform-scheduler");
         status.put("status", "UP");
         status.put("role", "data scheduler");
         status.put("storage", "dam_scheduler");

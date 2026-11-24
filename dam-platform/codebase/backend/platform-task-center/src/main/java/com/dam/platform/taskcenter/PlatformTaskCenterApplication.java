@@ -13,7 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * 触发接口只创建 PENDING 实例，真实执行与状态回填由独立执行器负责。
  * 开启定时任务（@EnableScheduling）：TaskInstanceService 周期回收长期停留在
  * PENDING/RUNNING 的超时实例。
- * 复用 dam-common 的统一响应、异常处理、分页与 JSONB 类型处理器。
+ * 复用 platform-common 的统一响应、异常处理、分页与 JSONB 类型处理器。
  *
  * @author DAM Platform
  */

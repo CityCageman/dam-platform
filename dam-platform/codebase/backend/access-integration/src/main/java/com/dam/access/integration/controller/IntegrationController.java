@@ -28,7 +28,7 @@ import java.util.Map;
  * 数据集成接口
  * <p>
  * 提供运行状态、连接器目录、集成任务管理与运行记录查询。所有响应统一使用 {@link Result} 包装；
- * 校验失败与任务不存在分别抛出 400/404 业务异常，由 dam-common 的全局异常处理器转换。
+ * 校验失败与任务不存在分别抛出 400/404 业务异常，由 platform-common 的全局异常处理器转换。
  * <p>
  * 任务 trigger 使用异步 JDBC 全量同步执行器，接口只返回受理结果与 runId，不阻塞请求。
  *
@@ -59,7 +59,7 @@ public class IntegrationController {
     @GetMapping("/status")
     public Result<Map<String, Object>> status() {
         Map<String, Object> status = new LinkedHashMap<>();
-        status.put("service", "dam-integration");
+        status.put("service", "access-integration");
         status.put("status", "UP");
         status.put("role", "data integration");
         return Result.success(status);

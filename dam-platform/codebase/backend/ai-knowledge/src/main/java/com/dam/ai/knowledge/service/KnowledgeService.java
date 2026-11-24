@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
  * 知识库：可维护分类、条目、外部数据同步和向量索引预留接口。
  * <p>
  * 知识分类/条目/同步配置持久化在 {@code dam_knowledge} schema。指标口径通过
- * {@link MetricReadClient} 调用 dam-metric 只读接口获取；元数据/标准来源候选只做
+ * {@link MetricReadClient} 调用 analytics-metric 只读接口获取；元数据/标准来源候选只做
  * {@code dam_metadata}/{@code dam_standard} 的跨 schema 只读查询，不写入这些领域。
  */
 @Service

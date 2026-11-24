@@ -11,7 +11,7 @@ import org.springframework.web.client.RestClient;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** catalog 读取质量摘要，质量表由 dam-quality 独占。 */
+/** catalog 读取质量摘要，质量表由 governance-quality 独占。 */
 @Component
 public class QualityReadClient {
 

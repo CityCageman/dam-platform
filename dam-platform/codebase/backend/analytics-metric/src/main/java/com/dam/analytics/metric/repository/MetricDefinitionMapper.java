@@ -5,7 +5,7 @@ import com.dam.analytics.metric.entity.MetricDefinition;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * 指标定义 Mapper，仅 dam-metric 服务使用。
+ * 指标定义 Mapper，仅 analytics-metric 服务使用。
  * <p>
  * 指标定义表归本服务独占；catalog 不得再声明同名 Mapper 或直接访问
  * {@code dam_metric.metric_definition}。

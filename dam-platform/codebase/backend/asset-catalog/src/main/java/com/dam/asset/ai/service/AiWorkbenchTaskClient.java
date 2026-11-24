@@ -13,7 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * catalog 调用 dam-ai-workbench 任务中心。
+ * catalog 调用 ai-workbench 任务中心。
  * catalog 不再直接读写 dam_ai.ai_task / ai_task_item。
  */
 @Component

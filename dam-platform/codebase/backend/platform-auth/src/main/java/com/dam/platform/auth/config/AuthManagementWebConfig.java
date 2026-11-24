@@ -14,7 +14,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * <p>
  * 在参数绑定/Bean Validation 之前对 /api/auth/users/**、/api/auth/roles/**、/api/auth/menus
  * 统一校验登录态，确保未登录请求即使请求体参数不合法也返回业务码 401（而不是 400）。
- * 网关已经对 /api/** 做 token 校验，这里是服务内二次防护，避免绕过网关直连 dam-auth。
+ * 网关已经对 /api/** 做 token 校验，这里是服务内二次防护，避免绕过网关直连 platform-auth。
  * OPTIONS 预检请求放行，交由网关/CORS 处理。
  * <p>
  * 本拦截器只负责登录态（401）；具体管理角色（ADMIN/governor）校验在控制器入口

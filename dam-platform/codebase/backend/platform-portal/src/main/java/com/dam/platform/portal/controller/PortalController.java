@@ -37,7 +37,7 @@ public class PortalController {
     @GetMapping("/status")
     public Result<Map<String, Object>> status() {
         Map<String, Object> status = new LinkedHashMap<>();
-        status.put("service", "dam-portal");
+        status.put("service", "platform-portal");
         status.put("status", "UP");
         status.put("role", "unified portal");
         return Result.success(status);

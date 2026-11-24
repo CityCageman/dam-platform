@@ -19,9 +19,9 @@ import java.util.List;
 /**
  * 指标中心只读 HTTP 客户端。
  * <p>
- * 知识库在保存/展示“指标解释”时需要读取指标口径，但指标数据归 dam-metric 独占，
+ * 知识库在保存/展示“指标解释”时需要读取指标口径，但指标数据归 analytics-metric 独占，
  * 因此本服务不依赖 catalog 的 MetricDefinitionMapper，也不直连 {@code dam_metric} 表，
- * 而是调用 dam-metric 的内部只读接口：
+ * 而是调用 analytics-metric 的内部只读接口：
  * <ul>
  *   <li>{@code GET /api/metrics/internal/active?limit=500}</li>
  *   <li>{@code GET /api/metrics/{id}}</li>
@@ -35,12 +35,12 @@ import java.util.List;
 public class MetricReadClient {
 
     /**
-     * 解析 dam-metric 返回的 Result 与指标 DTO。
+     * 解析 analytics-metric 返回的 Result 与指标 DTO。
      * Spring Boot 4 使用 Jackson 3，内置 java.time 支持，可直接解析指标的 LocalDateTime 审计字段。
      */
     private static final JsonMapper MAPPER = JsonMapper.builder().build();
 
-    /** listActive 的最大条数，与 dam-metric 内部接口上限保持一致 */
+    /** listActive 的最大条数，与 analytics-metric 内部接口上限保持一致 */
     private static final int MAX_LIMIT = 500;
 
     /** 指标服务基础地址，默认本机 8094，可通过 DAM_METRIC_URL 覆盖 */
@@ -93,7 +93,7 @@ public class MetricReadClient {
     }
 
     /**
-     * 调用 dam-metric 并解析统一 Result，返回其 data 节点。
+     * 调用 analytics-metric 并解析统一 Result，返回其 data 节点。
      *
      * @param path          相对路径（可含 URI 模板变量）
      * @param uriVariable   模板变量值
@@ -115,7 +115,7 @@ public class MetricReadClient {
                     + e.getStatusCode().value() + " " + abbreviate(e.getResponseBodyAsString()));
         } catch (Exception e) {
             log.warn("指标服务 {} 不可用: {}", baseUrl, e.getMessage());
-            throw new BusinessException("指标服务不可用（" + baseUrl + "），请确认 dam-metric 已启动：" + e.getMessage());
+            throw new BusinessException("指标服务不可用（" + baseUrl + "），请确认 analytics-metric 已启动：" + e.getMessage());
         }
 
         try {
@@ -123,7 +123,7 @@ public class MetricReadClient {
             int code = root.path("code").asInt(200);
             if (code != 200) {
                 String message = root.path("message").asString("");
-                // dam-metric 对不存在的指标返回业务错误，findById 需保留“不存在返回 null”的语义
+                // analytics-metric 对不存在的指标返回业务错误，findById 需保留“不存在返回 null”的语义
                 if (allowNotFound && (code == 404 || message.contains("不存在"))) {
                     return null;
                 }
@@ -174,7 +174,7 @@ public class MetricReadClient {
         }
     }
 
-    /** 透传当前请求 token，便于 dam-metric 侧做鉴权/审计 */
+    /** 透传当前请求 token，便于 analytics-metric 侧做鉴权/审计 */
     private String token() {
         try {
             String token = SaHolder.getRequest().getHeader("token");

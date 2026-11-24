@@ -24,8 +24,8 @@ import java.util.Map;
 /**
  * 指标中心 API：指标定义、手工填报值、AI 生成指标 SQL。
  * <p>
- * 所有接口统一前缀 {@code /api/metrics}，由独立的 dam-metric 服务提供；catalog 不再暴露
- * {@code /api/catalog/metrics}。指标定义/指标值表归 dam-metric 独占。
+ * 所有接口统一前缀 {@code /api/metrics}，由独立的 analytics-metric 服务提供；catalog 不再暴露
+ * {@code /api/catalog/metrics}。指标定义/指标值表归 analytics-metric 独占。
  * <p>
  * 额外提供两组内部只读接口给 catalog：
  * <ul>
@@ -51,7 +51,7 @@ public class MetricController {
     @GetMapping("/status")
     public Result<Map<String, Object>> status() {
         Map<String, Object> status = new LinkedHashMap<>();
-        status.put("service", "dam-metric");
+        status.put("service", "analytics-metric");
         status.put("status", "UP");
         status.put("role", "metric center");
         status.put("schema", "dam_metric");

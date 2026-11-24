@@ -15,7 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 供 dam-ai-workbench 调用的领域工具接口。
+ * 供 ai-workbench 调用的领域工具接口。
  * 这些接口不直接面向浏览器，避免 AI 服务直接访问 catalog 数据库。
  */
 @RestController
@@ -78,12 +78,12 @@ public class InternalAiToolController {
     }
 
     /**
-     * 供 dam-metric 调用的指标 SQL 生成接口。
+     * 供 analytics-metric 调用的指标 SQL 生成接口。
      * <p>
-     * 指标主数据由 dam-metric 独占，catalog 只负责复用元数据/知识库/模型网关能力生成 SQL，
+     * 指标主数据由 analytics-metric 独占，catalog 只负责复用元数据/知识库/模型网关能力生成 SQL，
      * 不落库、不读写 dam_metric 表。
      *
-     * @param metric 指标定义（dam-metric 传入的 DTO）
+     * @param metric 指标定义（analytics-metric 传入的 DTO）
      * @param token  当前登录 token（缺省时从 Sa-Token 上下文读取）
      * @return {sql, dataSourceName, tablesUsed, params}
      */

@@ -21,7 +21,7 @@ import lombok.Data;
 @Data
 public class TaskCallbackRequest {
 
-    /** 来源服务，如 dam-integration、dam-scheduler */
+    /** 来源服务，如 access-integration、platform-scheduler */
     @NotBlank(message = "sourceService 不能为空")
     @Size(max = 64, message = "sourceService 长度不能超过 64")
     private String sourceService;

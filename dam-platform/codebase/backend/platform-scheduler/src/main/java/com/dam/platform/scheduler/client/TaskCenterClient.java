@@ -39,7 +39,7 @@ import java.util.Map;
 public class TaskCenterClient {
 
     /** 来源服务标识，与 TaskCenter 任务定义的 sourceService 对应 */
-    private static final String SOURCE_SERVICE = "dam-scheduler";
+    private static final String SOURCE_SERVICE = "platform-scheduler";
 
     /** 任务类型 */
     private static final String TASK_TYPE = "SCHEDULER";

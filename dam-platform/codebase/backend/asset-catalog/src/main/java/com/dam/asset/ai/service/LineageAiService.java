@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
  *   <li>检索数据源已同步的表结构（含中文注释），作为「业务语义」上下文喂给 AI</li>
  *   <li>识别原则：业务语义优先于外键字典——优先依据表注释/字段注释判断关联，
  *       _DR 后缀「指针」字段是 IRIS 系统表间隐式关联的重要线索</li>
- *   <li>输出结构化血缘：{tableLineages, columnLineages}，由前端预览确认后调 dam-lineage 落库</li>
+ *   <li>输出结构化血缘：{tableLineages, columnLineages}，由前端预览确认后调 governance-lineage 落库</li>
  * </ul>
  *
  * @author DAM Platform
@@ -49,7 +49,7 @@ public class LineageAiService {
     private final MetadataColumnMapper columnMapper;
     private final MetadataSchemaMapper schemaMapper;
 
-    /** dam-model-gateway 服务地址（血缘识别调用编码智能体） */
+    /** ai-model-gateway 服务地址（血缘识别调用编码智能体） */
     @Value("${dam.model-gateway-url:${dam.agent-url:http://localhost:8089}}")
     private String modelGatewayUrl;
 
@@ -65,7 +65,7 @@ public class LineageAiService {
      *
      * @param sql          SQL 语句
      * @param dataSourceId 数据源ID（可选，提供则只检索该数据源的表结构）
-     * @param token        当前登录 token（透传给 dam-model-gateway 鉴权）
+     * @param token        当前登录 token（透传给 ai-model-gateway 鉴权）
      * @return {tableLineages, columnLineages, sql}
      */
     public Map<String, Object> recognize(String sql, Long dataSourceId, String token) {
@@ -96,7 +96,7 @@ public class LineageAiService {
      * 用于「数据源同步表后自动识别表间关联」：业务语义优先于外键字典。
      *
      * @param dataSourceId 数据源ID
-     * @param token        当前登录 token（透传给 dam-model-gateway 鉴权）
+     * @param token        当前登录 token（透传给 ai-model-gateway 鉴权）
      * @return {tableLineages, columnLineages, dataSourceId}
      */
     public Map<String, Object> recognizeTableRelations(Long dataSourceId, String token) {
@@ -267,7 +267,7 @@ public class LineageAiService {
                 + "14. 表名、字段名必须严格使用上面给出的真实名称，不要编造";
     }
 
-    /** 调用 dam-model-gateway 模型网关，返回其 content */
+    /** 调用 ai-model-gateway 模型网关，返回其 content */
     private String callAgent(String prompt, String token) {
         try {
             Map<String, Object> body = new LinkedHashMap<>();

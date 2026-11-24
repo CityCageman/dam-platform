@@ -7,8 +7,8 @@ import java.util.List;
 /**
  * 指标只读查询端口。
  * <p>
- * 指标数据由 dam-metric 服务独占，实现为
- * {@link com.dam.asset.shared.adapter.MetricLookupHttpAdapter}（HTTP 调用 dam-metric），
+ * 指标数据由 analytics-metric 服务独占，实现为
+ * {@link com.dam.asset.shared.adapter.MetricLookupHttpAdapter}（HTTP 调用 analytics-metric），
  * Knowledge/Report 不再直接依赖 Metric Mapper 或 dam_metric 表。
  */
 public interface MetricLookupPort {

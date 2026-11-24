@@ -26,7 +26,7 @@ import java.util.*;
  * DAM 知识库与 WeKnora 的迁移/同步/检索适配。
  * 一个 WeKnora 知识库 + 本地分类映射为 WeKnora 标签。
  * <p>
- * 指标口径通过 {@link MetricReadClient} 从 dam-metric 只读获取，不依赖 catalog 的指标 Mapper。
+ * 指标口径通过 {@link MetricReadClient} 从 analytics-metric 只读获取，不依赖 catalog 的指标 Mapper。
  */
 @Slf4j
 @Service

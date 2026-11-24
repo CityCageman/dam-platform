@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 /**
  * 指标定义跨服务 DTO：MANUAL-手工填报，COMPUTED-系统计算。
  * <p>
- * 指标数据已由 dam-metric 服务独占（dam_metric.metric_definition），
+ * 指标数据已由 analytics-metric 服务独占（dam_metric.metric_definition），
  * catalog 仅通过 {@code MetricLookupPort} 的 HTTP 适配器读取，
  * 因此本类不再携带 MyBatis-Plus 表映射注解。
  */

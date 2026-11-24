@@ -23,7 +23,7 @@ import java.util.Set;
  * <p>
  * 所有 /api/auth/users/**、/api/auth/roles/**、/api/auth/menus 管理接口先调用
  * {@link #requireLogin()} 校验登录：网关会先校验 token，这里在服务内部再校验一次，
- * 防止绕过网关直连 dam-auth 时未登录访问管理接口（未登录统一返回业务码 401）。
+ * 防止绕过网关直连 platform-auth 时未登录访问管理接口（未登录统一返回业务码 401）。
  * <p>
  * 用户/角色/授权管理再调用 {@link #requireAdmin()} 校验管理角色：当前平台尚未建立
  * 完整的 RBAC 权限点模型，暂以初始化脚本中的 super_admin（超级管理员）、

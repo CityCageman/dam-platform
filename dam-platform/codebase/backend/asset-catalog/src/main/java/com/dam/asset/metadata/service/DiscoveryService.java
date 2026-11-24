@@ -85,7 +85,7 @@ public class DiscoveryService {
     /** 密码加解密服务 */
     private final CryptoService cryptoService;
 
-    /** dam-lineage 服务地址（用于外键血缘自动落库） */
+    /** governance-lineage 服务地址（用于外键血缘自动落库） */
     @Value("${dam.lineage-url:http://localhost:8093}")
     private String lineageUrl;
 
@@ -217,7 +217,7 @@ public class DiscoveryService {
             throw new BusinessException("连接数据源失败: " + e.getMessage());
         }
 
-        // 外键血缘自动落库（调用 dam-lineage 服务，失败不影响扫描主流程）
+        // 外键血缘自动落库（调用 governance-lineage 服务，失败不影响扫描主流程）
         if (!foreignKeys.isEmpty()) {
             pushForeignKeyLineage(foreignKeys, typeKey, dataSourceId);
         }
@@ -355,11 +355,11 @@ public class DiscoveryService {
     }
 
     // ============================================================
-    //  外键血缘落库（调用 dam-lineage 服务）
+    //  外键血缘落库（调用 governance-lineage 服务）
     // ============================================================
 
     /**
-     * 将扫描到的外键关系推送到 dam-lineage 服务，自动生成业务表 → 主数据表的引用血缘。
+     * 将扫描到的外键关系推送到 governance-lineage 服务，自动生成业务表 → 主数据表的引用血缘。
      * 失败仅记录日志，不影响扫描主流程。
      *
      * @param foreignKeys  外键列表 [{fromTable, fromColumn, toTable, toColumn, fkName}]
@@ -959,7 +959,7 @@ public class DiscoveryService {
                 col.put("isPrimaryKey", remotePks.contains((String) col.get("name")));
             }
             
-            // 同步字段的同时自动检测该表的外键引用，推送 dam-lineage 生成字段级引用血缘
+            // 同步字段的同时自动检测该表的外键引用，推送 governance-lineage 生成字段级引用血缘
             // （业务表字段 → 主数据表字段，幂等落库：节点 → hierarchy → column_lineage → metadata_lineage）
             List<Map<String, Object>> fks = fetchForeignKeysForTable(
                     conn, adapter.resolveCatalog(databaseName), schemaName, tableName);

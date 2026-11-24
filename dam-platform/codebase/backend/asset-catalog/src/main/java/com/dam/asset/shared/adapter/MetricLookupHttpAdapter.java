@@ -19,8 +19,8 @@ import java.util.List;
 /**
  * MetricLookupPort 的 HTTP 适配器。
  * <p>
- * 指标数据由 dam-metric 服务独占，catalog 不再直接访问 dam_metric 表；
- * 本适配器通过 dam-metric 的内部只读接口获取指标，并解析统一 {@code Result.data}。
+ * 指标数据由 analytics-metric 服务独占，catalog 不再直接访问 dam_metric 表；
+ * 本适配器通过 analytics-metric 的内部只读接口获取指标，并解析统一 {@code Result.data}。
  * 服务不可用或返回非成功状态码时抛出 {@link BusinessException}，绝不返回伪造/空指标掩盖故障。
  *
  * @author DAM Platform
@@ -30,12 +30,12 @@ import java.util.List;
 public class MetricLookupHttpAdapter implements MetricLookupPort {
 
     /**
-     * 解析 dam-metric 返回的 Result 与指标 DTO。
+     * 解析 analytics-metric 返回的 Result 与指标 DTO。
      * Spring Boot 4 使用 Jackson 3，内置 java.time 支持，可直接解析指标的 LocalDateTime 审计字段。
      */
     private static final JsonMapper MAPPER = JsonMapper.builder().build();
 
-    /** listActive 的最大条数，与 dam-metric 内部接口上限保持一致 */
+    /** listActive 的最大条数，与 analytics-metric 内部接口上限保持一致 */
     private static final int MAX_LIMIT = 500;
 
     private final String baseUrl;
@@ -77,7 +77,7 @@ public class MetricLookupHttpAdapter implements MetricLookupPort {
     }
 
     /**
-     * 调用 dam-metric 并解析统一 Result，返回其 data 节点。
+     * 调用 analytics-metric 并解析统一 Result，返回其 data 节点。
      *
      * @param path          相对路径（可含 URI 模板变量）
      * @param uriVariable   模板变量值
@@ -99,7 +99,7 @@ public class MetricLookupHttpAdapter implements MetricLookupPort {
                     + e.getStatusCode().value() + " " + abbreviate(e.getResponseBodyAsString()));
         } catch (Exception e) {
             log.warn("指标服务 {} 不可用: {}", baseUrl, e.getMessage());
-            throw new BusinessException("指标服务不可用（" + baseUrl + "），请确认 dam-metric 已启动：" + e.getMessage());
+            throw new BusinessException("指标服务不可用（" + baseUrl + "），请确认 analytics-metric 已启动：" + e.getMessage());
         }
 
         try {
@@ -107,7 +107,7 @@ public class MetricLookupHttpAdapter implements MetricLookupPort {
             int code = root.path("code").asInt(200);
             if (code != 200) {
                 String message = root.path("message").asText("");
-                // dam-metric 对不存在的指标会返回业务错误，findById 需保留“不存在返回 null”的端口语义
+                // analytics-metric 对不存在的指标会返回业务错误，findById 需保留“不存在返回 null”的端口语义
                 if (allowNotFound && (code == 404 || message.contains("不存在"))) {
                     return null;
                 }
@@ -143,7 +143,7 @@ public class MetricLookupHttpAdapter implements MetricLookupPort {
         }
     }
 
-    /** 透传当前请求 token，便于 dam-metric 侧做鉴权/审计 */
+    /** 透传当前请求 token，便于 analytics-metric 侧做鉴权/审计 */
     private String token() {
         try {
             return StrUtil.blankToDefault(SaHolder.getRequest().getHeader("token"), "");

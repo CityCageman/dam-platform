@@ -7,8 +7,8 @@ import java.time.LocalDateTime;
 /**
  * 指标定义只读 DTO。
  * <p>
- * 与 dam-metric 的 {@code MetricDefinition} 返回结构保持一致，仅用于知识库展示指标口径、
- * 校验指标归属；本服务不持久化、不修改指标数据。字段与 dam-metric 内部接口
+ * 与 analytics-metric 的 {@code MetricDefinition} 返回结构保持一致，仅用于知识库展示指标口径、
+ * 校验指标归属；本服务不持久化、不修改指标数据。字段与 analytics-metric 内部接口
  * {@code GET /api/metrics/internal/active}、{@code GET /api/metrics/{id}} 的 data 对齐。
  *
  * @author DAM Platform

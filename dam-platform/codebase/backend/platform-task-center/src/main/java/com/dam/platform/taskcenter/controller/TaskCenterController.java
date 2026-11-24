@@ -74,7 +74,7 @@ public class TaskCenterController {
     @GetMapping("/status")
     public Result<Map<String, Object>> status() {
         Map<String, Object> status = new LinkedHashMap<>();
-        status.put("service", "dam-task-center");
+        status.put("service", "platform-task-center");
         status.put("status", "UP");
         status.put("role", "unified task center");
         status.put("storage", "dam_task");

@@ -717,7 +717,7 @@ public class DevTaskExecutionService {
         properties.setProperty("socketTimeout", String.valueOf(
                 (config.queryTimeoutSeconds() + SOCKET_TIMEOUT_MARGIN_SECONDS) * 1000L));
         properties.setProperty("tcpKeepAlive", "true");
-        properties.setProperty("ApplicationName", "dam-develop");
+        properties.setProperty("ApplicationName", "processing-develop");
 
         Connection connection = DriverManager.getConnection(config.url(), properties);
         try {

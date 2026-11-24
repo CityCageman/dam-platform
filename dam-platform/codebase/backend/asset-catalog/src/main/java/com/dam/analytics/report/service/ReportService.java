@@ -102,7 +102,7 @@ public class ReportService {
     private final CryptoService cryptoService;
     private final KnowledgeSearchPort knowledgeSearchPort;
 
-    /** dam-model-gateway 服务地址（报表 SQL 生成调用编码智能体） */
+    /** ai-model-gateway 服务地址（报表 SQL 生成调用编码智能体） */
     @Value("${dam.model-gateway-url:${dam.agent-url:http://localhost:8089}}")
     private String modelGatewayUrl;
 
@@ -123,7 +123,7 @@ public class ReportService {
      *
      * @param requirement  报表需求（自然语言）
      * @param dataSourceId 数据源ID
-     * @param token        当前登录 token（透传给 dam-model-gateway 做鉴权）
+     * @param token        当前登录 token（透传给 ai-model-gateway 做鉴权）
      * @return {sql, dataSourceName, tableCount, truncatedTables}
      */
     public Map<String, Object> generate(String requirement, Long dataSourceId, String token) {
@@ -1158,7 +1158,7 @@ public class ReportService {
         return sb.toString();
     }
 
-    /** 调用 dam-model-gateway 模型网关（/api/agent/complete），返回其 content */
+    /** 调用 ai-model-gateway 模型网关（/api/agent/complete），返回其 content */
     private String callAgent(String prompt, String token) {
         try {
             Map<String, Object> body = new LinkedHashMap<>();

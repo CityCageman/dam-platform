@@ -11,7 +11,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * PostgreSQL 的 {@code dam_data_service} schema；本服务提供基础的 OpenAPI
  * 运行入口（API Key/平台登录鉴权、基础限流与调用审计），不实现完整 API 网关
  * （路由、转发等）。
- * 复用 dam-common 的统一响应、异常处理、分页与 JSONB 类型处理器。
+ * 复用 platform-common 的统一响应、异常处理、分页与 JSONB 类型处理器。
  *
  * @author DAM Platform
  */

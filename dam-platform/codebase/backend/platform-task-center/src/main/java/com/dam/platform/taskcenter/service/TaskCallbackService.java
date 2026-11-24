@@ -70,10 +70,10 @@ public class TaskCallbackService {
     private static final int TASK_CODE_HASH_LENGTH = 8;
 
     /** 自动登记 taskCode 的来源服务前缀映射 */
-    private static final String SOURCE_PREFIX_INTEGRATION = "dam-integration";
+    private static final String SOURCE_PREFIX_INTEGRATION = "access-integration";
 
     /** 调度来源服务前缀映射 */
-    private static final String SOURCE_PREFIX_SCHEDULER = "dam-scheduler";
+    private static final String SOURCE_PREFIX_SCHEDULER = "platform-scheduler";
 
     /** 允许的回调结束状态 */
     private static final Set<String> FINISH_STATUSES = Set.of(
@@ -463,7 +463,7 @@ public class TaskCallbackService {
     /**
      * 解析来源服务前缀。
      * <p>
-     * dam-integration → INT，dam-scheduler → SCH；其他取大写后的前 3 个字母/数字，
+     * access-integration → INT，platform-scheduler → SCH；其他取大写后的前 3 个字母/数字，
      * 不足 3 位时使用全部可用字符。
      *
      * @param sourceService 来源服务

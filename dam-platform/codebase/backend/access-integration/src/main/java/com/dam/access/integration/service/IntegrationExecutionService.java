@@ -768,7 +768,7 @@ public class IntegrationExecutionService {
         properties.setProperty("loginTimeout", String.valueOf(connectTimeoutSeconds));
         properties.setProperty("socketTimeout", String.valueOf(socketTimeoutSeconds));
         properties.setProperty("tcpKeepAlive", "true");
-        properties.setProperty("ApplicationName", "dam-integration");
+        properties.setProperty("ApplicationName", "access-integration");
         Connection connection = DriverManager.getConnection(endpoint.url(), properties);
         try {
             connection.setReadOnly(readOnly);

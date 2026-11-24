@@ -282,7 +282,7 @@ public class DataApiRuntimeService {
         // readOnly + readOnlyMode=always：连接层面拒绝写操作
         properties.setProperty("readOnly", "true");
         properties.setProperty("readOnlyMode", "always");
-        properties.setProperty("ApplicationName", "dam-data-service-runtime");
+        properties.setProperty("ApplicationName", "service-api-runtime");
         return DriverManager.getConnection(target.url(), properties);
     }
 

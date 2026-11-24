@@ -13,7 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** catalog 读取血缘，血缘表由 dam-lineage 独占。 */
+/** catalog 读取血缘，血缘表由 governance-lineage 独占。 */
 @Component
 public class LineageReadClient {
 

@@ -51,7 +51,7 @@ public class DataApi {
     /** 上游类型（如 HTTP、SQL、MOCK） */
     private String upstreamType;
 
-    /** 上游配置（PostgreSQL jsonb，使用 dam-common 的 JSONB 类型处理器） */
+    /** 上游配置（PostgreSQL jsonb，使用 platform-common 的 JSONB 类型处理器） */
     @TableField(typeHandler = JsonbTypeHandler.class)
     private String upstreamConfig;
 

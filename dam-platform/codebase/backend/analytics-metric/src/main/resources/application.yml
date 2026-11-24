@@ -31,7 +31,7 @@ mybatis-plus:
     map-underscore-to-camel-case: true
   global-config:
     db-config:
-      # metric_definition / metric_value 归 dam-metric 独占，统一位于 dam_metric schema
+      # metric_definition / metric_value 归 analytics-metric 独占，统一位于 dam_metric schema
       schema: dam_metric
 
 sa-token:
