@@ -20,12 +20,12 @@ MODULES=(
   dam-portal
   dam-metric
   ai-knowledge
-  dam-integration
+  access-integration
   dam-scheduler
   dam-data-service
   ai-workbench
   dam-task-center
-  dam-develop
+  processing-develop
 )
 
 # 数据库增量脚本主版本号

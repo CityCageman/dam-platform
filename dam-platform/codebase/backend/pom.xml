@@ -76,18 +76,18 @@
         <module>dam-auth</module>
         <module>dam-catalog</module>
         <module>dam-task-center</module>
-        <module>dam-develop</module>
+        <module>processing-develop</module>
         <module>dam-metric</module>
         <module>ai-knowledge</module>
-        <module>dam-lineage</module>
+        <module>governance-lineage</module>
         <module>governance-standard</module>
         <module>governance-quality</module>
         <module>governance-security</module>
-        <module>dam-lifecycle</module>
+        <module>governance-lifecycle</module>
         <module>dam-operations</module>
         <module>ai-model-gateway</module>
         <module>ai-workbench</module>
-        <module>dam-integration</module>
+        <module>access-integration</module>
         <module>dam-scheduler</module>
         <module>dam-data-service</module>
         <module>dam-portal</module>

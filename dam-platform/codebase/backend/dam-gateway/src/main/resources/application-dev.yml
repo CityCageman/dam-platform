@@ -13,7 +13,7 @@ spring:
               uri: http://localhost:8092
               predicates:
                 - Path=/api/catalog/**
-            - id: dam-lineage
+            - id: governance-lineage
               uri: http://localhost:8093
               predicates:
                 - Path=/api/lineage/**
@@ -29,7 +29,7 @@ spring:
               uri: http://localhost:8086
               predicates:
                 - Path=/api/security/**
-            - id: dam-lifecycle
+            - id: governance-lifecycle
               uri: http://localhost:8087
               predicates:
                 - Path=/api/lifecycle/**
@@ -54,7 +54,7 @@ spring:
               uri: ${DAM_ROUTE_METRIC:http://localhost:8094}
               predicates:
                 - Path=/api/metrics/**
-            - id: dam-integration
+            - id: access-integration
               uri: ${DAM_ROUTE_INTEGRATION:http://localhost:8095}
               predicates:
                 - Path=/api/integration/**
@@ -74,7 +74,7 @@ spring:
               uri: ${DAM_ROUTE_TASK_CENTER:http://localhost:8099}
               predicates:
                 - Path=/api/task-center/**
-            - id: dam-develop
+            - id: processing-develop
               uri: ${DAM_ROUTE_DEVELOP:http://localhost:8100}
               predicates:
                 - Path=/api/dev/**

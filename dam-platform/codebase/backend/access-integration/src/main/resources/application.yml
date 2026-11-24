@@ -1,0 +1,45 @@
+server:
+  port: 8095
+
+spring:
+  application:
+    name: access-integration
+  profiles:
+    active: dev
+  config:
+    import:
+      # Nacos 配置中心为可选项：无 Nacos 时使用本地配置启动
+      - optional:nacos:${spring.application.name}.yml
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        # Nacos 不可用时仅记录注册失败，不阻断服务启动；生产环境可通过环境变量设为 true 强制校验
+        fail-fast: ${NACOS_DISCOVERY_FAIL_FAST:false}
+  datasource:
+    # 集成任务存储在 damplatform 的 dam_integration schema，连接信息统一由环境变量注入
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://10.162.3.16:11001/damplatform}
+    username: ${SPRING_DATASOURCE_USERNAME:dam}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+
+dam:
+  # 统一任务中心地址：回调仅用于运行观测，不可用时只记录 warn，不影响集成任务执行与成功判定
+  task-center-url: ${DAM_TASK_CENTER_URL:http://127.0.0.1:8099}
+
+mybatis-plus:
+  configuration:
+    # 数据库下划线列名映射到 Java 驼峰属性（如 job_code -> jobCode）
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      # 本服务所有表统一位于 dam_integration schema（实体 @TableName 亦显式声明）
+      schema: dam_integration
+
+sa-token:
+  token-name: token
+  timeout: 86400
+  token-style: jwt
+  jwt-secret-key: ${SA_TOKEN_JWT_SECRET_KEY}
