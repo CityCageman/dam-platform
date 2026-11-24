@@ -78,7 +78,7 @@
         <module>dam-task-center</module>
         <module>dam-develop</module>
         <module>dam-metric</module>
-        <module>dam-knowledge</module>
+        <module>ai-knowledge</module>
         <module>dam-lineage</module>
         <module>dam-standard</module>
         <module>dam-quality</module>

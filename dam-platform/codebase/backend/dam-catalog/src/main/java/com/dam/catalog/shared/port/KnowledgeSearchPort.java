@@ -5,8 +5,8 @@ import java.util.Map;
 /**
  * 知识库检索端口。
  * <p>
- * 知识库数据由 dam-knowledge 服务独占，实现为
- * {@link com.dam.catalog.shared.adapter.KnowledgeSearchHttpAdapter}（HTTP 调用 dam-knowledge），
+ * 知识库数据由 ai-knowledge 服务独占，实现为
+ * {@link com.dam.catalog.shared.adapter.KnowledgeSearchHttpAdapter}（HTTP 调用 ai-knowledge），
  * catalog 不再包含知识库实现，也不直接访问 dam_knowledge 表。
  *
  * @author DAM Platform

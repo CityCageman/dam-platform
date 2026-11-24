@@ -1,0 +1,54 @@
+server:
+  port: 8098
+
+spring:
+  application:
+    name: ai-knowledge
+  config:
+    import:
+      # Nacos 配置中心为可选项：无 Nacos 时使用本地配置启动
+      - optional:nacos:${spring.application.name}.yml
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+  datasource:
+    # 知识库；表已由 db/v21 迁移到 dam_knowledge schema，可通过 SPRING_DATASOURCE_* 覆盖
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://10.162.3.16:11001/damplatform?currentSchema=dam_knowledge}
+    username: ${SPRING_DATASOURCE_USERNAME:dam}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      schema: dam_knowledge
+  jdbc:
+    template:
+      fetch-size: 100
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      # knowledge_category / knowledge_entry / knowledge_sync_config 归 ai-knowledge 独占
+      schema: dam_knowledge
+
+sa-token:
+  token-name: token
+  timeout: 86400
+  is-concurrent: true
+  is-share: false
+  token-style: jwt
+  jwt-secret-key: ${SA_TOKEN_JWT_SECRET_KEY}
+
+dam:
+  # 指标中心只读接口；知识条目关联/展示指标口径时通过 HTTP 读取，不直连 dam_metric 表
+  metric-url: ${DAM_METRIC_URL:http://127.0.0.1:8094}
+  weknora:
+    base-url: ${DAM_WEKNORA_BASE_URL:https://wiki-medical.cuhkszmc.cn/api/v1}
+    api-key: ${DAM_WEKNORA_API_KEY:}
+    llm-model: ${DAM_WEKNORA_LLM_MODEL:qwen3-coder-30b-a3b}
+    embedding-model: ${DAM_WEKNORA_EMBEDDING_MODEL:bge-m3}
+    status-poll-ms: ${DAM_WEKNORA_STATUS_POLL_MS:30000}
+    status-poll-initial-ms: ${DAM_WEKNORA_STATUS_POLL_INITIAL_MS:60000}

@@ -19,8 +19,8 @@ import java.util.Map;
 /**
  * KnowledgeSearchPort 的 HTTP 适配器。
  * <p>
- * 知识库由 dam-knowledge 服务独占，catalog 不再包含知识库实现，也不直接访问 dam_knowledge 表；
- * 本适配器通过 dam-knowledge 的外部检索接口
+ * 知识库由 ai-knowledge 服务独占，catalog 不再包含知识库实现，也不直接访问 dam_knowledge 表；
+ * 本适配器通过 ai-knowledge 的外部检索接口
  * {@code POST /api/knowledge/external/search} 获取知识条目，并解析统一 {@code Result.data}。
  * 服务不可用或返回非 200 时抛出 {@link BusinessException}，由调用方决定是否降级。
  *
@@ -30,10 +30,10 @@ import java.util.Map;
 @Component
 public class KnowledgeSearchHttpAdapter implements KnowledgeSearchPort {
 
-    /** dam-knowledge 统一 Result / 检索结果解析（Spring Boot 4 使用 Jackson 3） */
+    /** ai-knowledge 统一 Result / 检索结果解析（Spring Boot 4 使用 Jackson 3） */
     private static final JsonMapper MAPPER = JsonMapper.builder().build();
 
-    /** 与 dam-knowledge 检索接口的 limit 上限保持一致 */
+    /** 与 ai-knowledge 检索接口的 limit 上限保持一致 */
     private static final int MAX_LIMIT = 50;
 
     private final String baseUrl;
@@ -73,7 +73,7 @@ public class KnowledgeSearchHttpAdapter implements KnowledgeSearchPort {
                     + e.getStatusCode().value() + " " + abbreviate(e.getResponseBodyAsString()));
         } catch (Exception e) {
             log.warn("知识服务 {} 不可用: {}", baseUrl, e.getMessage());
-            throw new BusinessException("知识服务不可用（" + baseUrl + "），请确认 dam-knowledge 已启动：" + e.getMessage());
+            throw new BusinessException("知识服务不可用（" + baseUrl + "），请确认 ai-knowledge 已启动：" + e.getMessage());
         }
 
         try {
@@ -126,7 +126,7 @@ public class KnowledgeSearchHttpAdapter implements KnowledgeSearchPort {
         return result;
     }
 
-    /** 透传当前请求 token，便于 dam-knowledge 侧做鉴权/审计 */
+    /** 透传当前请求 token，便于 ai-knowledge 侧做鉴权/审计 */
     private String token() {
         try {
             return StrUtil.blankToDefault(SaHolder.getRequest().getHeader("token"), "");

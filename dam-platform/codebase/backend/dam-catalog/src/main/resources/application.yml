@@ -22,7 +22,7 @@ sa-token:
 
 dam:
   model-gateway-url: ${DAM_MODEL_GATEWAY_URL:${DAM_AGENT_URL:http://127.0.0.1:8089}}
-  # 知识库由 dam-knowledge 独占，报表通过 HTTP 检索，不直连 dam_knowledge 表
+  # 知识库由 ai-knowledge 独占，报表通过 HTTP 检索，不直连 dam_knowledge 表
   knowledge-url: ${DAM_KNOWLEDGE_URL:http://127.0.0.1:8098}
   jdbc:
     drivers-dir: ${DAM_JDBC_DRIVERS_DIR:jdbc-drivers}

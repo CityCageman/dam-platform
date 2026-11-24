@@ -1,0 +1,35 @@
+code: DAM
+name: 数据资产与主数据
+version: 1.0.0
+description: 资产目录、资产 360、元数据与主数据管理
+
+services:
+  - asset-catalog
+  - asset-mdm
+
+schemas:
+  - dam_asset
+  - dam_metadata
+  - dam_mdm
+
+routes:
+  - /api/asset/**
+  - /api/catalog/**
+  - /api/metadata/**
+  - /api/mdm/**
+
+frontend:
+  remote: asset-ui
+  entry: /products/asset/remoteEntry.js
+
+permissions:
+  - asset:view
+  - asset:manage
+  - metadata:view
+  - mdm:view
+  - mdm:manage
+
+requiresPlatform: ">=1.0.0 <2.0.0"
+optionalProducts:
+  - DGP
+  - DAN

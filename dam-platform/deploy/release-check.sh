@@ -19,7 +19,7 @@ FRONTEND_DIR="$REPO_ROOT/codebase/frontend"
 MODULES=(
   dam-portal
   dam-metric
-  dam-knowledge
+  ai-knowledge
   dam-integration
   dam-scheduler
   dam-data-service

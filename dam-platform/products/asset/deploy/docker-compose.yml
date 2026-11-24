@@ -1,0 +1,20 @@
+# DAM 独立产品包部署示例
+# 依赖 platform-base 提供的 gateway/auth/shell
+services:
+  asset-catalog:
+    image: asset-catalog:1.0.0
+    environment:
+      SPRING_DATASOURCE_URL: ${ASSET_DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${ASSET_DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${ASSET_DB_PASSWORD}
+    ports:
+      - "8092:8092"
+
+  asset-mdm:
+    image: asset-mdm:1.0.0
+    environment:
+      SPRING_DATASOURCE_URL: ${ASSET_DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${ASSET_DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${ASSET_DB_PASSWORD}
+    ports:
+      - "8101:8101"
