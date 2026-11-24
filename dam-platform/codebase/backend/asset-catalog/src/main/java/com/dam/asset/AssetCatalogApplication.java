@@ -13,8 +13,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  *
  * @author DAM Platform
  */
-@SpringBootApplication(scanBasePackages = {"com.dam.asset", "com.dam.analytics", "com.dam.platform", "com.dam.platform.common"})
-@MapperScan({"com.dam.asset.repository", "com.dam.analytics.report.repository", "com.dam.platform.system.repository", "com.dam.asset.catalog.repository", "com.dam.asset.metadata.repository"})
+@SpringBootApplication(scanBasePackages = {"com.dam.asset", "com.dam.analytics", "com.dam.platform.common"})
+@MapperScan({"com.dam.asset.repository", "com.dam.analytics.report.repository", "com.dam.asset.catalog.repository", "com.dam.asset.metadata.repository"})
 @EnableScheduling
 public class AssetCatalogApplication {
     /**

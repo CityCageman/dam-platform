@@ -28,6 +28,7 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
         </dependency>
+            <dependency><groupId>com.dam</groupId><artifactId>platform-system</artifactId></dependency>
     </dependencies>
     <build>
         <plugins>

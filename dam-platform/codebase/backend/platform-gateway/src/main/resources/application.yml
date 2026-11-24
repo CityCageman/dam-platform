@@ -25,6 +25,11 @@ spring:
               order: -1
               predicates:
                 - Path=/api/catalog/models/**
+            - id: platform-system
+              uri: ${DAM_ROUTE_PLATFORM_SYSTEM:lb://platform-system}
+              order: -1
+              predicates:
+                - Path=/api/catalog/menus/**
             - id: asset-catalog
               uri: ${DAM_ROUTE_CATALOG:lb://asset-catalog}
               predicates:

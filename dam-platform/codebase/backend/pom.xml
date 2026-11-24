@@ -92,6 +92,7 @@
         <module>platform-scheduler</module>
         <module>service-api</module>
         <module>platform-portal</module>
+        <module>platform-system</module>
     </modules>
 
     <dependencyManagement>
@@ -216,6 +217,11 @@
             <dependency>
                 <groupId>com.dam</groupId>
                 <artifactId>asset-catalog</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dam</groupId>
+                <artifactId>platform-system</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
