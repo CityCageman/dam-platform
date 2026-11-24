@@ -1,4 +1,4 @@
-package com.dam.asset.ai.controller;
+package com.dam.analytics.report.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.dam.analytics.report.entity.ReportCatalog;

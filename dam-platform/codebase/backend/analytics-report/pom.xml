@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent><artifactId>dam-platform</artifactId><groupId>com.dam</groupId><version>1.0.0</version></parent>
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>analytics-report</artifactId>
+    <packaging>jar</packaging>
+    <name>analytics-report</name>
+    <description>数据分析-报表目录与报表执行服务</description>
+    <dependencies>
+        <dependency><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId><scope>provided</scope></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>
+        <dependency><groupId>com.baomidou</groupId><artifactId>mybatis-plus-spring-boot4-starter</artifactId></dependency>
+        <dependency><groupId>org.postgresql</groupId><artifactId>postgresql</artifactId><scope>runtime</scope></dependency>
+        <dependency><groupId>cn.hutool</groupId><artifactId>hutool-all</artifactId></dependency>
+        <dependency><groupId>com.dam</groupId><artifactId>platform-common</artifactId></dependency>
+        <dependency><groupId>com.dam</groupId><artifactId>platform-system</artifactId></dependency>
+        <dependency><groupId>com.dam</groupId><artifactId>asset-catalog</artifactId></dependency>
+    </dependencies>
+</project>

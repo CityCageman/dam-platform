@@ -79,6 +79,7 @@
         <module>processing-develop</module>
         <module>processing-model</module>
         <module>analytics-metric</module>
+        <module>analytics-report</module>
         <module>ai-knowledge</module>
         <module>governance-lineage</module>
         <module>governance-standard</module>
