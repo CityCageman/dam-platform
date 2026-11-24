@@ -1,18 +1,18 @@
 package com.dam.asset.ai.service;
 
-import com.dam.asset.asset.entity.*;
+import com.dam.asset.catalog.entity.*;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import cn.hutool.json.JSONUtil;
-import com.dam.asset.asset.entity.AssetCategoryRel;
-import com.dam.asset.asset.entity.DamAsset;
-import com.dam.asset.asset.entity.DamCategory;
+import com.dam.asset.catalog.entity.AssetCategoryRel;
+import com.dam.asset.catalog.entity.DamAsset;
+import com.dam.asset.catalog.entity.DamCategory;
 import com.dam.asset.metadata.entity.MetadataColumn;
 import com.dam.asset.metadata.entity.MetadataTable;
-import com.dam.asset.asset.repository.AssetCategoryRelMapper;
-import com.dam.asset.asset.repository.DamAssetMapper;
-import com.dam.asset.asset.repository.DamCategoryMapper;
+import com.dam.asset.catalog.repository.AssetCategoryRelMapper;
+import com.dam.asset.catalog.repository.DamAssetMapper;
+import com.dam.asset.catalog.repository.DamCategoryMapper;
 import com.dam.asset.metadata.repository.MetadataColumnMapper;
 import com.dam.asset.metadata.repository.MetadataTableMapper;
 import com.dam.platform.common.exception.BusinessException;

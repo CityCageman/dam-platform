@@ -12,7 +12,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @author DAM Platform
  */
 @SpringBootApplication(scanBasePackages = {"com.dam.governance.security", "com.dam.platform.common"})
-@MapperScan({"com.dam.governance.security.repository", "com.dam.asset.repository", "com.dam.asset.asset.repository", "com.dam.asset.system.repository"})
+@MapperScan({"com.dam.governance.security.repository", "com.dam.asset.repository", "com.dam.asset.catalog.repository", "com.dam.platform.system.repository"})
 public class GovernanceSecurityApplication {
     /**
      * 服务入口

@@ -1,9 +1,9 @@
 package com.dam.governance.standard.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.asset.asset.entity.DamAsset;
+import com.dam.asset.catalog.entity.DamAsset;
 import com.dam.asset.entity.DamField;
-import com.dam.asset.asset.repository.DamAssetMapper;
+import com.dam.asset.catalog.repository.DamAssetMapper;
 import com.dam.asset.repository.DamFieldMapper;
 import com.dam.platform.operations.entity.DamTicket;
 import com.dam.platform.operations.repository.DamTicketMapper;

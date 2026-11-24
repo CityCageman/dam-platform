@@ -1,12 +1,12 @@
 package com.dam.asset.ai.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
-import com.dam.asset.report.entity.ReportCatalog;
+import com.dam.analytics.report.entity.ReportCatalog;
 import com.dam.asset.ai.service.AssetClassifyAiService;
 import com.dam.asset.ai.service.MetadataAiService;
 import com.dam.asset.metric.entity.MetricDefinition;
-import com.dam.asset.report.service.ReportCatalogService;
-import com.dam.asset.report.service.ReportService;
+import com.dam.analytics.report.service.ReportCatalogService;
+import com.dam.analytics.report.service.ReportService;
 import com.dam.platform.common.vo.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

@@ -1,9 +1,9 @@
 package com.dam.asset.metadata.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.asset.system.entity.DamConfig;
+import com.dam.platform.system.entity.DamConfig;
 import com.dam.asset.metadata.entity.DamDataSourceType;
-import com.dam.asset.system.repository.DamConfigMapper;
+import com.dam.platform.system.repository.DamConfigMapper;
 import com.dam.platform.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
