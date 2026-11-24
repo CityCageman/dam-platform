@@ -32,12 +32,12 @@ spring:
               uri: ${DAM_ROUTE_STANDARD:lb://governance-standard}
               predicates:
                 - Path=/api/standard/**
-            - id: dam-quality
-              uri: ${DAM_ROUTE_QUALITY:lb://dam-quality}
+            - id: governance-quality
+              uri: ${DAM_ROUTE_QUALITY:lb://governance-quality}
               predicates:
                 - Path=/api/quality/**
-            - id: dam-security
-              uri: ${DAM_ROUTE_SECURITY:lb://dam-security}
+            - id: governance-security
+              uri: ${DAM_ROUTE_SECURITY:lb://governance-security}
               predicates:
                 - Path=/api/security/**
             - id: dam-lifecycle

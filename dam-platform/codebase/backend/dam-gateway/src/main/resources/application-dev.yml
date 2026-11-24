@@ -21,11 +21,11 @@ spring:
               uri: http://localhost:8084
               predicates:
                 - Path=/api/standard/**
-            - id: dam-quality
+            - id: governance-quality
               uri: http://localhost:8085
               predicates:
                 - Path=/api/quality/**
-            - id: dam-security
+            - id: governance-security
               uri: http://localhost:8086
               predicates:
                 - Path=/api/security/**

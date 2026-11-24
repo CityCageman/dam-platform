@@ -81,8 +81,8 @@
         <module>ai-knowledge</module>
         <module>dam-lineage</module>
         <module>governance-standard</module>
-        <module>dam-quality</module>
-        <module>dam-security</module>
+        <module>governance-quality</module>
+        <module>governance-security</module>
         <module>dam-lifecycle</module>
         <module>dam-operations</module>
         <module>ai-model-gateway</module>

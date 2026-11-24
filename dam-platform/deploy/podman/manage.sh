@@ -111,8 +111,8 @@ start_backend() {
                -e "DAM_ROUTE_CATALOG=http://dam-catalog:8092"
                -e "DAM_ROUTE_LINEAGE=http://dam-lineage:8093"
                -e "DAM_ROUTE_STANDARD=http://governance-standard:8084"
-               -e "DAM_ROUTE_QUALITY=http://dam-quality:8085"
-               -e "DAM_ROUTE_SECURITY=http://dam-security:8086"
+               -e "DAM_ROUTE_QUALITY=http://governance-quality:8085"
+               -e "DAM_ROUTE_SECURITY=http://governance-security:8086"
                -e "DAM_ROUTE_LIFECYCLE=http://dam-lifecycle:8087"
                -e "DAM_ROUTE_OPERATIONS=http://dam-operations:8088"
                -e "DAM_ROUTE_MODEL_GATEWAY=http://ai-model-gateway:8089")
@@ -137,8 +137,8 @@ start_frontend() {
 }
 
 stop_all() {
-  for name in dam-frontend dam-gateway ai-model-gateway dam-operations dam-lifecycle dam-security \
-              dam-quality governance-standard dam-lineage dam-catalog dam-auth; do
+  for name in dam-frontend dam-gateway ai-model-gateway dam-operations dam-lifecycle governance-security \
+              governance-quality governance-standard dam-lineage dam-catalog dam-auth; do
     if podman container exists "$name" >/dev/null 2>&1; then
       podman rm -f "$name" >/dev/null 2>&1 || true
       echo "removed $name"

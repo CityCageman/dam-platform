@@ -143,7 +143,7 @@ services:
       # 指标/知识/质量只读接口均走容器服务名，避免默认 127.0.0.1
       DAM_METRIC_URL: http://dam-metric:8094
       DAM_KNOWLEDGE_URL: http://ai-knowledge:8098
-      DAM_QUALITY_URL: http://dam-quality:8085
+      DAM_QUALITY_URL: http://governance-quality:8085
     depends_on:
       postgres:
         condition: service_healthy
@@ -186,13 +186,13 @@ services:
       nacos:
         condition: service_healthy
 
-  dam-quality:
+  governance-quality:
     build:
       context: ../codebase/backend
       dockerfile: Dockerfile
       args:
-        JAR_FILE: dam-quality/target/dam-quality-1.0.0-exec.jar
-    container_name: dam-quality
+        JAR_FILE: governance-quality/target/governance-quality-1.0.0-exec.jar
+    container_name: governance-quality
     restart: unless-stopped
     environment:
       <<: *pg-env
@@ -204,13 +204,13 @@ services:
       nacos:
         condition: service_healthy
 
-  dam-security:
+  governance-security:
     build:
       context: ../codebase/backend
       dockerfile: Dockerfile
       args:
-        JAR_FILE: dam-security/target/dam-security-1.0.0-exec.jar
-    container_name: dam-security
+        JAR_FILE: governance-security/target/governance-security-1.0.0-exec.jar
+    container_name: governance-security
     restart: unless-stopped
     environment:
       <<: *pg-env
@@ -493,8 +493,8 @@ services:
       DAM_ROUTE_CATALOG: http://dam-catalog:8092
       DAM_ROUTE_LINEAGE: http://dam-lineage:8093
       DAM_ROUTE_STANDARD: http://governance-standard:8084
-      DAM_ROUTE_QUALITY: http://dam-quality:8085
-      DAM_ROUTE_SECURITY: http://dam-security:8086
+      DAM_ROUTE_QUALITY: http://governance-quality:8085
+      DAM_ROUTE_SECURITY: http://governance-security:8086
       DAM_ROUTE_LIFECYCLE: http://dam-lifecycle:8087
       DAM_ROUTE_OPERATIONS: http://dam-operations:8088
       DAM_ROUTE_MODEL_GATEWAY: http://ai-model-gateway:8089
@@ -516,8 +516,8 @@ services:
       - dam-catalog
       - dam-lineage
       - governance-standard
-      - dam-quality
-      - dam-security
+      - governance-quality
+      - governance-security
       - dam-lifecycle
       - dam-operations
       - ai-model-gateway
