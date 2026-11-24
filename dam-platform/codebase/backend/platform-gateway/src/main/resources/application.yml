@@ -20,6 +20,11 @@ spring:
               uri: ${DAM_ROUTE_AUTH:lb://platform-auth}
               predicates:
                 - Path=/api/auth/**
+            - id: processing-model
+              uri: ${DAM_ROUTE_PROCESSING_MODEL:lb://processing-model}
+              order: -1
+              predicates:
+                - Path=/api/catalog/models/**
             - id: asset-catalog
               uri: ${DAM_ROUTE_CATALOG:lb://asset-catalog}
               predicates:

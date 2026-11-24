@@ -77,6 +77,7 @@
         <module>asset-catalog</module>
         <module>platform-task-center</module>
         <module>processing-develop</module>
+        <module>processing-model</module>
         <module>analytics-metric</module>
         <module>ai-knowledge</module>
         <module>governance-lineage</module>
