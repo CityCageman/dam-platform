@@ -9,6 +9,33 @@ spring:
               uri: http://localhost:8081
               predicates:
                 - Path=/api/auth/**
+            - id: processing-model
+              uri: http://localhost:8105
+              order: -1
+              predicates:
+                - Path=/api/catalog/models/**
+            - id: analytics-report
+              uri: http://localhost:8103
+              order: -1
+              predicates:
+                - Path=/api/catalog/reports/**,/api/catalog/report/**,/api/catalog/internal/ai/reports/**,/api/catalog/internal/ai/metrics/**
+            - id: platform-system
+              uri: http://localhost:8104
+              order: -1
+              predicates:
+                - Path=/api/catalog/menus/**
+            - id: asset-mdm
+              uri: http://localhost:8106
+              predicates:
+                - Path=/api/mdm/**
+            - id: app-studio
+              uri: http://localhost:8107
+              predicates:
+                - Path=/api/app-studio/**
+            - id: app-market
+              uri: http://localhost:8108
+              predicates:
+                - Path=/api/app-market/**
             - id: asset-catalog
               uri: http://localhost:8092
               predicates:
