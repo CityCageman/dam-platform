@@ -1,12 +1,7 @@
 package com.dam.governance.standard.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.asset.catalog.entity.DamAsset;
-import com.dam.asset.entity.DamField;
-import com.dam.asset.catalog.repository.DamAssetMapper;
-import com.dam.asset.repository.DamFieldMapper;
-import com.dam.platform.operations.entity.DamTicket;
-import com.dam.platform.operations.repository.DamTicketMapper;
+import com.dam.governance.standard.client.TicketCreateClient;
 import com.dam.governance.standard.entity.DamDeviationReport;
 import com.dam.governance.standard.entity.DamStandard;
 import com.dam.governance.standard.entity.DamStandardMapping;
@@ -37,9 +32,7 @@ public class StandardAutoValidatorService {
     private final DamStandardValueMapper standardValueMapper;
     private final DamStandardMappingMapper mappingMapper;
     private final DamDeviationReportMapper deviationReportMapper;
-    private final DamAssetMapper assetMapper;
-    private final DamFieldMapper fieldMapper;
-    private final DamTicketMapper ticketMapper;
+    private final TicketCreateClient ticketCreateClient;
 
     /**
      * 执行自动校验，返回偏差报告数量
@@ -160,24 +153,24 @@ public class StandardAutoValidatorService {
      */
     private void createRemediationTicket(DamDeviationReport report) {
         try {
-            DamTicket ticket = new DamTicket();
-            ticket.setTicketNo("SD-" + System.currentTimeMillis() % 1000000);
-            ticket.setTicketType("change_request");
-            ticket.setTitle(String.format("[标准偏差] %s - 标准[%s]", report.getColumnName(), report.getReportNo()));
-            ticket.setDescription(String.format(
+            java.time.LocalDateTime now = LocalDateTime.now();
+            java.util.Map<String, Object> ticket = new java.util.LinkedHashMap<>();
+            ticket.put("ticketNo", "SD-" + System.currentTimeMillis() % 1000000);
+            ticket.put("ticketType", "change_request");
+            ticket.put("title", String.format("[标准偏差] %s - 标准[%s]", report.getColumnName(), report.getReportNo()));
+            ticket.put("description", String.format(
                     "偏差类型: %s\n严重级别: %s\n期望值: %s\n实际值: %s\n检查时间: %s",
                     report.getDeviationDescription(), report.getSeverity(),
                     report.getExpectedValue(), report.getActualValue(), report.getCheckTime()));
-            ticket.setPriority(report.getSeverity());
-            ticket.setStatus(0);
-            ticket.setRelatedAssetId(report.getTableId());
-            java.time.LocalDateTime now = LocalDateTime.now();
-            ticket.setCreatedAt(now);
-            ticket.setUpdatedAt(now);
-            ticket.setCreatedBy("system");
-            ticket.setUpdatedBy("system");
-            ticketMapper.insert(ticket);
-            log.info("已为标准偏差创建整改工单: ticketNo={}", ticket.getTicketNo());
+            ticket.put("priority", report.getSeverity());
+            ticket.put("status", 0);
+            ticket.put("relatedAssetId", report.getTableId());
+            ticket.put("createdAt", now);
+            ticket.put("updatedAt", now);
+            ticket.put("createdBy", "system");
+            ticket.put("updatedBy", "system");
+            ticketCreateClient.create(ticket);
+            log.info("已为标准偏差提交整改工单: ticketNo={}", ticket.get("ticketNo"));
         } catch (Exception e) {
             log.error("创建标准偏差整改工单失败: {}", e.getMessage());
         }
