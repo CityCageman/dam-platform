@@ -95,6 +95,8 @@
         <module>service-api</module>
         <module>platform-portal</module>
         <module>platform-system</module>
+        <module>app-market</module>
+        <module>app-studio</module>
     </modules>
 
     <dependencyManagement>

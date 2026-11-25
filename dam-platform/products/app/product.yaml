@@ -1,0 +1,20 @@
+code: DAPP
+name: 数据应用
+version: 1.0.0
+description: 数据应用开发与市场
+services:
+  - app-studio
+  - app-market
+schemas:
+  - dam_app
+routes:
+  - /api/app-studio/**
+  - /api/app-market/**
+frontend:
+  remote: app-ui
+  entry: /products/app/remoteEntry.js
+permissions:
+  - app:view
+  - app:develop
+  - app:publish
+requiresPlatform: ">=1.0.0 <2.0.0"
