@@ -24,6 +24,22 @@ for svc in $PORTS; do
   fi
 done
 EOS
+cat > "$RELEASE/bin/create-db.sh" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+BASE="$(cd "$(dirname "$0")/.." && pwd)"
+ENV_FILE="${ENV_FILE:-/etc/dam-products/$(basename "$(dirname "$BASE")").env}"
+[ -f "$ENV_FILE" ] && set -a && . "$ENV_FILE" && set +a
+: "${SPRING_DATASOURCE_URL:?SPRING_DATASOURCE_URL is required}"
+URL="${SPRING_DATASOURCE_URL#jdbc:}"
+DBNAME="${URL##*/}"
+ADMIN_URL="${URL%/*}/postgres"
+export PGUSER="${SPRING_DATASOURCE_USERNAME:-${PGUSER:-}}"
+export PGPASSWORD="${SPRING_DATASOURCE_PASSWORD:-${PGPASSWORD:-}}"
+psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -Atc "SELECT 1 FROM pg_database WHERE datname='$DBNAME'" | grep -q 1 || \
+  psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"$DBNAME\""
+EOS
+chmod +x "$RELEASE/bin/create-db.sh"
 cat > "$RELEASE/bin/bootstrap-db.sh" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail

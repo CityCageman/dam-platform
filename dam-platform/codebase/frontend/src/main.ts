@@ -8,6 +8,9 @@ import App from './App.vue'
 import router from './router'
 import './assets/style.css'
 import './views/cockpit/cockpit.css'
+import { productTitle } from '@/config/product'
+
+document.title = productTitle()
 
 const app = createApp(App)
 app.use(createPinia())

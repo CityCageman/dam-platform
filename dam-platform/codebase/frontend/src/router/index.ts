@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { getModuleNavigation } from '@/config/navigation'
 import { SYSTEM_CONFIG_ROLES, rolesForModule } from '@/config/roles'
 import { useUserStore } from '@/store/user'
+import { isProductMode, productAllowsPath, productHomePath, productTitle } from '@/config/product'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -41,7 +42,7 @@ const routes = [
     path: '/',
     component: () => import('@/components/layout/MainLayout.vue'),
     // 默认首页由角色决定；守卫会在 /auth/me 返回后再次校准
-    redirect: () => useUserStore().homePath,
+    redirect: () => isProductMode() ? productHomePath() : useUserStore().homePath,
     children: [
       // 角色驾驶舱
       {
@@ -147,9 +148,21 @@ const routes = [
   { path: '/:pathMatch(.*)*', redirect: () => useUserStore().homePath }
 ]
 
+// 产品级构建：只暴露本产品路由，避免产品包携带其他产品的页面入口
+function filterProductRoutes(list: any[]): any[] {
+  if (!isProductMode()) return list
+  return list
+    .filter((route: any) => route.path === '/login' || productAllowsPath(route.path || ''))
+    .map((route: any) => route.children
+      ? { ...route, children: route.children.filter((child: any) => productAllowsPath('/' + child.path)) }
+      : route)
+}
+
+const productRoutes = filterProductRoutes(routes)
+
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes: productRoutes
 })
 
 router.beforeEach(async (to) => {
@@ -166,6 +179,11 @@ router.beforeEach(async (to) => {
   const userStore = useUserStore()
   // 每次进入应用首次导航时刷新 /auth/me，确保角色/defaultCockpit 与后端一致
   await userStore.ensureProfile()
+
+  // 产品级前端不允许跳转到其他产品路径
+  if (isProductMode() && !productAllowsPath(to.path)) {
+    return productHomePath()
+  }
 
   // 旧首页兼容：/ 与 /dashboard 按角色默认驾驶舱跳转
   if (to.path === '/' || to.path === '/dashboard') {

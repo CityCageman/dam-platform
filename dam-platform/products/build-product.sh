@@ -47,8 +47,10 @@ mvn -B "${MAVEN_OPTS[@]}" -DskipTests -Dmaven.repo.local="${MAVEN_REPO:-$ROOT/..
 RELEASE="$PRODUCT_DIR/dist/$VERSION"
 rm -rf "$RELEASE"
 mkdir -p "$RELEASE"/{jars,bin,db,systemd,frontend}
-if [ -d "$ROOT/codebase/frontend/dist" ] && [ "${COPY_FRONTEND:-1}" = "1" ]; then
-  cp -a "$ROOT/codebase/frontend/dist/." "$RELEASE/frontend/"
+FRONTEND_SRC="$ROOT/codebase/frontend/dist-products/$CODE"
+[ -d "$FRONTEND_SRC" ] || FRONTEND_SRC="$ROOT/codebase/frontend/dist"
+if [ -d "$FRONTEND_SRC" ] && [ "${COPY_FRONTEND:-1}" = "1" ]; then
+  cp -a "$FRONTEND_SRC/." "$RELEASE/frontend/"
 fi
 for svc in $SERVICES; do
   jar="$ROOT/codebase/backend/$(python3 - "$ROOT" "$svc" <<'PY'
@@ -98,7 +100,7 @@ ln -sfn "\$PREFIX/releases/\$VERSION" "\$PREFIX/current"
 ENV_DIR="\${ENV_DIR:-/etc/dam-products}"
 if ! mkdir -p "\$ENV_DIR" 2>/dev/null; then ENV_DIR="\$PREFIX/etc"; mkdir -p "\$ENV_DIR"; fi
 [ -f "\$ENV_DIR/${PRODUCT_FOLDER}.env" ] || cat > "\$ENV_DIR/${PRODUCT_FOLDER}.env" <<'ENV'
-SPRING_DATASOURCE_URL=jdbc:postgresql://127.0.0.1:5432/damplatform
+SPRING_DATASOURCE_URL=jdbc:postgresql://127.0.0.1:5432/dam_${PRODUCT_FOLDER}
 SPRING_DATASOURCE_USERNAME=dam
 SPRING_DATASOURCE_PASSWORD=ChangeMe_2026
 SA_TOKEN_JWT_SECRET_KEY=ChangeMe_JWT_Secret_At_Least_32_Chars
