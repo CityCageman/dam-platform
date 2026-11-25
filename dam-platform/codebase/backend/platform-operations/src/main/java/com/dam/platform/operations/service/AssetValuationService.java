@@ -1,8 +1,7 @@
 package com.dam.platform.operations.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.asset.catalog.entity.DamAsset;
-import com.dam.asset.catalog.repository.DamAssetMapper;
+import com.dam.platform.operations.client.AssetReadClient;
 import com.dam.platform.operations.entity.DamUsageStats;
 import com.dam.platform.operations.repository.DamUsageStatsMapper;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +24,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class AssetValuationService {
 
-    private final DamAssetMapper assetMapper;
+    private final AssetReadClient assetClient;
     private final DamUsageStatsMapper usageStatsMapper;
 
     // 权重配置
@@ -38,16 +37,16 @@ public class AssetValuationService {
      */
     @Transactional
     public List<Map<String, Object>> evaluateAll() {
-        List<DamAsset> assets = assetMapper.selectList(null);
+        List<Map<String, Object>> assets = assetClient.list(1000);
         LocalDate today = LocalDate.now();
         List<Map<String, Object>> results = new ArrayList<>();
 
-        for (DamAsset asset : assets) {
+        for (Map<String, Object> asset : assets) {
             Map<String, Object> result = evaluateAsset(asset, today);
             results.add(result);
 
             // 保存评分到 usage_stats
-            saveScore(asset.getId(), result, today);
+            saveScore(number(asset.get("id")), result, today);
         }
 
         log.info("资产价值评估完成，共评估{}个资产", results.size());
@@ -57,9 +56,9 @@ public class AssetValuationService {
     /**
      * 评估单个资产价值
      */
-    public Map<String, Object> evaluateAsset(DamAsset asset, LocalDate statDate) {
+    public Map<String, Object> evaluateAsset(Map<String, Object> asset, LocalDate statDate) {
         // 获取最近的使用统计
-        DamUsageStats stats = getLatestStats(asset.getId());
+        DamUsageStats stats = getLatestStats(number(asset.get("id")));
 
         // 1. 访问频次评分 (40%)
         double frequencyScore = calculateFrequencyScore(stats);
@@ -79,10 +78,10 @@ public class AssetValuationService {
                 .setScale(2, RoundingMode.HALF_UP).doubleValue();
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("assetId", asset.getId());
-        result.put("assetName", asset.getAssetName());
-        result.put("assetType", asset.getAssetType());
-        result.put("department", asset.getDepartment());
+        result.put("assetId", number(asset.get("id")));
+        result.put("assetName", asset.get("assetName"));
+        result.put("assetType", asset.get("assetType"));
+        result.put("department", asset.get("department"));
         result.put("frequencyScore", BigDecimal.valueOf(frequencyScore).setScale(2, RoundingMode.HALF_UP));
         result.put("businessScore", BigDecimal.valueOf(businessScore).setScale(2, RoundingMode.HALF_UP));
         result.put("costScore", BigDecimal.valueOf(costScore).setScale(2, RoundingMode.HALF_UP));
@@ -136,7 +135,7 @@ public class AssetValuationService {
     /**
      * 业务价值评分: 基于质量评分、唯一用户数
      */
-    private double calculateBusinessScore(DamAsset asset, DamUsageStats stats) {
+    private double calculateBusinessScore(Map<String, Object> asset, DamUsageStats stats) {
         double score = 50.0; // 基础分
 
         if (stats != null && stats.getUniqueUsers() != null) {
@@ -145,8 +144,8 @@ public class AssetValuationService {
         }
 
         // 资产质量评分（0-100）→ 最高贡献20分
-        if (asset.getQualityScore() != null) {
-            score += asset.getQualityScore().doubleValue() / 100.0 * 20;
+        if (assetClient.qualityScore(asset) != null) {
+            score += assetClient.qualityScore(asset).doubleValue() / 100.0 * 20;
         }
 
         return Math.clamp(score, 0, 100);
@@ -209,7 +208,7 @@ public class AssetValuationService {
      * 获取价值分布统计
      */
     public Map<String, Object> getValueDistribution() {
-        List<DamAsset> assets = assetMapper.selectList(null);
+        List<Map<String, Object>> assets = assetClient.list(1000);
         List<Map<String, Object>> evaluations = assets.stream()
                 .map(a -> evaluateAsset(a, LocalDate.now()))
                 .toList();
@@ -235,5 +234,9 @@ public class AssetValuationService {
                 .limit(10)
                 .toList());
         return result;
+    }
+
+    private Long number(Object value) {
+        return value instanceof Number n ? n.longValue() : null;
     }
 }

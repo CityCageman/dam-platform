@@ -2,8 +2,7 @@ package com.dam.platform.operations.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.dam.asset.catalog.entity.DamAsset;
-import com.dam.asset.catalog.repository.DamAssetMapper;
+import com.dam.platform.operations.client.AssetReadClient;
 import com.dam.platform.common.security.DataScopeContext;
 import com.dam.platform.operations.entity.DamTicket;
 import com.dam.platform.operations.entity.DamUsageStats;
@@ -30,7 +29,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class DashboardService {
 
-    private final DamAssetMapper assetMapper;
+    private final AssetReadClient assetClient;
     private final DamTicketMapper ticketMapper;
     private final DamUsageStatsMapper usageStatsMapper;
     private final AssetValuationService valuationService;
@@ -61,13 +60,13 @@ public class DashboardService {
      * 概览卡片数据
      */
     private Map<String, Object> getOverviewCards() {
-        long totalAssets = assetMapper.selectCount(assetScope());
+        long totalAssets = assetClient.count();
         long totalTickets = ticketMapper.selectCount(ticketScope());
         long pendingTickets = ticketMapper.selectCount(ticketScope().eq(DamTicket::getStatus, 0));
         long completedTickets = ticketMapper.selectCount(ticketScope().eq(DamTicket::getStatus, 2));
 
         // 平均质量评分 - 从 asset_info.quality_score 计算
-        Double avgScore = getAverageScore();
+        Double avgScore = assetClient.averageQualityScore();
 
         // 活跃用户数 - 最近30天有工单的申请人去重
         long activeUsers = estimateActiveUsers();
@@ -91,7 +90,7 @@ public class DashboardService {
         LocalDateTime start = startMonth.atStartOfDay();
 
         // 一次聚合查询，避免 12 个月 × 2 张表共 24 次 COUNT
-        Map<String, Long> assetByMonth = groupedCount(assetMapper, "asset_info", "created_at", start);
+        Map<String, Long> assetByMonth = assetClient.monthlyAssetCounts(12);
         Map<String, Long> ticketByMonth = groupedCount(ticketMapper, "ticket_order", "created_at", start);
 
         List<String> months = new ArrayList<>();
@@ -232,50 +231,6 @@ public class DashboardService {
             else wrapper.eq(DamTicket::getApplicantId, userId);
         }
         return wrapper;
-    }
-
-    /**
-     * 按 token 数据范围构造资产过滤条件。
-     * DEPARTMENT 只看本科室，SELF 只看本人创建；无声明时按全院兼容历史内部调用。
-     */
-    private com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<DamAsset> assetScope() {
-        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<DamAsset> wrapper =
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
-        if (DataScopeContext.isDepartment()) {
-            String dept = DataScopeContext.department();
-            if (dept.isBlank()) {
-                wrapper.eq(DamAsset::getId, -1L);
-            } else {
-                wrapper.eq(DamAsset::getDepartment, dept);
-            }
-        } else if (DataScopeContext.isSelf()) {
-            String username = DataScopeContext.username();
-            if (username.isBlank()) {
-                wrapper.eq(DamAsset::getId, -1L);
-            } else {
-                wrapper.eq(DamAsset::getCreatedBy, username);
-            }
-        }
-        return wrapper;
-    }
-
-    /**
-     * 计算所有资产的平均质量评分（asset_info.quality_score）
-     *
-     * @return 平均评分（无评分时返回 0）
-     */
-    private Double getAverageScore() {
-        List<Map<String, Object>> rows = assetMapper.selectMaps(
-                new QueryWrapper<DamAsset>().select("AVG(quality_score) AS avg_score")
-                        .isNotNull("quality_score")
-                        .eq(DataScopeContext.isDepartment() && !DataScopeContext.department().isBlank(),
-                                "department", DataScopeContext.department())
-                        .eq(DataScopeContext.isSelf() && !DataScopeContext.username().isBlank(),
-                                "created_by", DataScopeContext.username()));
-        // 聚合查询无数据时，MyBatis 可能返回 [null]，不能直接 rows.get(0).get(...)
-        if (rows == null || rows.isEmpty() || rows.get(0) == null) return 0D;
-        Object avg = rows.get(0).get("avg_score");
-        return avg instanceof Number n ? n.doubleValue() : 0D;
     }
 
     /**

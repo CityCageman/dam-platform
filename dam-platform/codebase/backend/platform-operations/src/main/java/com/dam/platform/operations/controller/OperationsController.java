@@ -1,6 +1,6 @@
 package com.dam.platform.operations.controller;
 
-import com.dam.asset.catalog.repository.DamAssetMapper;
+import com.dam.platform.operations.client.AssetReadClient;
 import com.dam.platform.common.vo.PageResult;
 import com.dam.platform.common.vo.Result;
 import com.dam.platform.operations.entity.DamTicket;
@@ -51,8 +51,8 @@ public class OperationsController {
     /** 用户行为分析服务 */
     private final UserBehaviorService userBehaviorService;
 
-    /** 资产 Mapper（跨模块复用 catalog） */
-    private final DamAssetMapper assetMapper;
+    /** DAM 资产只读客户端 */
+    private final AssetReadClient assetClient;
 
     /** 工单 Mapper */
     private final DamTicketMapper ticketMapper;
@@ -145,7 +145,7 @@ public class OperationsController {
     @GetMapping("/valuation/{assetId}")
     public Result<Map<String, Object>> evaluateAsset(@PathVariable Long assetId) {
         // 先校验资产是否存在
-        com.dam.asset.catalog.entity.DamAsset asset = assetMapper.selectById(assetId);
+        Map<String, Object> asset = assetClient.detail(assetId);
         if (asset == null) {
             return Result.error("资产不存在");
         }
