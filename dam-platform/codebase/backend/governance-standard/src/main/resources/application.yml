@@ -21,4 +21,4 @@ sa-token:
   jwt-secret-key: ${SA_TOKEN_JWT_SECRET_KEY}
 
 dam:
-  operations-url: ${DAM_OPERATIONS_URL:http://127.0.0.1:8096}
+  operations-url: ${DAM_OPERATIONS_URL:http://127.0.0.1:8088}

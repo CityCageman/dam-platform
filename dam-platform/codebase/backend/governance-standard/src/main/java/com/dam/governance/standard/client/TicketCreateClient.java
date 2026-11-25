@@ -13,7 +13,7 @@ public class TicketCreateClient {
 
     private final RestClient client;
 
-    public TicketCreateClient(@Value("${dam.operations-url:http://127.0.0.1:8096}") String baseUrl) {
+    public TicketCreateClient(@Value("${dam.operations-url:http://127.0.0.1:8088}") String baseUrl) {
         this.client = RestClient.builder().baseUrl(baseUrl).build();
     }
 
