@@ -1,4 +1,4 @@
-package com.dam.asset.service;
+package com.dam.platform.common.crypto;
 
 import com.dam.platform.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;

@@ -2,7 +2,7 @@ package com.dam.asset.metadata.service;
 
 import com.dam.asset.catalog.entity.*;
 import com.dam.asset.catalog.service.CatalogService;
-import com.dam.asset.service.CryptoService;
+import com.dam.platform.common.crypto.CryptoService;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dam.asset.catalog.entity.DamAsset;

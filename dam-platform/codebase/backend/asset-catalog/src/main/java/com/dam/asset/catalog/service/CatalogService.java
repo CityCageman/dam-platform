@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dam.platform.system.service.DictService;
 import com.dam.asset.metadata.service.DataSourceTypeService;
-import com.dam.asset.service.CryptoService;
+import com.dam.platform.common.crypto.CryptoService;
 import com.dam.asset.entity.*;
 import com.dam.asset.metadata.entity.*;
 import com.dam.asset.catalog.entity.*;

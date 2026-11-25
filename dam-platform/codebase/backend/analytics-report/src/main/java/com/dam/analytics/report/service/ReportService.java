@@ -9,7 +9,7 @@ import com.dam.asset.metadata.entity.DamDataSource;
 import com.dam.asset.metadata.entity.MetadataColumn;
 import com.dam.asset.metadata.entity.MetadataSchema;
 import com.dam.asset.metadata.entity.MetadataTable;
-import com.dam.asset.service.CryptoService;
+import com.dam.platform.common.crypto.CryptoService;
 import com.dam.asset.metric.entity.MetricDefinition;
 import com.dam.asset.catalog.repository.DamAssetMapper;
 import com.dam.asset.metadata.repository.DamDataSourceMapper;
