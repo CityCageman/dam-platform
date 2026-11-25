@@ -1,8 +1,7 @@
 package com.dam.governance.quality.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.platform.operations.entity.DamTicket;
-import com.dam.platform.operations.repository.DamTicketMapper;
+import com.dam.governance.quality.client.TicketCreateClient;
 import com.dam.governance.quality.entity.DamQualityCheck;
 import com.dam.governance.quality.entity.DamQualityRule;
 import com.dam.governance.quality.repository.DamQualityCheckMapper;
@@ -38,7 +37,7 @@ public class QualityScheduler {
     private final DamQualityCheckMapper checkMapper;
 
     /** 工单 Mapper（跨模块复用 operations） */
-    private final DamTicketMapper ticketMapper;
+    private final TicketCreateClient ticketCreateClient;
 
     /** 质量检测扫描服务 */
     private final QualityScanService qualityScanService;
@@ -96,34 +95,19 @@ public class QualityScheduler {
      */
     private void createQualityTicket(DamQualityRule rule, DamQualityCheck check, String detail) {
         try {
-            // 组装工单并补全审计字段
-            DamTicket ticket = new DamTicket();
-            ticket.setTicketNo("Q-" + System.currentTimeMillis() % 1000000);
-            ticket.setTicketType("quality_issue");
-            ticket.setTitle(String.format("[自动派单] 质量规则[%s]告警", resolveRuleName(rule)));
-            ticket.setDescription(String.format(
-                    "规则: %s(%s)\n当前得分: %.2f\n告警阈值: %.2f\n检测结果: 总记录%d, 异常%d\n触发时间: %s",
-                    resolveRuleName(rule), rule.getRuleCode(),
-                    check.getPassRate() != null ? check.getPassRate().doubleValue() : 0,
-                    resolveAlarmThreshold(rule),
-                    check.getTotalCount() != null ? check.getTotalCount() : 0,
-                    check.getFailCount() != null ? check.getFailCount() : 0,
-                    LocalDateTime.now()
-            ));
-            ticket.setPriority(getPriorityByScore(check.getPassRate() != null ? check.getPassRate().doubleValue() : 100));
-            ticket.setStatus(0);
-            // 关联到规则的目标表（技术元数据表ID）
-            ticket.setRelatedAssetId(rule.getTargetTableId());
-            java.time.LocalDateTime now = LocalDateTime.now();
-            ticket.setCreatedAt(now);
-            ticket.setUpdatedAt(now);
-            ticket.setCreatedBy("system");
-            ticket.setUpdatedBy("system");
-            ticketMapper.insert(ticket);
-            log.info("自动创建质量整改工单成功: ticketNo={}, title={}", ticket.getTicketNo(), ticket.getTitle());
+            java.util.Map<String, Object> ticket = new java.util.LinkedHashMap<>();
+            ticket.put("ticketNo", "Q-" + System.currentTimeMillis() % 1000000);
+            ticket.put("ticketType", "quality_issue");
+            ticket.put("title", "质量规则[" + rule.getRuleName() + "]检查失败");
+            ticket.put("description", detail);
+            ticket.put("priority", "high");
+            ticket.put("status", 0);
+            ticket.put("createdBy", "system");
+            ticket.put("updatedBy", "system");
+            ticketCreateClient.create(ticket);
+            log.info("自动创建质量整改工单成功: ticketNo={}", ticket.get("ticketNo"));
         } catch (Exception e) {
-            // 建单失败仅记录日志，不影响调度主流程
-            log.error("自动创建质量整改工单失败: {}", e.getMessage());
+            log.warn("自动创建质量整改工单失败: {}", e.getMessage());
         }
     }
 
