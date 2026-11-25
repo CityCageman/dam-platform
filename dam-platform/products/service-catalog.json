@@ -1,22 +1,90 @@
 {
-  "asset-catalog": {"port": 8092, "module": "asset-catalog"},
-  "asset-mdm": {"port": 8106, "module": "asset-mdm"},
-  "platform-portal": {"port": 8091, "module": "platform-portal"},
-  "platform-system": {"port": 8104, "module": "platform-system"},
-  "platform-task-center": {"port": 8099, "module": "platform-task-center"},
-  "platform-scheduler": {"port": 8096, "module": "platform-scheduler"},
-  "platform-operations": {"port": 8088, "module": "platform-operations"},
-  "access-integration": {"port": 8095, "module": "access-integration"},
-  "governance-standard": {"port": 8084, "module": "governance-standard"},
-  "governance-quality": {"port": 8085, "module": "governance-quality"},
-  "governance-security": {"port": 8086, "module": "governance-security"},
-  "governance-lifecycle": {"port": 8087, "module": "governance-lifecycle"},
-  "governance-lineage": {"port": 8093, "module": "governance-lineage"},
-  "processing-develop": {"port": 8100, "module": "processing-develop"},
-  "processing-model": {"port": 8105, "module": "processing-model"},
-  "service-api": {"port": 8097, "module": "service-api"},
-  "analytics-metric": {"port": 8094, "module": "analytics-metric"},
-  "analytics-report": {"port": 8103, "module": "analytics-report"},
-  "app-studio": {"port": 8107, "module": "app-studio"},
-  "app-market": {"port": 8108, "module": "app-market"}
+  "asset-catalog": {
+    "port": 8092,
+    "module": "asset-catalog"
+  },
+  "asset-mdm": {
+    "port": 8106,
+    "module": "asset-mdm"
+  },
+  "platform-portal": {
+    "port": 8091,
+    "module": "platform-portal"
+  },
+  "platform-system": {
+    "port": 8104,
+    "module": "platform-system"
+  },
+  "platform-task-center": {
+    "port": 8099,
+    "module": "platform-task-center"
+  },
+  "platform-scheduler": {
+    "port": 8096,
+    "module": "platform-scheduler"
+  },
+  "platform-operations": {
+    "port": 8088,
+    "module": "platform-operations"
+  },
+  "access-integration": {
+    "port": 8095,
+    "module": "access-integration"
+  },
+  "governance-standard": {
+    "port": 8084,
+    "module": "governance-standard"
+  },
+  "governance-quality": {
+    "port": 8085,
+    "module": "governance-quality"
+  },
+  "governance-security": {
+    "port": 8086,
+    "module": "governance-security"
+  },
+  "governance-lifecycle": {
+    "port": 8087,
+    "module": "governance-lifecycle"
+  },
+  "governance-lineage": {
+    "port": 8093,
+    "module": "governance-lineage"
+  },
+  "processing-develop": {
+    "port": 8100,
+    "module": "processing-develop"
+  },
+  "processing-model": {
+    "port": 8105,
+    "module": "processing-model"
+  },
+  "service-api": {
+    "port": 8097,
+    "module": "service-api"
+  },
+  "analytics-metric": {
+    "port": 8094,
+    "module": "analytics-metric"
+  },
+  "analytics-report": {
+    "port": 8103,
+    "module": "analytics-report"
+  },
+  "app-studio": {
+    "port": 8107,
+    "module": "app-studio"
+  },
+  "app-market": {
+    "port": 8108,
+    "module": "app-market"
+  },
+  "platform-gateway": {
+    "port": 8080,
+    "module": "platform-gateway"
+  },
+  "platform-auth": {
+    "port": 8081,
+    "module": "platform-auth"
+  }
 }

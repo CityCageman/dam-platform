@@ -25,6 +25,9 @@ import sys,yaml
 print(' '.join(yaml.safe_load(open(sys.argv[1]+'/product.yaml'))['services']))
 PY
 )"
+if [ "${STANDALONE:-0}" = "1" ]; then
+  case " $SERVICES " in *" platform-gateway "*) ;; *) SERVICES="$SERVICES platform-gateway platform-auth" ;; esac
+fi
 MODULES="$(python3 - "$ROOT" "$SERVICES" <<'PY'
 import sys,json
 root,services=sys.argv[1],sys.argv[2].split()
@@ -54,6 +57,7 @@ PY
 done
 cp "$PRODUCT_DIR/product.yaml" "$RELEASE/"
 [ -f "$PRODUCT_DIR/db/migrate.sql" ] && cp "$PRODUCT_DIR/db/migrate.sql" "$RELEASE/db/"
+if [ "${STANDALONE:-0}" = "1" ] && [ -f "$ROOT/products/base/db/migrate.sql" ]; then cp "$ROOT/products/base/db/migrate.sql" "$RELEASE/db/base-migrate.sql"; fi
 mkdir -p "$RELEASE/deploy"
 [ -f "$PRODUCT_DIR/deploy/gateway-routes.yaml" ] && cp "$PRODUCT_DIR/deploy/gateway-routes.yaml" "$RELEASE/deploy/"
 PRODUCT_FOLDER="$(basename "$PRODUCT_DIR")"

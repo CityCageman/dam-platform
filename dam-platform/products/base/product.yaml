@@ -1,0 +1,13 @@
+code: BASE
+name: 平台底座
+version: 1.0.0
+description: 共享网关注册、认证与公共能力
+services:
+  - platform-gateway
+  - platform-auth
+schemas: [dam_dpm]
+routes: []
+frontend:
+  remote: platform-shell
+  entry: /shell/
+permissions: []
