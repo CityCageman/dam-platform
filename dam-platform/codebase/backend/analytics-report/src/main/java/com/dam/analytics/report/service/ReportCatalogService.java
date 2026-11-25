@@ -6,10 +6,9 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dam.asset.catalog.service.CatalogService;
-import com.dam.platform.system.service.DictService;
+import com.dam.analytics.report.client.DictReadClient;
 import com.dam.asset.entity.*;
 import com.dam.asset.catalog.entity.*;
-import com.dam.platform.system.entity.*;
 import com.dam.analytics.report.entity.ReportCatalog;
 import com.dam.analytics.report.repository.ReportCatalogMapper;
 import com.dam.asset.catalog.repository.AssetCategoryRelMapper;
@@ -51,7 +50,7 @@ public class ReportCatalogService {
     private final DamCategoryMapper categoryMapper;
     private final AssetCategoryRelMapper relMapper;
     private final CatalogService catalogService;
-    private final DictService dictService;
+    private final DictReadClient dictReadClient;
     private final ReportService reportService;
 
     // ==================== 维度 ====================
@@ -79,8 +78,8 @@ public class ReportCatalogService {
                     values.add(item(c.getId(), c.getCategoryName()));
                 }
             } else if ("DICT".equalsIgnoreCase(sourceType) && StrUtil.isNotBlank(sourceRef)) {
-                for (SysDictData dd : dictService.getDictDataByTypeCode(sourceRef)) {
-                    values.add(item(dd.getDictValue(), dd.getDictLabel()));
+                for (Map<String, Object> dd : dictReadClient.byType(sourceRef)) {
+                    values.add(item(text(dd.get("dictValue")), text(dd.get("dictLabel"))));
                 }
             } else {
                 Object idRaw = d.get("id");
@@ -466,8 +465,8 @@ public class ReportCatalogService {
 
     /** 报表类资产的 asset_type 字典项ID */
     private Long resolveReportAssetTypeId() {
-        for (SysDictData d : dictService.getDictDataByTypeCode("asset_type")) {
-            if ("report".equalsIgnoreCase(d.getDictValue())) return d.getId();
+        for (Map<String, Object> d : dictReadClient.byType("asset_type")) {
+            if ("report".equalsIgnoreCase(text(d.get("dictValue")))) return number(d.get("id"));
         }
         return null;
     }
@@ -522,4 +521,7 @@ public class ReportCatalogService {
             return Collections.emptyList();
         }
     }
+
+    private String text(Object v) { return v == null ? "" : String.valueOf(v); }
+    private Long number(Object v) { return v instanceof Number n ? n.longValue() : null; }
 }
