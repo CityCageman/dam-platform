@@ -5,15 +5,10 @@ package com.dam.analytics.report.service;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.dam.asset.catalog.service.CatalogService;
 import com.dam.analytics.report.client.DictReadClient;
-import com.dam.asset.entity.*;
-import com.dam.asset.catalog.entity.*;
+import com.dam.analytics.report.client.ReportDataClient;
 import com.dam.analytics.report.entity.ReportCatalog;
 import com.dam.analytics.report.repository.ReportCatalogMapper;
-import com.dam.asset.catalog.repository.AssetCategoryRelMapper;
-import com.dam.asset.catalog.repository.DamAssetMapper;
-import com.dam.asset.catalog.repository.DamCategoryMapper;
 import com.dam.platform.common.exception.BusinessException;
 import com.dam.platform.common.security.DataScopeContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,18 +33,13 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ReportCatalogService {
 
-    /** “未分类”编码 */
-    private static final String UNCATEGORIZED = "UNCATEGORIZED";
     /** 单次执行最大返回行数 */
     private static final int MAX_ROWS = 500;
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final ReportCatalogMapper reportMapper;
-    private final DamAssetMapper assetMapper;
-    private final DamCategoryMapper categoryMapper;
-    private final AssetCategoryRelMapper relMapper;
-    private final CatalogService catalogService;
+    private final ReportDataClient reportDataClient;
     private final DictReadClient dictReadClient;
     private final ReportService reportService;
 
@@ -60,7 +50,7 @@ public class ReportCatalogService {
      */
     public List<Map<String, Object>> listDimensions() {
         List<Map<String, Object>> dims = reportMapper.selectDimensions();
-        Set<Long> visible = catalogService.currentVisibleDomainIds();
+        Set<Long> visible = reportDataClient.visibleDomainIds();
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map<String, Object> d : dims) {
             String dimCode = str(d.get("dimCode"));
@@ -68,14 +58,10 @@ public class ReportCatalogService {
             String sourceRef = str(d.get("sourceRef"));
             List<Map<String, Object>> values = new ArrayList<>();
             if ("CATEGORY".equalsIgnoreCase(sourceType)) {
-                List<DamCategory> domains = categoryMapper.selectList(new LambdaQueryWrapper<DamCategory>()
-                        .isNull(DamCategory::getParentId)
-                        .eq(DamCategory::getStatus, 1)
-                        .ne(DamCategory::getCategoryCode, UNCATEGORIZED)
-                        .orderByAsc(DamCategory::getSortOrder));
-                for (DamCategory c : domains) {
-                    if (visible != null && !visible.contains(c.getId())) continue;
-                    values.add(item(c.getId(), c.getCategoryName()));
+                for (Map<String, Object> c : reportDataClient.domains()) {
+                    Long domainId = parseLong(c.get("id"));
+                    if (visible != null && !visible.contains(domainId)) continue;
+                    values.add(item(domainId, c.get("categoryName")));
                 }
             } else if ("DICT".equalsIgnoreCase(sourceType) && StrUtil.isNotBlank(sourceRef)) {
                 for (Map<String, Object> dd : dictReadClient.byType(sourceRef)) {
@@ -116,7 +102,7 @@ public class ReportCatalogService {
      * @param keyword  名称搜索
      */
     public Map<String, Object> pageCards(String dimCode, String dimValue, String keyword, int page, int pageSize) {
-        Set<Long> visible = catalogService.currentVisibleDomainIds();
+        Set<Long> visible = reportDataClient.visibleDomainIds();
         if (visible != null && visible.isEmpty()) return emptyPage(page, pageSize);
 
         LambdaQueryWrapper<ReportCatalog> w = new LambdaQueryWrapper<>();
@@ -138,18 +124,22 @@ public class ReportCatalogService {
             if (username.isBlank()) w.eq(ReportCatalog::getId, -1L);
             else w.eq(ReportCatalog::getCreatedBy, username);
         }
-        // 角色可见主题域收敛
+        // 角色可见主题域收敛：经 DAM 接口取主题域下的资产ID，报表库不直连 dam_asset 表
         if (visible != null) {
-            String ids = visible.stream().map(String::valueOf).collect(Collectors.joining(","));
-            w.apply("EXISTS (SELECT 1 FROM dam_asset.asset_category_rel r WHERE r.asset_id = report_catalog.asset_id "
-                    + "AND r.deleted_at IS NULL AND r.subject_domain_id IN (" + ids + "))");
+            List<Long> domainAssetIds = reportDataClient.assetIdsForDomains(visible);
+            if (domainAssetIds.isEmpty()) return emptyPage(page, pageSize);
+            w.in(ReportCatalog::getAssetId, domainAssetIds);
         }
         // 维度过滤
         if (StrUtil.isNotBlank(dimCode) && StrUtil.isNotBlank(dimValue)) {
             switch (dimCode) {
-                case "SUBJECT_DOMAIN" -> w.apply("EXISTS (SELECT 1 FROM dam_asset.asset_category_rel r2 "
-                                + "WHERE r2.asset_id = report_catalog.asset_id AND r2.deleted_at IS NULL "
-                                + "AND r2.subject_domain_id = {0})", parseLong(dimValue));
+                case "SUBJECT_DOMAIN" -> {
+                    Long subjectDomainId = parseLong(dimValue);
+                    List<Long> domainAssetIds = subjectDomainId == null ? List.of()
+                            : reportDataClient.assetIdsForDomains(List.of(subjectDomainId));
+                    if (domainAssetIds.isEmpty()) w.eq(ReportCatalog::getId, -1L);
+                    else w.in(ReportCatalog::getAssetId, domainAssetIds);
+                }
                 case "REPORT_TYPE" -> w.eq(ReportCatalog::getReportTypeId, dimValue);
                 case "UPDATE_FREQ" -> w.eq(ReportCatalog::getUpdateFrequency, dimValue);
                 default -> w.apply("report_catalog.dimension_codes @> to_jsonb({0}::text)", dimValue);
@@ -175,41 +165,26 @@ public class ReportCatalogService {
         return out;
     }
 
-    /** 组装卡片展示数据（批量查资产与主题域归属，避免 N+1） */
+    /** 组装卡片展示数据（批量经 DAM 接口查资产与主题域归属，避免 N+1） */
     private List<Map<String, Object>> toCards(List<ReportCatalog> list) {
         if (list.isEmpty()) return Collections.emptyList();
-        List<Long> assetIds = list.stream().map(ReportCatalog::getAssetId).filter(Objects::nonNull).toList();
-        Map<Long, DamAsset> assetMap = assetIds.isEmpty() ? Collections.emptyMap()
-                : assetMapper.selectByIds(assetIds).stream()
-                        .collect(Collectors.toMap(DamAsset::getId, a -> a, (x, y) -> x));
-        Map<Long, List<AssetCategoryRel>> relMap = assetIds.isEmpty() ? Collections.emptyMap()
-                : relMapper.selectList(new LambdaQueryWrapper<AssetCategoryRel>()
-                        .in(AssetCategoryRel::getAssetId, assetIds))
-                        .stream().collect(Collectors.groupingBy(AssetCategoryRel::getAssetId));
-        Set<Long> catIds = new HashSet<>();
-        relMap.values().forEach(rels -> rels.forEach(r -> catIds.add(r.getCategoryId())));
-        Map<Long, DamCategory> catMap = catIds.isEmpty() ? Collections.emptyMap()
-                : categoryMapper.selectByIds(catIds).stream()
-                        .collect(Collectors.toMap(DamCategory::getId, c -> c, (x, y) -> x));
-        Set<Long> domainIds = catMap.values().stream().map(DamCategory::getParentId)
-                .filter(Objects::nonNull).collect(Collectors.toSet());
-        Map<Long, DamCategory> domainMap = domainIds.isEmpty() ? Collections.emptyMap()
-                : categoryMapper.selectByIds(domainIds).stream()
-                        .collect(Collectors.toMap(DamCategory::getId, c -> c, (x, y) -> x));
+        List<Long> assetIds = list.stream().map(ReportCatalog::getAssetId).filter(Objects::nonNull).distinct().toList();
+        Map<Long, Map<String, Object>> assetMap = new HashMap<>();
+        for (Map<String, Object> asset : reportDataClient.assets(assetIds)) {
+            Long id = parseLong(asset.get("id"));
+            if (id != null) assetMap.put(id, asset);
+        }
+        Map<Long, Map<String, Object>> categoryPaths = reportDataClient.assetCategoryPaths(assetIds);
 
         List<Map<String, Object>> cards = new ArrayList<>();
         for (ReportCatalog rc : list) {
-            DamAsset asset = assetMap.get(rc.getAssetId());
-            List<AssetCategoryRel> rels = relMap.getOrDefault(rc.getAssetId(), Collections.emptyList());
+            Map<String, Object> asset = assetMap.get(rc.getAssetId());
+            Map<String, Object> categoryInfo = categoryPaths.getOrDefault(rc.getAssetId(), Collections.emptyMap());
             List<String> paths = new ArrayList<>();
-            Long domainId = null;
-            for (AssetCategoryRel r : rels) {
-                DamCategory c = catMap.get(r.getCategoryId());
-                if (c == null) continue;
-                DamCategory d = c.getParentId() != null ? domainMap.get(c.getParentId()) : null;
-                paths.add((d != null ? d.getCategoryName() + "/" : "") + c.getCategoryName());
-                if (domainId == null) domainId = r.getSubjectDomainId();
+            if (categoryInfo.get("paths") instanceof List<?> pathList) {
+                for (Object path : pathList) paths.add(String.valueOf(path));
             }
+            Long domainId = parseLong(categoryInfo.get("subjectDomainId"));
             Map<String, Object> card = new LinkedHashMap<>();
             card.put("id", rc.getId());
             card.put("assetId", rc.getAssetId());
@@ -220,7 +195,8 @@ public class ReportCatalogService {
             card.put("updateFrequency", rc.getUpdateFrequency());
             card.put("owner", rc.getOwner());
             card.put("description", StrUtil.isNotBlank(rc.getDescription()) ? rc.getDescription()
-                    : (asset != null ? asset.getDescription() : null));
+                    : (asset != null && asset.get("description") != null
+                        ? String.valueOf(asset.get("description")) : null));
             card.put("coverImage", rc.getCoverImage());
             card.put("dimensionCodes", parseJsonArray(rc.getDimensionCodes()));
             card.put("subjectDomainId", domainId);
@@ -242,11 +218,11 @@ public class ReportCatalogService {
     public Map<String, Object> getDetail(Long id) {
         ReportCatalog rc = requireReport(id);
         assertPermitted(rc.getAssetId());
-        DamAsset asset = rc.getAssetId() != null ? assetMapper.selectById(rc.getAssetId()) : null;
+        Map<String, Object> asset = reportDataClient.asset(rc.getAssetId());
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("report", rc);
         out.put("asset", asset);
-        out.put("subjectDomains", catalogService.listAssetCategories(rc.getAssetId()));
+        out.put("subjectDomains", reportDataClient.assetCategories(rc.getAssetId()));
         out.put("paramDefs", parseJsonArray(rc.getParamDefs()));
         out.put("dimensionCodes", parseJsonArray(rc.getDimensionCodes()));
         return out;
@@ -315,35 +291,21 @@ public class ReportCatalogService {
         rc.setUpdatedAt(LocalDateTime.now());
         rc.setUpdatedBy(operator);
 
-        // 1. 资产（报表即资产）
-        Long assetId = rc.getAssetId();
-        DamAsset asset = assetId != null ? assetMapper.selectById(assetId) : null;
-        boolean newAsset = asset == null;
-        if (newAsset) {
-            asset = new DamAsset();
-            asset.setCreatedAt(LocalDateTime.now());
-            asset.setCreatedBy(operator);
-        }
-        asset.setAssetName(reportName);
-        asset.setAssetCode(newAsset ? StrUtil.blankToDefault(reportCode, "RPT") : asset.getAssetCode());
-        asset.setSourceMetadataType("REPORT");
-        asset.setAssetTypeId(resolveReportAssetTypeId());
-        asset.setDescription(StrUtil.isNotBlank(rc.getDescription()) ? rc.getDescription() : reportName);
-        asset.setDataSourceId(dataSourceId);
-        asset.setStatus(1);
-        asset.setUpdatedAt(LocalDateTime.now());
-        asset.setUpdatedBy(operator);
-        if (categoryId != null) {
-            asset.setCategoryId(categoryId);
-        } else if (newAsset) {
-            asset.setCategoryId(resolveUncategorizedId());
-        }
-        if (newAsset) {
-            assetMapper.insert(asset);
-        } else {
-            assetMapper.updateById(asset);
-        }
-        rc.setAssetId(asset.getId());
+        // 1. 资产（报表即资产，经 DAM 接口落库）
+        Map<String, Object> assetBody = new LinkedHashMap<>();
+        assetBody.put("id", rc.getAssetId());
+        assetBody.put("assetName", reportName);
+        assetBody.put("assetCode", StrUtil.blankToDefault(reportCode, "RPT"));
+        assetBody.put("sourceMetadataType", "REPORT");
+        assetBody.put("assetTypeId", resolveReportAssetTypeId());
+        assetBody.put("description", StrUtil.isNotBlank(rc.getDescription()) ? rc.getDescription() : reportName);
+        assetBody.put("dataSourceId", dataSourceId);
+        assetBody.put("status", 1);
+        assetBody.put("categoryId", categoryId);
+        assetBody.put("operator", operator);
+        Map<String, Object> asset = reportDataClient.upsertAsset(assetBody);
+        Long newAssetId = parseLong(asset.get("id"));
+        rc.setAssetId(newAssetId);
         if (id == null) {
             reportMapper.insert(rc);
         } else {
@@ -352,12 +314,12 @@ public class ReportCatalogService {
 
         // 2. 主题域归属（传了类目才写；同域唯一由服务保证）
         if (categoryId != null) {
-            catalogService.saveAssetCategory(asset.getId(), subjectDomainId, categoryId);
+            reportDataClient.saveAssetCategory(newAssetId, subjectDomainId, categoryId);
         }
 
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("id", rc.getId());
-        out.put("assetId", asset.getId());
+        out.put("assetId", newAssetId);
         out.put("reportCode", rc.getReportCode());
         return out;
     }
@@ -372,12 +334,7 @@ public class ReportCatalogService {
         rc.setUpdatedAt(now);
         rc.setUpdatedBy(currentUser());
         reportMapper.updateById(rc);
-        DamAsset asset = rc.getAssetId() != null ? assetMapper.selectById(rc.getAssetId()) : null;
-        if (asset != null) {
-            asset.setDeletedAt(now);
-            asset.setUpdatedAt(now);
-            assetMapper.updateById(asset);
-        }
+        reportDataClient.deleteAsset(rc.getAssetId());
     }
 
     // ==================== 在线执行 ====================
@@ -455,11 +412,10 @@ public class ReportCatalogService {
 
     /** 报表可见性校验：未归属任何可见主题域则拒绝 */
     private void assertPermitted(Long assetId) {
-        Set<Long> visible = catalogService.currentVisibleDomainIds();
+        Set<Long> visible = reportDataClient.visibleDomainIds();
         if (visible == null) return;
-        List<AssetCategoryRel> rels = relMapper.selectList(
-                new LambdaQueryWrapper<AssetCategoryRel>().eq(AssetCategoryRel::getAssetId, assetId));
-        boolean allowed = rels.stream().anyMatch(r -> visible.contains(r.getSubjectDomainId()));
+        Set<Long> domains = reportDataClient.assetDomainIds(assetId);
+        boolean allowed = domains.stream().anyMatch(visible::contains);
         if (!allowed) throw new BusinessException("无权查看该报表（不在当前角色可见主题域内）");
     }
 
@@ -469,13 +425,6 @@ public class ReportCatalogService {
             if ("report".equalsIgnoreCase(text(d.get("dictValue")))) return number(d.get("id"));
         }
         return null;
-    }
-
-    /** 未分类兜底ID */
-    private Long resolveUncategorizedId() {
-        DamCategory c = categoryMapper.selectOne(new LambdaQueryWrapper<DamCategory>()
-                .eq(DamCategory::getCategoryCode, UNCATEGORIZED).last("LIMIT 1"));
-        return c != null ? c.getId() : null;
     }
 
     private String currentUser() {

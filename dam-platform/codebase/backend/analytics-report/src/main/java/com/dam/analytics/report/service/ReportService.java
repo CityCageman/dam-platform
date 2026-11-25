@@ -3,18 +3,11 @@ package com.dam.analytics.report.service;
 
 
 import cn.hutool.core.util.StrUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.asset.metadata.entity.MetadataColumn;
-import com.dam.asset.metadata.entity.MetadataSchema;
-import com.dam.asset.metadata.entity.MetadataTable;
-import com.dam.platform.common.crypto.CryptoService;
 import com.dam.analytics.report.client.ReportDataClient;
-import com.dam.asset.metric.entity.MetricDefinition;
-import com.dam.asset.metadata.repository.MetadataColumnMapper;
-import com.dam.asset.metadata.repository.MetadataSchemaMapper;
-import com.dam.asset.metadata.repository.MetadataTableMapper;
-import com.dam.asset.shared.port.MetricLookupPort;
-import com.dam.asset.shared.port.KnowledgeSearchPort;
+import com.dam.analytics.report.client.dto.CatalogColumn;
+import com.dam.analytics.report.client.dto.CatalogTable;
+import com.dam.analytics.report.client.dto.MetricSpec;
+import com.dam.platform.common.crypto.CryptoService;
 import com.dam.platform.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -91,12 +84,7 @@ public class ReportService {
     private static final int DEFAULT_MAX_ROWS = 500;
 
     private final ReportDataClient reportDataClient;
-    private final MetadataTableMapper tableMapper;
-    private final MetadataColumnMapper columnMapper;
-    private final MetricLookupPort metricLookupPort;
-    private final MetadataSchemaMapper schemaMapper;
     private final CryptoService cryptoService;
-    private final KnowledgeSearchPort knowledgeSearchPort;
 
     /** ai-model-gateway 服务地址（报表 SQL 生成调用编码智能体） */
     @Value("${dam.model-gateway-url:${dam.agent-url:http://localhost:8089}}")
@@ -207,7 +195,7 @@ public class ReportService {
      * 根据指标定义和计算公式生成指标 SQL（供指标中心 AI 分析使用）。
      * 只生成 SQL，不执行；表/字段仍走全库检索 + 白名单校验。
      */
-    public Map<String, Object> generateMetricSql(MetricDefinition metric, String token) {
+    public Map<String, Object> generateMetricSql(MetricSpec metric, String token) {
         if (metric == null) throw new BusinessException("指标不存在");
         if (!"COMPUTED".equalsIgnoreCase(metric.getMetricType())) {
             throw new BusinessException("手工填报指标不需要生成 SQL");
@@ -619,33 +607,21 @@ public class ReportService {
     /** 检索数据源下已同步的表结构与字段（含中文注释），按需求做全库检索，而不是按表名取前 N 张 */
     private TableContext buildTableContext(Long dataSourceId, String requirement, String token) {
         TableContext ctx = new TableContext();
-        List<MetadataTable> tables = tableMapper.selectList(
-                new LambdaQueryWrapper<MetadataTable>()
-                        .eq(MetadataTable::getDatasourceId, dataSourceId)
-                        .orderByAsc(MetadataTable::getTableName));
+        // 表结构经 DAM HTTP 接口获取，报表模块不再直连 metadata_table/metadata_column
+        List<CatalogTable> tables = reportDataClient.tables(dataSourceId);
         if (tables.isEmpty()) return ctx;
         ctx.totalTables = tables.size();
 
-        // schema 名称经 schema_id 批量解析（metadata_table 无 schema_name 列）
-        Set<Long> schemaIds = tables.stream().map(MetadataTable::getSchemaId)
-                .filter(Objects::nonNull).collect(Collectors.toSet());
-        Map<Long, String> schemaNameMap = new HashMap<>();
-        if (!schemaIds.isEmpty()) {
-            for (MetadataSchema s : schemaMapper.selectByIds(schemaIds)) {
-                if (s != null) schemaNameMap.put(s.getId(), s.getSchemaName());
-            }
-        }
-
         // 用户明确写出的表名必须先做元数据校验；缺失就明确报错，不允许模型猜
         Set<String> explicitNames = extractExplicitTableNames(requirement);
-        Map<String, MetadataTable> tableByName = new HashMap<>();
-        for (MetadataTable t : tables) {
+        Map<String, CatalogTable> tableByName = new HashMap<>();
+        for (CatalogTable t : tables) {
             if (t.getTableName() != null) tableByName.put(t.getTableName().toLowerCase(Locale.ROOT), t);
         }
         List<String> missing = new ArrayList<>();
         Set<Long> forcedIds = new HashSet<>();
         for (String name : explicitNames) {
-            MetadataTable t = tableByName.get(name.toLowerCase(Locale.ROOT));
+            CatalogTable t = tableByName.get(name.toLowerCase(Locale.ROOT));
             if (t == null) missing.add(name);
             else forcedIds.add(t.getId());
         }
@@ -654,22 +630,20 @@ public class ReportService {
                     + "。请先在「元数据管理」同步这些表，再重新生成");
         }
         // 关联条件只作为线索，不强制；元数据 FK 优先，用户条件可能与实际模型冲突
-        ctx.joinSkeleton = buildJoinSkeleton(requirement, tableByName, schemaNameMap);
+        ctx.joinSkeleton = buildJoinSkeleton(requirement, tableByName);
 
         // 全库字段：字段注释也参与检索，避免只靠表名找不到业务表
-        Set<Long> allTableIds = tables.stream().map(MetadataTable::getId).collect(Collectors.toSet());
-        Map<Long, List<MetadataColumn>> allColsMap = columnMapper.selectList(
-                        new LambdaQueryWrapper<MetadataColumn>()
-                                .in(MetadataColumn::getTableId, allTableIds)
-                                .orderByAsc(MetadataColumn::getOrdinalPosition))
-                .stream().collect(Collectors.groupingBy(MetadataColumn::getTableId));
+        Map<Long, List<CatalogColumn>> allColsMap = new HashMap<>();
+        for (CatalogTable t : tables) {
+            allColsMap.put(t.getId(), t.getColumns() == null ? List.of() : t.getColumns());
+        }
 
         List<String> tokens = queryTokens(requirement);
         Map<Long, Integer> scores = new HashMap<>();
         Set<Long> keyTableIds = new HashSet<>();
-        for (MetadataTable t : tables) {
-            String schemaName = t.getSchemaId() != null ? schemaNameMap.getOrDefault(t.getSchemaId(), "") : "";
-            List<MetadataColumn> cols = allColsMap.getOrDefault(t.getId(), Collections.emptyList());
+        for (CatalogTable t : tables) {
+            String schemaName = t.getSchemaName() == null ? "" : t.getSchemaName();
+            List<CatalogColumn> cols = allColsMap.getOrDefault(t.getId(), Collections.emptyList());
             int score = scoreTable(t, schemaName, cols, requirement, tokens);
             if (forcedIds.contains(t.getId())) score += 1000;
             if (score <= 0) continue;
@@ -677,7 +651,7 @@ public class ReportService {
             if (score >= 200) keyTableIds.add(t.getId());
         }
 
-        List<MetadataTable> selected = tables.stream()
+        List<CatalogTable> selected = tables.stream()
                 .filter(t -> scores.containsKey(t.getId()))
                 .sorted((a, b) -> {
                     int sa = scores.getOrDefault(a.getId(), 0);
@@ -689,7 +663,7 @@ public class ReportService {
                 .collect(Collectors.toList());
         // 关键词检索没有命中时，再做一次“目录 + 需求”的模型检索，支持只描述业务、不懂表名的用户
         if (selected.isEmpty()) {
-            Set<Long> llmIds = selectTablesByLlm(tables, schemaNameMap, allColsMap, requirement, token);
+            Set<Long> llmIds = selectTablesByLlm(tables, allColsMap, requirement, token);
             if (!llmIds.isEmpty()) {
                 selected = tables.stream()
                         .filter(t -> llmIds.contains(t.getId()))
@@ -703,10 +677,10 @@ public class ReportService {
         }
         if (selected.size() < tables.size()) ctx.truncated = true;
 
-        for (MetadataTable t : selected) {
+        for (CatalogTable t : selected) {
             Map<String, Object> m = new LinkedHashMap<>();
-            String schemaName = t.getSchemaId() != null ? schemaNameMap.getOrDefault(t.getSchemaId(), "") : "";
-            List<MetadataColumn> columns = allColsMap.getOrDefault(t.getId(), Collections.emptyList());
+            String schemaName = t.getSchemaName() == null ? "" : t.getSchemaName();
+            List<CatalogColumn> columns = allColsMap.getOrDefault(t.getId(), Collections.emptyList());
             int cap = keyTableIds.contains(t.getId()) ? MAX_KEY_COLUMNS_PER_TABLE : MAX_COLUMNS_PER_TABLE;
             if (columns.size() > cap) {
                 columns = columns.subList(0, cap);
@@ -740,25 +714,25 @@ public class ReportService {
      * 关键词没有命中时，把目录摘要交给模型做一次“表选择”。
      * 模型只返回表名，后端用真实元数据回填，避免模型直接编造字段。
      */
-    private Set<Long> selectTablesByLlm(List<MetadataTable> tables, Map<Long, String> schemaNameMap,
-                                        Map<Long, List<MetadataColumn>> colsMap,
+    private Set<Long> selectTablesByLlm(List<CatalogTable> tables,
+                                        Map<Long, List<CatalogColumn>> colsMap,
                                         String requirement, String token) {
         if (StrUtil.isBlank(requirement) || tables.isEmpty()) return Collections.emptySet();
         try {
             StringBuilder digest = new StringBuilder();
             int limit = Math.min(tables.size(), 300);
             for (int i = 0; i < limit; i++) {
-                MetadataTable t = tables.get(i);
-                String schema = t.getSchemaId() != null ? schemaNameMap.getOrDefault(t.getSchemaId(), "") : "";
+                CatalogTable t = tables.get(i);
+                String schema = t.getSchemaName() == null ? "" : t.getSchemaName();
                 String full = StrUtil.isNotBlank(schema) && !"public".equalsIgnoreCase(schema)
                         ? schema + "." + t.getTableName() : t.getTableName();
                 digest.append(full).append(" | ").append(StrUtil.blankToDefault(t.getTableComment(), "-"));
-                List<MetadataColumn> cols = colsMap.getOrDefault(t.getId(), Collections.emptyList());
+                List<CatalogColumn> cols = colsMap.getOrDefault(t.getId(), Collections.emptyList());
                 if (!cols.isEmpty()) {
                     digest.append(" | 字段：");
                     int n = Math.min(cols.size(), 12);
                     for (int j = 0; j < n; j++) {
-                        MetadataColumn c = cols.get(j);
+                        CatalogColumn c = cols.get(j);
                         if (j > 0) digest.append("，");
                         digest.append(c.getColumnName());
                         if (StrUtil.isNotBlank(c.getColumnComment())) digest.append("(").append(c.getColumnComment()).append(")");
@@ -783,8 +757,8 @@ public class ReportService {
                 if (!name.isEmpty()) names.add(name);
             }
             Set<Long> ids = new HashSet<>();
-            for (MetadataTable t : tables) {
-                String schema = t.getSchemaId() != null ? schemaNameMap.getOrDefault(t.getSchemaId(), "") : "";
+            for (CatalogTable t : tables) {
+                String schema = t.getSchemaName() == null ? "" : t.getSchemaName();
                 String table = t.getTableName() == null ? "" : t.getTableName().toLowerCase(Locale.ROOT);
                 String full = StrUtil.isNotBlank(schema) ? (schema + "." + table).toLowerCase(Locale.ROOT) : table;
                 if (names.contains(table) || names.contains(full)) ids.add(t.getId());
@@ -809,8 +783,7 @@ public class ReportService {
     }
 
     /** 根据用户给出的关联条件生成确定性的 FROM/JOIN 骨架，避免模型替换表或把 schema 当表 */
-    private String buildJoinSkeleton(String requirement, Map<String, MetadataTable> tableByName,
-                                     Map<Long, String> schemaNameMap) {
+    private String buildJoinSkeleton(String requirement, Map<String, CatalogTable> tableByName) {
         if (StrUtil.isBlank(requirement)) return "";
         java.util.regex.Matcher m = Pattern.compile(
                 "(?i)([A-Za-z_][\\w$]*)\\.([A-Za-z_][\\w$]*)\\s*=\\s*([A-Za-z_][\\w$]*)\\.([A-Za-z_][\\w$]*)").matcher(requirement);
@@ -833,20 +806,20 @@ public class ReportService {
         String root = order.get(0);
         visited.add(root);
         StringBuilder sb = new StringBuilder();
-        sb.append("FROM ").append(fullName(tableByName.get(root), schemaNameMap)).append(" ").append(aliases.get(root));
+        sb.append("FROM ").append(fullName(tableByName.get(root))).append(" ").append(aliases.get(root));
         boolean added = true;
         while (added) {
             added = false;
             for (String[] j : joins) {
                 String a = j[0], b = j[2];
                 if (visited.contains(a) && !visited.contains(b)) {
-                    sb.append("\nJOIN ").append(fullName(tableByName.get(b), schemaNameMap)).append(" ").append(aliases.get(b))
+                    sb.append("\nJOIN ").append(fullName(tableByName.get(b))).append(" ").append(aliases.get(b))
                             .append(" ON ").append(aliases.get(a)).append(".").append(j[1])
                             .append(" = ").append(aliases.get(b)).append(".").append(j[3]);
                     visited.add(b);
                     added = true;
                 } else if (visited.contains(b) && !visited.contains(a)) {
-                    sb.append("\nJOIN ").append(fullName(tableByName.get(a), schemaNameMap)).append(" ").append(aliases.get(a))
+                    sb.append("\nJOIN ").append(fullName(tableByName.get(a))).append(" ").append(aliases.get(a))
                             .append(" ON ").append(aliases.get(b)).append(".").append(j[3])
                             .append(" = ").append(aliases.get(a)).append(".").append(j[1]);
                     visited.add(a);
@@ -857,9 +830,9 @@ public class ReportService {
         return sb.toString();
     }
 
-    private String fullName(MetadataTable t, Map<Long, String> schemaNameMap) {
+    private String fullName(CatalogTable t) {
         if (t == null) return "";
-        String schema = t.getSchemaId() != null ? schemaNameMap.getOrDefault(t.getSchemaId(), "") : "";
+        String schema = t.getSchemaName() == null ? "" : t.getSchemaName();
         return StrUtil.isNotBlank(schema) && !"public".equalsIgnoreCase(schema)
                 ? schema + "." + t.getTableName() : t.getTableName();
     }
@@ -893,7 +866,7 @@ public class ReportService {
     }
 
     /** 表名/表注释/字段名/字段注释/业务域 加权打分 */
-    private int scoreTable(MetadataTable t, String schemaName, List<MetadataColumn> columns,
+    private int scoreTable(CatalogTable t, String schemaName, List<CatalogColumn> columns,
                            String requirement, List<String> tokens) {
         String req = requirement == null ? "" : requirement.toLowerCase(Locale.ROOT);
         String name = t.getTableName() == null ? "" : t.getTableName().toLowerCase(Locale.ROOT);
@@ -908,7 +881,7 @@ public class ReportService {
             if (comment.contains(token)) score += 10;
             if (!domain.isEmpty() && domain.contains(token)) score += 4;
             if (!schemaName.isEmpty() && schemaName.toLowerCase(Locale.ROOT).contains(token)) score += 2;
-            for (MetadataColumn c : columns) {
+            for (CatalogColumn c : columns) {
                 String columnName = c.getColumnName() == null ? "" : c.getColumnName().toLowerCase(Locale.ROOT);
                 String columnComment = c.getColumnComment() == null ? "" : c.getColumnComment().toLowerCase(Locale.ROOT);
                 if (columnName.contains(token)) score += 3;
@@ -948,8 +921,8 @@ public class ReportService {
             }
             Set<String> cols = new HashSet<>();
             @SuppressWarnings("unchecked")
-            List<MetadataColumn> columns = (List<MetadataColumn>) t.get("columns");
-            for (MetadataColumn c : columns) {
+            List<CatalogColumn> columns = (List<CatalogColumn>) t.get("columns");
+            for (CatalogColumn c : columns) {
                 if (c.getColumnName() != null) cols.add(c.getColumnName().toLowerCase(Locale.ROOT));
             }
             tableColumns.put(tableName, cols);
@@ -1008,7 +981,7 @@ public class ReportService {
     /** 通过知识服务检索业务知识，返回文本上下文和结构化取数规则；失败时降级为仅元数据 */
     private KnowledgeContext retrieveKnowledge(String requirement) {
         try {
-            Map<String, Object> result = knowledgeSearchPort.search(requirement, 5);
+            Map<String, Object> result = reportDataClient.searchKnowledge(requirement, 5);
             Object raw = result.get("results");
             if (!(raw instanceof List<?> list) || list.isEmpty()) return new KnowledgeContext("", null);
             StringBuilder sb = new StringBuilder();
@@ -1077,8 +1050,8 @@ public class ReportService {
             if (StrUtil.isNotBlank(tableComment)) sb.append("（").append(tableComment).append("）");
             sb.append(" ===\n");
             @SuppressWarnings("unchecked")
-            List<MetadataColumn> cols = (List<MetadataColumn>) t.get("columns");
-            for (MetadataColumn c : cols) {
+            List<CatalogColumn> cols = (List<CatalogColumn>) t.get("columns");
+            for (CatalogColumn c : cols) {
                 sb.append("- ").append(c.getColumnName())
                         .append(" (").append(StrUtil.isBlank(c.getColumnType()) ? "未知类型" : c.getColumnType()).append(")");
                 if (Boolean.TRUE.equals(c.getIsPrimaryKey())) sb.append(" PK");
@@ -1096,17 +1069,17 @@ public class ReportService {
         }
         // 指标定义/公式：业务用户说“门诊量/收入”时，优先使用已维护的口径
         try {
-            List<MetricDefinition> metrics = metricLookupPort.listActiveByDataSource(dataSourceId);
+            List<Map<String, Object>> metrics = reportDataClient.metrics(dataSourceId);
             if (!metrics.isEmpty()) {
                 sb.append("业务指标定义（用户提到指标时，必须优先使用这里的口径/公式，不得自行发明）：\n");
-                for (MetricDefinition m : metrics) {
-                    sb.append("- ").append(m.getMetricName()).append("（").append(m.getMetricCode()).append("）");
-                    if ("MANUAL".equalsIgnoreCase(m.getMetricType())) {
+                for (Map<String, Object> m : metrics) {
+                    sb.append("- ").append(text(m.get("metricName"))).append("（").append(text(m.get("metricCode"))).append("）");
+                    if ("MANUAL".equalsIgnoreCase(text(m.get("metricType")))) {
                         sb.append(" [手工填报，不能从数据库表计算]");
                     } else {
-                        if (StrUtil.isNotBlank(m.getDefinition())) sb.append(" 定义：").append(m.getDefinition());
-                        if (StrUtil.isNotBlank(m.getFormula())) sb.append("；公式：").append(m.getFormula());
-                        if (StrUtil.isNotBlank(m.getSqlExpression())) sb.append("；参考SQL：").append(m.getSqlExpression());
+                        if (StrUtil.isNotBlank(text(m.get("definition")))) sb.append(" 定义：").append(text(m.get("definition")));
+                        if (StrUtil.isNotBlank(text(m.get("formula")))) sb.append("；公式：").append(text(m.get("formula")));
+                        if (StrUtil.isNotBlank(text(m.get("sqlExpression")))) sb.append("；参考SQL：").append(text(m.get("sqlExpression")));
                     }
                     sb.append("\n");
                 }

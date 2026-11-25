@@ -41,7 +41,8 @@ spring:
               uri: ${DAM_ROUTE_ANALYTICS_REPORT:lb://analytics-report}
               order: -1
               predicates:
-                - Path=/api/catalog/reports/**,/api/catalog/report/**,/api/catalog/internal/ai/**
+                # 报表 + 报表/指标 AI 工具接口；资产 AI 标注/分类接口已迁回 asset-catalog，走下面的 /api/catalog/** 路由
+                - Path=/api/catalog/reports/**,/api/catalog/report/**,/api/catalog/internal/ai/reports/**,/api/catalog/internal/ai/metrics/**
             - id: platform-system
               uri: ${DAM_ROUTE_PLATFORM_SYSTEM:lb://platform-system}
               order: -1

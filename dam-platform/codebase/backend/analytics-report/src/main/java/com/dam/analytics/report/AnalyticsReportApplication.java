@@ -5,7 +5,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication(scanBasePackages = {"com.dam.analytics.report", "com.dam.platform.common"})
-@MapperScan({"com.dam.analytics.report.repository", "com.dam.asset.repository", "com.dam.asset.catalog.repository"})
+@MapperScan({"com.dam.analytics.report.repository"})
 public class AnalyticsReportApplication {
     public static void main(String[] args) {
         SpringApplication.run(AnalyticsReportApplication.class, args);

@@ -24,3 +24,6 @@ sa-token:
   timeout: 86400
   token-style: jwt
   jwt-secret-key: ${SA_TOKEN_JWT_SECRET_KEY}
+dam:
+  # DAM 数据接口由 asset-catalog 独占，报表通过 HTTP 读取数据源/资产/分类/元数据，不直连 DAM 表
+  asset-catalog-url: ${DAM_CATALOG_URL:http://127.0.0.1:8092}
