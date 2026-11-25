@@ -1,8 +1,7 @@
 package com.dam.governance.security.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.asset.catalog.entity.DamAsset;
-import com.dam.asset.catalog.repository.DamAssetMapper;
+import com.dam.governance.security.client.AssetReadClient;
 import com.dam.platform.common.exception.BusinessException;
 import com.dam.governance.security.entity.DamDataPermission;
 import com.dam.governance.security.repository.DamDataPermissionMapper;
@@ -13,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 
 /**
  * ABAC数据权限服务
@@ -24,7 +24,7 @@ import java.util.List;
 public class AbacPermissionService {
 
     private final DamDataPermissionMapper permissionMapper;
-    private final DamAssetMapper assetMapper;
+    private final AssetReadClient assetReadClient;
 
     // ==================== 权限评估 ====================
 
@@ -32,10 +32,11 @@ public class AbacPermissionService {
      * 检查用户是否有权限执行指定操作
      */
     public boolean checkPermission(String role, String department, Long assetId, String action) {
-        DamAsset asset = assetMapper.selectById(assetId);
-        if (asset == null) return false;
-
-        return checkPermission(role, department, asset.getSecurityLevel(), action);
+        Map<String, Object> detail = assetReadClient.detail(assetId);
+        Object asset = detail == null ? null : detail.get("asset");
+        if (!(asset instanceof Map<?, ?> m)) return false;
+        Object level = m.get("securityLevel");
+        return checkPermission(role, department, level == null ? null : String.valueOf(level), action);
     }
 
     /**

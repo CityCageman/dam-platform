@@ -1,7 +1,5 @@
 package com.dam.governance.security.interceptor;
 
-import com.dam.asset.catalog.entity.DamAsset;
-import com.dam.asset.entity.DamField;
 import com.dam.governance.security.entity.DamSensitiveRule;
 import com.dam.governance.security.repository.DamSensitiveRuleMapper;
 import com.dam.governance.security.service.AbacPermissionService;
@@ -122,26 +120,6 @@ public class DynamicMaskingInterceptor implements Interceptor {
             Map<String, Boolean> result = new HashMap<>();
             Map<String, String> sensitiveTypes = new HashMap<>();
             Map<String, String> securityLevels = new HashMap<>();
-
-            // 对 DamAsset 类型，按 securityLevel 决定整个对象的脱敏
-            if (c == DamAsset.class) {
-                fieldSensitiveTypeCache.put(c, sensitiveTypes);
-                fieldSecurityLevelCache.put(c, securityLevels);
-                return result;
-            }
-
-            // 对 DamField 类型，根据 isSensitive 标记脱敏 fieldName/comment
-            if (c == DamField.class) {
-                result.put("fieldName", true);
-                result.put("comment", true);
-                sensitiveTypes.put("fieldName", "field_name");
-                sensitiveTypes.put("comment", "field_comment");
-                securityLevels.put("fieldName", "medium");
-                securityLevels.put("comment", "medium");
-                fieldSensitiveTypeCache.put(c, sensitiveTypes);
-                fieldSecurityLevelCache.put(c, securityLevels);
-                return result;
-            }
 
             // 通用规则：从数据库敏感规则表加载字段匹配规则（基于真实列 rule_pattern）
             List<DamSensitiveRule> rules = sensitiveRuleMapper.selectList(

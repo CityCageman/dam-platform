@@ -1,13 +1,8 @@
 package com.dam.governance.security.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.asset.catalog.entity.DamAsset;
-import com.dam.asset.entity.DamField;
-import com.dam.platform.system.entity.DamConfig;
-import com.dam.asset.catalog.repository.DamAssetMapper;
-import com.dam.asset.repository.DamFieldMapper;
-import com.dam.platform.system.repository.DamConfigMapper;
 import com.dam.platform.common.exception.BusinessException;
+import com.dam.governance.security.client.AssetReadClient;
 import com.dam.governance.security.entity.DamSensitiveRule;
 import com.dam.governance.security.repository.DamSensitiveRuleMapper;
 import com.dam.governance.security.repository.DynamicQueryMapper;
@@ -45,17 +40,12 @@ public class ClassificationService {
     /** 敏感规则 Mapper */
     private final DamSensitiveRuleMapper sensitiveRuleMapper;
 
-    /** 资产 Mapper（跨模块复用 catalog） */
-    private final DamAssetMapper assetMapper;
-
-    /** 字段 Mapper（metadata_column 表） */
-    private final DamFieldMapper fieldMapper;
+    /** DAM 资产只读客户端 */
+    private final AssetReadClient assetReadClient;
 
     /** 动态 SQL 查询 Mapper（采样扫描） */
     private final DynamicQueryMapper dynamicQueryMapper;
 
-    /** 系统配置 Mapper（读取敏感级别排序） */
-    private final DamConfigMapper configMapper;
 
     /**
      * 自动分类分级：扫描所有资产的字段名，匹配敏感规则
@@ -69,24 +59,23 @@ public class ClassificationService {
         // 加载启用中的敏感规则与全部资产
         List<DamSensitiveRule> rules = sensitiveRuleMapper.selectList(
                 new LambdaQueryWrapper<DamSensitiveRule>().eq(DamSensitiveRule::getStatus, 1));
-        List<DamAsset> allAssets = assetMapper.selectList(null);
+        List<Map<String, Object>> allAssets = assetReadClient.list();
 
         int matchedAssets = 0;
         int matchedFields = 0;
         List<Map<String, Object>> matches = new ArrayList<>();
 
-        for (DamAsset asset : allAssets) {
+        for (Map<String, Object> asset : allAssets) {
             // 通过多态外键：source_metadata_type=TABLE 时，source_metadata_id 即 metadata_table.id
-            Long tableId = "TABLE".equalsIgnoreCase(asset.getSourceMetadataType()) ? asset.getSourceMetadataId() : null;
+            Long tableId = "TABLE".equalsIgnoreCase(String.valueOf(asset.get("sourceMetadataType"))) ? number(asset.get("sourceMetadataId")) : null;
             if (tableId == null) continue;
 
             // 查询该技术元数据表下的全部字段
-            List<DamField> fields = fieldMapper.selectList(
-                    new LambdaQueryWrapper<DamField>().eq(DamField::getTableId, tableId));
+            List<Map<String, Object>> fields = assetReadClient.fields(number(asset.get("id")));
 
             boolean assetMatched = false;
 
-            for (DamField field : fields) {
+            for (Map<String, Object> field : fields) {
                 for (DamSensitiveRule rule : rules) {
                     if (matchField(field, rule)) {
                         matchedFields++;
@@ -94,11 +83,11 @@ public class ClassificationService {
 
                         // 新表 metadata_column 无安全等级列，仅记录匹配结果
                         Map<String, Object> match = new HashMap<>();
-                        match.put("assetId", asset.getId());
-                        match.put("assetName", asset.getAssetName());
+                        match.put("assetId", number(asset.get("id")));
+                        match.put("assetName", asset.get("assetName"));
                         match.put("tableId", tableId);
-                        match.put("fieldId", field.getId());
-                        match.put("fieldName", field.getFieldName());
+                        match.put("fieldId", number(field.get("id")));
+                        match.put("fieldName", field.get("fieldName"));
                         match.put("sensitiveType", rule.getSensitiveType());
                         match.put("level", rule.getLevel());
                         match.put("ruleName", rule.getRuleName());
@@ -201,10 +190,10 @@ public class ClassificationService {
      * @param rule  敏感规则
      * @return true-命中
      */
-    private boolean matchField(DamField field, DamSensitiveRule rule) {
+    private boolean matchField(Map<String, Object> field, DamSensitiveRule rule) {
         // 规则匹配模式（新表真实列 rule_pattern）对字段名做包含匹配
-        if (StrUtil.isNotBlank(rule.getRulePattern()) && StrUtil.isNotBlank(field.getFieldName())) {
-            if (field.getFieldName().toLowerCase().contains(rule.getRulePattern().toLowerCase())) {
+        if (StrUtil.isNotBlank(rule.getRulePattern()) && StrUtil.isNotBlank(text(field.get("fieldName")))) {
+            if (text(field.get("fieldName")).toLowerCase().contains(rule.getRulePattern().toLowerCase())) {
                 return true;
             }
             // 兼容旧字段名模式（fieldNamePattern 旧字段，实际为 null）
@@ -213,19 +202,19 @@ public class ClassificationService {
             for (String p : patterns) {
                 String trimmed = p.trim();
                 if (trimmed.isEmpty()) continue;
-                if (field.getFieldName().toLowerCase().contains(trimmed.toLowerCase())) {
+                if (text(field.get("fieldName")).toLowerCase().contains(trimmed.toLowerCase())) {
                     return true;
                 }
-                if (field.getFieldAlias() != null &&
-                        field.getFieldAlias().toLowerCase().contains(trimmed.toLowerCase())) {
+                if (text(field.get("fieldAlias")) != null &&
+                        text(field.get("fieldAlias")).toLowerCase().contains(trimmed.toLowerCase())) {
                     return true;
                 }
             }
         }
         // 正则模式匹配（旧字段 regexPattern 兼容为空）
-        if (StrUtil.isNotBlank(rule.getRegexPattern()) && StrUtil.isNotBlank(field.getFieldName())) {
+        if (StrUtil.isNotBlank(rule.getRegexPattern()) && StrUtil.isNotBlank(text(field.get("fieldName")))) {
             try {
-                return Pattern.compile(rule.getRegexPattern()).matcher(field.getFieldName()).find();
+                return Pattern.compile(rule.getRegexPattern()).matcher(text(field.get("fieldName"))).find();
             } catch (Exception e) {
                 return false;
             }
@@ -240,18 +229,6 @@ public class ClassificationService {
      * @param currentLevel 当前密级
      * @return true-新密级更高
      */
-    private boolean isHigherLevel(String newLevel, String currentLevel) {
-        // 从 sys_config 读取敏感级别的排序映射
-        Map<String, Integer> levelOrder = new HashMap<>();
-        List<DamConfig> dictList = configMapper.selectList(
-                new LambdaQueryWrapper<DamConfig>()
-                        .eq(DamConfig::getConfigType, "sensitive_level")
-                        .eq(DamConfig::getStatus, 1));
-        for (DamConfig d : dictList) {
-            levelOrder.put(d.getConfigCode(), d.getSortOrder());
-        }
-        return levelOrder.getOrDefault(newLevel, 0) > levelOrder.getOrDefault(currentLevel, 0);
-    }
 
     /**
      * 脱敏值（保留首尾2位，中间打码；长度不足4位整体打码）
@@ -263,4 +240,7 @@ public class ClassificationService {
         if (value.length() <= 4) return "****";
         return value.substring(0, 2) + "****" + value.substring(value.length() - 2);
     }
+
+    private Long number(Object v) { return v instanceof Number n ? n.longValue() : null; }
+    private String text(Object v) { return v == null ? "" : String.valueOf(v); }
 }
