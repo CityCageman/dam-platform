@@ -20,13 +20,13 @@ spring:
         fail-fast: ${NACOS_DISCOVERY_FAIL_FAST:false}
   datasource:
     # 任务中心库；连接信息可通过 SPRING_DATASOURCE_* 覆盖
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://10.162.3.16:11001/damplatform?currentSchema=dam_task}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://10.162.3.16:11001/damplatform?currentSchema=dam_dpm}
     username: ${SPRING_DATASOURCE_USERNAME:dam}
     password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
     hikari:
-      # 连接建立后默认 search_path 指向 dam_task
-      schema: dam_task
+      # 连接建立后默认 search_path 指向 dam_dpm
+      schema: dam_dpm
       minimum-idle: ${DB_POOL_MIN_IDLE:2}
       maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
       connection-timeout: 30000
@@ -42,8 +42,8 @@ mybatis-plus:
     map-underscore-to-camel-case: true
   global-config:
     db-config:
-      # 本服务所有表统一位于 dam_task schema（实体 @TableName 亦显式声明）
-      schema: dam_task
+      # 本服务所有表统一位于 dam_dpm schema（实体 @TableName 亦显式声明）
+      schema: dam_dpm
 
 sa-token:
   token-name: token

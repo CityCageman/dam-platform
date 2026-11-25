@@ -10,14 +10,14 @@ import java.time.LocalDateTime;
 /**
  * 数据服务 API Key
  * <p>
- * 对应 {@code dam_data_service.data_api_key}。数据库只保存 Key 的 SHA-256 摘要
+ * 对应 {@code dam_dsp.data_api_key}。数据库只保存 Key 的 SHA-256 摘要
  * （{@code key_hash}）与展示前缀（{@code key_prefix}），明文 Key 仅在创建接口
  * 响应中返回一次，不落库、不写日志。
  *
  * @author DAM Platform
  */
 @Data
-@TableName(value = "data_api_key", schema = "dam_data_service")
+@TableName(value = "data_api_key", schema = "dam_dsp")
 public class DataApiKey {
 
     /** 主键 */

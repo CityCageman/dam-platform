@@ -10,13 +10,13 @@ import java.time.LocalDateTime;
 /**
  * 调度任务运行记录。
  * <p>
- * 对应 dam_scheduler.schedule_run；手动触发与 Cron 自动派发先写入 PENDING 记录，
+ * 对应 dam_dpm.schedule_run；手动触发与 Cron 自动派发先写入 PENDING 记录，
  * 提交后由 ScheduleRunExecutor 流转为 RUNNING 并回填 finished_at/error_message。
  *
  * @author DAM Platform
  */
 @Data
-@TableName(value = "schedule_run", schema = "dam_scheduler")
+@TableName(value = "schedule_run", schema = "dam_dpm")
 public class ScheduleRun {
 
     /** 主键 */

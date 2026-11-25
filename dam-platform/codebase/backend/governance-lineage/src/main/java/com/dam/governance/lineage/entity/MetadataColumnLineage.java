@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * 每条记录挂接一条分层血缘边（metadata_lineage_hierarchy.id），实现"宏观→微观"钻取。
  */
 @Data
-@TableName(value = "metadata_column_lineage", schema = "dam_lineage")
+@TableName(value = "metadata_column_lineage", schema = "dam_dgp")
 public class MetadataColumnLineage {
 
     @TableId(type = IdType.AUTO)

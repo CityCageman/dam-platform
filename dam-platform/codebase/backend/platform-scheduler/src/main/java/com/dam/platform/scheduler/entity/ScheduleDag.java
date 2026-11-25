@@ -14,14 +14,14 @@ import java.time.LocalDateTime;
 /**
  * 调度 DAG 定义。
  * <p>
- * 对应 dam_scheduler.schedule_dag。{@code definition} 为 PostgreSQL jsonb，
+ * 对应 dam_dpm.schedule_dag。{@code definition} 为 PostgreSQL jsonb，
  * 保存原始 JSON（包含 datasource.password），仅供执行器读取；对外响应由服务层脱敏。
  * 当前仅支持节点顺序执行的 SQL DAG。
  *
  * @author DAM Platform
  */
 @Data
-@TableName(value = "schedule_dag", schema = "dam_scheduler", autoResultMap = true)
+@TableName(value = "schedule_dag", schema = "dam_dpm", autoResultMap = true)
 public class ScheduleDag {
 
     /** DAG 编码，主键 */

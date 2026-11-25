@@ -13,14 +13,14 @@ import java.time.LocalDateTime;
 /**
  * 数据 API 定义
  * <p>
- * 对应 {@code dam_data_service.data_api}：描述可对外提供的数据 API 的编码、
+ * 对应 {@code dam_dsp.data_api}：描述可对外提供的数据 API 的编码、
  * 名称、访问路径、HTTP 方法、发布状态与上游配置。{@code deleted_at} 使用
  * MyBatis-Plus 逻辑删除（未删除为 NULL，删除时置 now()），避免物理删除元数据。
  *
  * @author DAM Platform
  */
 @Data
-@TableName(value = "data_api", schema = "dam_data_service", autoResultMap = true)
+@TableName(value = "data_api", schema = "dam_dsp", autoResultMap = true)
 public class DataApi {
 
     /** 主键 */

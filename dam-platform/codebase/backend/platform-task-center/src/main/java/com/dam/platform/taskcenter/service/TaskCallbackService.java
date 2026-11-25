@@ -39,7 +39,7 @@ import java.util.Set;
  * {@code autoCreateDefinition=false} 时仍保持“定义不存在返回 404”的旧行为。
  * <p>
  * 幂等键 {@code sourceService + sourceTaskCode + sourceRunId} 由
- * {@code dam_task.task_instance} 的来源字段与唯一索引
+ * {@code dam_dpm.task_instance} 的来源字段与唯一索引
  * {@code uk_task_instance_source_run} 持久化；start 在定义行锁前后各查重一次，
  * 锁后二次查重保证并发相同请求复用已提交实例。
  * <p>

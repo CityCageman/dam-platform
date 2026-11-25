@@ -12,7 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** 通过 DAM 资产 API 读取资产与字段，禁止直接访问 dam_asset 表。 */
+/** 通过 DAM 资产 API 读取资产与字段，禁止直接访问 dam_dam 表。 */
 @Component
 public class AssetReadClient {
 

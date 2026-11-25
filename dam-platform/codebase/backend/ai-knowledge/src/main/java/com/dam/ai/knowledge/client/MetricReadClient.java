@@ -20,7 +20,7 @@ import java.util.List;
  * 指标中心只读 HTTP 客户端。
  * <p>
  * 知识库在保存/展示“指标解释”时需要读取指标口径，但指标数据归 analytics-metric 独占，
- * 因此本服务不依赖 catalog 的 MetricDefinitionMapper，也不直连 {@code dam_metric} 表，
+ * 因此本服务不依赖 catalog 的 MetricDefinitionMapper，也不直连 {@code dam_dan} 表，
  * 而是调用 analytics-metric 的内部只读接口：
  * <ul>
  *   <li>{@code GET /api/metrics/internal/active?limit=500}</li>

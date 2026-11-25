@@ -24,7 +24,7 @@ spring:
       - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
       - com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration
 
-# 门户能力域/模块目录为静态配置（阶段 1 不落库，后续可切换为 dam_sys.sys_domain/sys_module）
+# 门户能力域/模块目录为静态配置（阶段 1 不落库，后续可切换为 dam_dpm.sys_domain/sys_module）
 dam:
   portal:
     # 门户首页展示名称

@@ -9,7 +9,7 @@ import java.util.List;
  * <p>
  * 指标数据由 analytics-metric 服务独占，实现为
  * {@link com.dam.asset.shared.adapter.MetricLookupHttpAdapter}（HTTP 调用 analytics-metric），
- * Knowledge/Report 不再直接依赖 Metric Mapper 或 dam_metric 表。
+ * Knowledge/Report 不再直接依赖 Metric Mapper 或 dam_dan 表。
  */
 public interface MetricLookupPort {
 

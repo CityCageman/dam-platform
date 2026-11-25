@@ -30,7 +30,7 @@ import java.util.*;
  * <p>
  * analytics-report 已物理脱离 asset-catalog 的 Maven 依赖，报表所需的资产、分类、
  * 主题域、元数据表结构、指标与知识检索能力统一由本服务以 HTTP 接口形式暴露，
- * 报表模块不再直接访问 dam_asset / dam_metadata 表。
+ * 报表模块不再直接访问 dam_dam / dam_dam 表。
  *
  * @author DAM Platform
  */
@@ -185,7 +185,7 @@ public class ReportDataService {
 
     /**
      * 指定主题域下的资产ID（未删除的归属关系）。
-     * <p>供报表卡片按可见主题域/主题域维度过滤，避免报表模块直接查询 dam_asset.asset_category_rel。</p>
+     * <p>供报表卡片按可见主题域/主题域维度过滤，避免报表模块直接查询 dam_dam.asset_category_rel。</p>
      */
     public List<Long> assetIdsForDomains(List<Long> domainIds) {
         if (domainIds == null || domainIds.isEmpty()) return List.of();

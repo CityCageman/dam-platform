@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  * sql_hash 用于去重，解析状态机 PENDING→PARSING→SUCCESS/FAILED。
  */
 @Data
-@TableName(value = "metadata_report_sql_parser", schema = "dam_lineage")
+@TableName(value = "metadata_report_sql_parser", schema = "dam_dgp")
 public class MetadataReportSqlParser {
 
     @TableId(type = IdType.AUTO)

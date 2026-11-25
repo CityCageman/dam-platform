@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
  * 新库无 dam_scan_job 表，扫描作业信息通过 metadata_collection 持久化
  */
 @Data
-@TableName(value = "metadata_collection", schema = "dam_metadata")
+@TableName(value = "metadata_collection", schema = "dam_dam")
 public class DamScanJob {
     @TableId(type = IdType.AUTO)
     private Long id;

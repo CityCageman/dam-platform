@@ -25,7 +25,7 @@ public interface IntegrationRunMapper extends BaseMapper<IntegrationRun> {
      * @param jobId 集成任务 ID
      * @return 最大 run_no；尚无运行记录时返回 0
      */
-    @Select("SELECT COALESCE(MAX(run_no), 0) FROM dam_integration.integration_run "
+    @Select("SELECT COALESCE(MAX(run_no), 0) FROM dam_dap.integration_run "
             + "WHERE job_id = #{jobId}")
     Integer selectMaxRunNo(@Param("jobId") Long jobId);
 }

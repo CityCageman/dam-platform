@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 系统菜单接口（dam_sys.sys_menu）
+ * 系统菜单接口（dam_dpm.sys_menu）
  * <p>
  * 为前端侧边栏提供数据库驱动的菜单树，替代前端静态路由硬编码兜底。
  *

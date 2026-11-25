@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * 血缘与资产不强关联：source_code 唯一标识节点，可独立于资产存在。
  */
 @Data
-@TableName(value = "metadata_lineage_source", schema = "dam_lineage")
+@TableName(value = "metadata_lineage_source", schema = "dam_dgp")
 public class MetadataLineageSource {
 
     @TableId(type = IdType.AUTO)
@@ -38,7 +38,7 @@ public class MetadataLineageSource {
     /** 来源系统ID（dam_source_system.id，可空） */
     private Long sourceSystemId;
 
-    /** 资产分类ID（dam_asset.asset_category.id，可空；用于分类树组织血缘节点） */
+    /** 资产分类ID（dam_dam.asset_category.id，可空；用于分类树组织血缘节点） */
     private Long categoryId;
 
     /** 数仓层级（SOURCE/ODS/DWD/DIM/DWS/ADS/REPORT，可空；为空时按数据源/Schema/名称推断） */

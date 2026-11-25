@@ -10,13 +10,13 @@ import java.time.LocalDateTime;
 /**
  * 数据 API 订阅
  * <p>
- * 对应 {@code dam_data_service.api_subscription}：记录订阅方对某个数据 API 的
+ * 对应 {@code dam_dsp.api_subscription}：记录订阅方对某个数据 API 的
  * 订阅关系与审批状态。同一 API 与订阅方之间只允许存在一条记录。
  *
  * @author DAM Platform
  */
 @Data
-@TableName(value = "api_subscription", schema = "dam_data_service")
+@TableName(value = "api_subscription", schema = "dam_dsp")
 public class DataApiSubscription {
 
     /** 主键 */

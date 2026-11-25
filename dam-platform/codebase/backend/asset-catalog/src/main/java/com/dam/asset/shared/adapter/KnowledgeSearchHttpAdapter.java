@@ -19,7 +19,7 @@ import java.util.Map;
 /**
  * KnowledgeSearchPort 的 HTTP 适配器。
  * <p>
- * 知识库由 ai-knowledge 服务独占，catalog 不再包含知识库实现，也不直接访问 dam_knowledge 表；
+ * 知识库由 ai-knowledge 服务独占，catalog 不再包含知识库实现，也不直接访问 dam_ai 表；
  * 本适配器通过 ai-knowledge 的外部检索接口
  * {@code POST /api/knowledge/external/search} 获取知识条目，并解析统一 {@code Result.data}。
  * 服务不可用或返回非 200 时抛出 {@link BusinessException}，由调用方决定是否降级。

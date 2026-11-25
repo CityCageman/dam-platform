@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 生命周期策略执行记录
  */
 @Data
-@TableName(value = "metadata_lifecycle_execution", schema = "dam_lifecycle")
+@TableName(value = "metadata_lifecycle_execution", schema = "dam_dgp")
 public class DamLifecycleExecution {
 
     @TableId(type = IdType.AUTO)

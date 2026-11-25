@@ -34,7 +34,7 @@ public class InternalAiToolController {
      * 供 analytics-metric 调用的指标 SQL 生成接口。
      * <p>
      * 指标主数据由 analytics-metric 独占，报表服务只负责复用元数据/知识库/模型网关能力生成 SQL，
-     * 不落库、不读写 dam_metric 表。
+     * 不落库、不读写 dam_dan 表。
      *
      * @param metric 指标定义（analytics-metric 传入的 DTO）
      * @param token  当前登录 token（缺省时从 Sa-Token 上下文读取）

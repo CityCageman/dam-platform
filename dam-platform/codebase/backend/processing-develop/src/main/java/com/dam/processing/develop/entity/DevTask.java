@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 /**
  * 数据开发任务定义
  * <p>
- * 对应 {@code dam_dev.dev_task}：保存 SQL/Python/Shell 任务的编码、类型、内容、
+ * 对应 {@code dam_dpp.dev_task}：保存 SQL/Python/Shell 任务的编码、类型、内容、
  * 数据源与发布状态。{@code current_version} 与 {@code dev_task_version} 中的
  * 最新版本号保持一致；{@code deleted_at} 使用 MyBatis-Plus 逻辑删除，
  * 未删除为 NULL，删除时置为当前时间，不物理删除历史版本。
@@ -28,7 +28,7 @@ import java.time.LocalDateTime;
  * @author DAM Platform
  */
 @Data
-@TableName(value = "dev_task", schema = "dam_dev", autoResultMap = true)
+@TableName(value = "dev_task", schema = "dam_dpp", autoResultMap = true)
 public class DevTask {
 
     /** 任务草稿状态 */

@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 数据模型管理接口（dam_model 模块）
+ * 数据模型管理接口（dam_dpp 模块）
  * <p>
  * 提供模型主题域（model_domain）与模型字段映射（model_column_mapping）的
  * 增删改查、发布/归档，以及模型与资产结构对比能力。

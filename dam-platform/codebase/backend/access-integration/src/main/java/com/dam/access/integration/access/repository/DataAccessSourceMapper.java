@@ -38,7 +38,7 @@ public interface DataAccessSourceMapper extends BaseMapper<DataAccessSource> {
      */
     @Select("<script>"
             + "SELECT " + SELECT_COLUMNS + " "
-            + "FROM dam_access.metadata_datasource t "
+            + "FROM dam_dap.metadata_datasource t "
             + "WHERE t.deleted_at IS NULL "
             + "<if test='keyword != null and keyword != \"\"'>"
             + "AND (t.ds_name ILIKE '%' || #{keyword} || '%' "
@@ -65,7 +65,7 @@ public interface DataAccessSourceMapper extends BaseMapper<DataAccessSource> {
      * @return 数据源；不存在或已删除时返回 null
      */
     @Select("SELECT " + SELECT_COLUMNS + " "
-            + "FROM dam_access.metadata_datasource t "
+            + "FROM dam_dap.metadata_datasource t "
             + "WHERE t.id = #{id} AND t.deleted_at IS NULL")
     DataAccessSource selectActiveById(@Param("id") Long id);
 
@@ -75,7 +75,7 @@ public interface DataAccessSourceMapper extends BaseMapper<DataAccessSource> {
      * @param dsCode 数据源代码
      * @return 数量
      */
-    @Select("SELECT COUNT(1) FROM dam_access.metadata_datasource t "
+    @Select("SELECT COUNT(1) FROM dam_dap.metadata_datasource t "
             + "WHERE t.deleted_at IS NULL AND lower(t.ds_code) = lower(#{dsCode})")
     long countByCode(@Param("dsCode") String dsCode);
 
@@ -86,20 +86,20 @@ public interface DataAccessSourceMapper extends BaseMapper<DataAccessSource> {
      * @param excludeId 需要排除的数据源 ID
      * @return 数量
      */
-    @Select("SELECT COUNT(1) FROM dam_access.metadata_datasource t "
+    @Select("SELECT COUNT(1) FROM dam_dap.metadata_datasource t "
             + "WHERE t.deleted_at IS NULL AND lower(t.ds_code) = lower(#{dsCode}) "
             + "AND t.id <> #{excludeId}")
     long countByCodeExcludingId(@Param("dsCode") String dsCode,
                                 @Param("excludeId") Long excludeId);
 
     /**
-     * 检查 dam_access.metadata_datasource 是否存在 data_layer 列
+     * 检查 dam_dap.metadata_datasource 是否存在 data_layer 列
      * <p>存量表可能没有该列，写操作在列缺失时忽略 dataLayer，避免强制改表。
      *
      * @return 1 表示存在，0 表示不存在
      */
     @Select("SELECT COUNT(1) FROM information_schema.columns "
-            + "WHERE table_schema = 'dam_access' AND table_name = 'metadata_datasource' "
+            + "WHERE table_schema = 'dam_dap' AND table_name = 'metadata_datasource' "
             + "AND column_name = 'data_layer'")
     long countDataLayerColumn();
 }

@@ -10,13 +10,13 @@ import java.time.LocalDateTime;
 /**
  * 角色-菜单关联实体
  * <p>
- * 映射 dam_sys.sys_role_menu。角色菜单授权采用“全量替换”语义：
+ * 映射 dam_dpm.sys_role_menu。角色菜单授权采用“全量替换”语义：
  * 先物理删除该角色的旧关联，再按新 menuIds 批量插入。
  *
  * @author DAM Platform
  */
 @Data
-@TableName(value = "sys_role_menu", schema = "dam_sys")
+@TableName(value = "sys_role_menu", schema = "dam_dpm")
 public class SysRoleMenu {
 
     /** 自增ID */

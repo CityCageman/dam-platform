@@ -8,9 +8,9 @@ services:
   - asset-mdm
 
 schemas:
-  - dam_asset
-  - dam_metadata
-  - dam_mdm
+  - dam_dam
+  - dam_dam
+  - dam_dam
 
 routes:
   - /api/asset/**

@@ -211,7 +211,7 @@ public class LineageSourceService {
         return result;
     }
 
-    /** 批量回填节点"所属系统"名称（sourceSystemId → dam_metadata.source_system.system_name） */
+    /** 批量回填节点"所属系统"名称（sourceSystemId → dam_dam.source_system.system_name） */
     private void fillSourceSystemName(List<MetadataLineageSource> records) {
         if (records == null || records.isEmpty()) return;
         java.util.Set<Long> sysIds = new java.util.HashSet<>();

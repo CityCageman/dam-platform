@@ -3,7 +3,7 @@ import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 @Data
-@TableName(value = "metadata_quality_check_result", schema = "dam_quality")
+@TableName(value = "metadata_quality_check_result", schema = "dam_dgp")
 public class DamQualityCheck {
     @TableId(type = IdType.AUTO)
     private Long id;

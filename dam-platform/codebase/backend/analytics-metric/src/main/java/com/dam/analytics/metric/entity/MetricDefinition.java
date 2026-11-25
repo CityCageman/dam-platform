@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 /**
  * 指标定义：MANUAL-手工填报，COMPUTED-系统计算。
  * <p>
- * 表 {@code dam_metric.metric_definition} 归 analytics-metric 服务独占，catalog 不再直接读写；
+ * 表 {@code dam_dan.metric_definition} 归 analytics-metric 服务独占，catalog 不再直接读写；
  * catalog 只能通过本服务 {@code /api/metrics/internal/**} 只读接口获取指标。
  * <p>
  * 逻辑删除沿用 {@code deleted_at IS NULL} 表示有效记录：表上指标编码唯一索引是
@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
  * @author DAM Platform
  */
 @Data
-@TableName(value = "metric_definition", schema = "dam_metric")
+@TableName(value = "metric_definition", schema = "dam_dan")
 public class MetricDefinition {
 
     /** 主键（数据库 bigserial 自增） */

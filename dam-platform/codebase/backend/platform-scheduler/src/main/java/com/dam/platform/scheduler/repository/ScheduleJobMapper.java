@@ -26,7 +26,7 @@ public interface ScheduleJobMapper extends BaseMapper<ScheduleJob> {
      * @param jobCode 任务编码
      * @return 匹配记录数
      */
-    @Select("SELECT COUNT(1) FROM dam_scheduler.schedule_job WHERE job_code = #{jobCode}")
+    @Select("SELECT COUNT(1) FROM dam_dpm.schedule_job WHERE job_code = #{jobCode}")
     long countByCodeIncludingDeleted(@Param("jobCode") String jobCode);
 
     /**
@@ -37,7 +37,7 @@ public interface ScheduleJobMapper extends BaseMapper<ScheduleJob> {
      *
      * @return 已启用任务列表（按 ID 升序）
      */
-    @Select("SELECT * FROM dam_scheduler.schedule_job "
+    @Select("SELECT * FROM dam_dpm.schedule_job "
             + "WHERE status = 'ENABLED' AND deleted_at IS NULL ORDER BY id")
     List<ScheduleJob> selectEnabledJobs();
 
@@ -51,7 +51,7 @@ public interface ScheduleJobMapper extends BaseMapper<ScheduleJob> {
      * @param id 任务ID
      * @return 已启用且未删除的任务；行被其他事务锁定、任务不存在或非启用状态时返回 null
      */
-    @Select("SELECT * FROM dam_scheduler.schedule_job "
+    @Select("SELECT * FROM dam_dpm.schedule_job "
             + "WHERE id = #{id} AND status = 'ENABLED' AND deleted_at IS NULL "
             + "FOR UPDATE SKIP LOCKED")
     ScheduleJob selectEnabledJobForUpdate(@Param("id") Long id);
@@ -65,7 +65,7 @@ public interface ScheduleJobMapper extends BaseMapper<ScheduleJob> {
      * @param lastDispatchedAt 本次自动派发时间
      * @return 更新行数
      */
-    @Update("UPDATE dam_scheduler.schedule_job SET last_dispatched_at = #{lastDispatchedAt} "
+    @Update("UPDATE dam_dpm.schedule_job SET last_dispatched_at = #{lastDispatchedAt} "
             + "WHERE id = #{id} AND status = 'ENABLED'")
     int updateLastDispatchedAt(@Param("id") Long id,
                                @Param("lastDispatchedAt") LocalDateTime lastDispatchedAt);

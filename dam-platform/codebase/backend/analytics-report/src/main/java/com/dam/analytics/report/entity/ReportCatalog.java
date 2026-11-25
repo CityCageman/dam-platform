@@ -12,12 +12,12 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 报表资产扩展属性（dam_asset.report_catalog）
+ * 报表资产扩展属性（dam_dam.report_catalog）
  * <p>
  * 与 asset_info 一对一（source_metadata_type='REPORT'），复用资产的收藏、评分、标签、搜索与主题域权限。
  */
 @Data
-@TableName(value = "report_catalog", schema = "dam_report")
+@TableName(value = "report_catalog", schema = "dam_dan")
 public class ReportCatalog {
 
     @TableId(type = IdType.AUTO)

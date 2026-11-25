@@ -392,7 +392,7 @@ public class RoleAdminService {
     /**
      * 查询角色权限点（可选能力）
      * <p>
-     * 数据来自 dam_sys.sys_permission / sys_role_permission；当前平台尚未基于权限点鉴权，
+     * 数据来自 dam_dpm.sys_permission / sys_role_permission；当前平台尚未基于权限点鉴权，
      * 该接口仅用于系统配置页展示。若后续部署省略权限表，本接口会返回系统错误，不影响其他接口。
      *
      * @param id 角色ID

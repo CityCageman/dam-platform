@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
  * 工单评论
  */
 @Data
-@TableName(value = "ticket_comment", schema = "dam_ticket")
+@TableName(value = "ticket_comment", schema = "dam_dpm")
 public class DamTicketComment {
     @TableId(type = IdType.AUTO)
     private Long id;

@@ -8,14 +8,14 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 资产-主题域-类目归属（dam_asset.asset_category_rel）
+ * 资产-主题域-类目归属（dam_dam.asset_category_rel）
  * <p>
  * 规则：同一资产可归属多个主题域（subject_domain_id，一级分类），
  * 但在同一主题域下只能归属一个类目（category_id，二级分类），
  * 由唯一索引 uk_asset_domain_rel(asset_id, subject_domain_id) 保证。
  */
 @Data
-@TableName(value = "asset_category_rel", schema = "dam_asset")
+@TableName(value = "asset_category_rel", schema = "dam_dam")
 public class AssetCategoryRel {
 
     @TableId(type = IdType.AUTO)

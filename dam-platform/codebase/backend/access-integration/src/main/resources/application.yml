@@ -19,7 +19,7 @@ spring:
         # Nacos 不可用时仅记录注册失败，不阻断服务启动；生产环境可通过环境变量设为 true 强制校验
         fail-fast: ${NACOS_DISCOVERY_FAIL_FAST:false}
   datasource:
-    # 集成任务存储在 damplatform 的 dam_integration schema，连接信息统一由环境变量注入
+    # 集成任务存储在 damplatform 的 dam_dap schema，连接信息统一由环境变量注入
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://10.162.3.16:11001/damplatform}
     username: ${SPRING_DATASOURCE_USERNAME:dam}
     password: ${SPRING_DATASOURCE_PASSWORD:}
@@ -35,8 +35,8 @@ mybatis-plus:
     map-underscore-to-camel-case: true
   global-config:
     db-config:
-      # 本服务所有表统一位于 dam_integration schema（实体 @TableName 亦显式声明）
-      schema: dam_integration
+      # 本服务所有表统一位于 dam_dap schema（实体 @TableName 亦显式声明）
+      schema: dam_dap
 
 sa-token:
   token-name: token

@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 用户申请访问敏感数据的审批记录
  */
 @Data
-@TableName(value = "security_access_application", schema = "dam_security")
+@TableName(value = "security_access_application", schema = "dam_dgp")
 public class DamDataAccessRequest {
     @TableId(type = IdType.AUTO)
     private Long id;

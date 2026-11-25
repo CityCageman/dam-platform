@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 
 /**
- * 系统菜单服务（dam_sys.sys_menu）
+ * 系统菜单服务（dam_dpm.sys_menu）
  * <p>
  * 读取启用的可见菜单并按 parent_id 构建两级树：
  * 顶级为目录（大模块，menu_type=M），子节点为页面菜单（menu_type=C）。

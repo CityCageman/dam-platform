@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 /**
  * 通用字典类型实体
  * <p>
- * 对应表：dam_sys.sys_dict_type
+ * 对应表：dam_dpm.sys_dict_type
  * 用于管理系统内所有"枚举值翻译类"字典的类型定义（如资产类型、治理状态、工单状态等），
  * 与 {@link SysDictData}（字典数据）组成一对多的通用字典体系。
  * <p>
@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
  * @see SysDictData
  */
 @Data
-@TableName(value = "sys_dict_type", schema = "dam_sys")
+@TableName(value = "sys_dict_type", schema = "dam_dpm")
 public class SysDictType {
 
     /** 自增主键 */

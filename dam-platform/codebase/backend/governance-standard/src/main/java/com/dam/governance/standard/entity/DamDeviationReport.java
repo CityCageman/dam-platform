@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 记录资产与标准之间的偏差
  */
 @Data
-@TableName(value = "standard_deviation_report", schema = "dam_standard")
+@TableName(value = "standard_deviation_report", schema = "dam_dgp")
 public class DamDeviationReport {
     @TableId(type = IdType.AUTO)
     private Long id;

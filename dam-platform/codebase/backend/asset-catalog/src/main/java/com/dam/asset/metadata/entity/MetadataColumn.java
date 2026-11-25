@@ -5,11 +5,11 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 技术元数据-字段（对应文档 metadata_column，位于 dam_metadata 模块）
+ * 技术元数据-字段（对应文档 metadata_column，位于 dam_dam 模块）
  * 字段级技术结构信息，与资产字段 dam_field（业务语义）职责分离
  */
 @Data
-@TableName(value = "metadata_column", schema = "dam_metadata")
+@TableName(value = "metadata_column", schema = "dam_dam")
 public class MetadataColumn {
     @TableId(type = IdType.AUTO)
     private Long id;

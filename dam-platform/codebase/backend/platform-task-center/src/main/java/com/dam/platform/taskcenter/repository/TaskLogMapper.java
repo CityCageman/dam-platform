@@ -7,7 +7,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 /**
- * 任务日志 Mapper（dam_task.task_log）。
+ * 任务日志 Mapper（dam_dpm.task_log）。
  * <p>
  * 基础 CRUD 由 MyBatis-Plus 提供；额外提供按消息前缀查询最近一条日志，
  * 供回调服务读取以 CALLBACK_FINISH 开头的结构化结束标记（rowsRead/rowsWritten）。
@@ -27,7 +27,7 @@ public interface TaskLogMapper extends BaseMapper<TaskLog> {
      * @param prefixLength 前缀长度
      * @return 最近一条匹配日志；不存在时返回 null
      */
-    @Select("SELECT * FROM dam_task.task_log WHERE instance_id = #{instanceId} "
+    @Select("SELECT * FROM dam_dpm.task_log WHERE instance_id = #{instanceId} "
             + "AND LEFT(message, #{prefixLength}) = #{prefix} "
             + "ORDER BY id DESC LIMIT 1")
     TaskLog selectLatestByMessagePrefix(@Param("instanceId") Long instanceId,

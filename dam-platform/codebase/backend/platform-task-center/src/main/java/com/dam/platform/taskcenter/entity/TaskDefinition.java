@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 /**
  * 任务定义。
  * <p>
- * 对应 {@code dam_task.task_definition}：统一登记集成、调度、开发、质量与 AI 任务的
+ * 对应 {@code dam_dpm.task_definition}：统一登记集成、调度、开发、质量与 AI 任务的
  * 元数据。{@code config} 为 PostgreSQL jsonb，使用 platform-common 的
  * {@link JsonbTypeHandler} 读写；{@code deleted_at} 使用 MyBatis-Plus 逻辑删除，
  * 未删除为 NULL，删除时置 now()。
@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
  * @author DAM Platform
  */
 @Data
-@TableName(value = "task_definition", schema = "dam_task", autoResultMap = true)
+@TableName(value = "task_definition", schema = "dam_dpm", autoResultMap = true)
 public class TaskDefinition {
 
     /** 主键 */

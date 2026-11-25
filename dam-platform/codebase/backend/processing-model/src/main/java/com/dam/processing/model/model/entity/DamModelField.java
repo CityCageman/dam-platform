@@ -7,7 +7,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName(value = "model_column_mapping", schema = "dam_model")
+@TableName(value = "model_column_mapping", schema = "dam_dpp")
 public class DamModelField {
     @TableId(type = IdType.AUTO)
     private Long id;

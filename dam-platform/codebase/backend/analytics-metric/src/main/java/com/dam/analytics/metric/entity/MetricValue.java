@@ -13,14 +13,14 @@ import java.time.LocalDateTime;
 /**
  * 手工填报指标值（按期间 + 维度唯一）。
  * <p>
- * 表 {@code dam_metric.metric_value} 归 analytics-metric 服务独占。逻辑删除同样使用
+ * 表 {@code dam_dan.metric_value} 归 analytics-metric 服务独占。逻辑删除同样使用
  * {@code deleted_at}，未删除记录由部分唯一索引 {@code (metric_id, period, dimension_key)}
  * 保证同一期间同一维度只有一条值。
  *
  * @author DAM Platform
  */
 @Data
-@TableName(value = "metric_value", schema = "dam_metric")
+@TableName(value = "metric_value", schema = "dam_dan")
 public class MetricValue {
 
     /** 主键（数据库 bigserial 自增） */

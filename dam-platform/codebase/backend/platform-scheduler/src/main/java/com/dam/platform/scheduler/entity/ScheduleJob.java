@@ -13,12 +13,12 @@ import java.time.LocalDateTime;
 /**
  * 调度任务定义。
  * <p>
- * 对应 dam_scheduler.schedule_job；仅存储调度元数据，不包含 DAG 执行逻辑。
+ * 对应 dam_dpm.schedule_job；仅存储调度元数据，不包含 DAG 执行逻辑。
  *
  * @author DAM Platform
  */
 @Data
-@TableName(value = "schedule_job", schema = "dam_scheduler")
+@TableName(value = "schedule_job", schema = "dam_dpm")
 public class ScheduleJob {
 
     /** 主键 */

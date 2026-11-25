@@ -11,13 +11,13 @@ import java.time.LocalDateTime;
 /**
  * 系统角色实体
  * <p>
- * 映射 dam_sys.sys_role。角色通过 sys_user_role 关联用户、通过 sys_role_menu 关联菜单；
+ * 映射 dam_dpm.sys_role。角色通过 sys_user_role 关联用户、通过 sys_role_menu 关联菜单；
  * 删除采用 deleted_at 逻辑删除，唯一性由代码校验（未删除记录内 role_code 唯一）。
  *
  * @author DAM Platform
  */
 @Data
-@TableName(value = "sys_role", schema = "dam_sys")
+@TableName(value = "sys_role", schema = "dam_dpm")
 public class SysRole {
 
     /** 自增ID */

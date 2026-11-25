@@ -14,15 +14,15 @@ import java.time.LocalDateTime;
 /**
  * 数据接入数据源实体
  * <p>
- * 对应 {@code dam_access.metadata_datasource}。数据源写入口与连接测试由 access-integration
- * 统一负责；{@code dam_metadata.metadata_datasource} 仅为只读兼容视图。
+ * 对应 {@code dam_dap.metadata_datasource}。数据源写入口与连接测试由 access-integration
+ * 统一负责；{@code dam_dam.metadata_datasource} 仅为只读兼容视图。
  * <p>
  * 密码字段只接受请求入参，永不参与 JSON 序列化，避免任何接口意外回传密文或明文。
  *
  * @author DAM Platform
  */
 @Data
-@TableName(value = "metadata_datasource", schema = "dam_access")
+@TableName(value = "metadata_datasource", schema = "dam_dap")
 public class DataAccessSource {
 
     /** 自增主键 */

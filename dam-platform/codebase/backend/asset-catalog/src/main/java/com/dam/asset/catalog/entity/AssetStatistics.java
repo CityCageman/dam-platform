@@ -6,11 +6,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * 资产使用统计（对应文档 asset_statistics，位于 dam_asset 模块）
+ * 资产使用统计（对应文档 asset_statistics，位于 dam_dam 模块）
  * 按日统计资产的浏览、查询、下载、导出次数与独立用户数
  */
 @Data
-@TableName(value = "asset_statistics", schema = "dam_asset")
+@TableName(value = "asset_statistics", schema = "dam_dam")
 public class AssetStatistics {
     @TableId(type = IdType.AUTO)
     private Long id;

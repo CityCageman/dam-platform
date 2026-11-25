@@ -11,12 +11,12 @@ import java.time.LocalDateTime;
 /**
  * 系统菜单实体
  * <p>
- * 映射 dam_sys.sys_menu，仅用于角色-菜单授权查询；菜单本身由系统配置模块维护。
+ * 映射 dam_dpm.sys_menu，仅用于角色-菜单授权查询；菜单本身由系统配置模块维护。
  *
  * @author DAM Platform
  */
 @Data
-@TableName(value = "sys_menu", schema = "dam_sys")
+@TableName(value = "sys_menu", schema = "dam_dpm")
 public class SysMenu {
 
     /** 自增ID */

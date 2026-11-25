@@ -5,7 +5,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName(value = "security_data_audit_log", schema = "dam_security")
+@TableName(value = "security_data_audit_log", schema = "dam_dgp")
 public class DamAuditLog {
     @TableId(type = IdType.AUTO)
     private Long id;

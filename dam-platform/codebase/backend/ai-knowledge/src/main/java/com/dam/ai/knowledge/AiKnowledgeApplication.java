@@ -8,11 +8,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 /**
  * 知识库（Knowledge）服务启动类。
  * <p>
- * 从 asset-catalog 中拆出的独立领域服务，独占 PostgreSQL 的 {@code dam_knowledge} schema：
+ * 从 asset-catalog 中拆出的独立领域服务，独占 PostgreSQL 的 {@code dam_ai} schema：
  * {@code knowledge_category}、{@code knowledge_entry}、{@code knowledge_sync_config}
  * 三张表只允许本服务读写。
  * <p>
- * 指标口径不直接读 {@code dam_metric} 表，而是通过
+ * 指标口径不直接读 {@code dam_dan} 表，而是通过
  * {@link com.dam.ai.knowledge.client.MetricReadClient} 调用 analytics-metric 内部只读接口获取；
  * WeKnora 外部知识库同步能力保持不变。
  *

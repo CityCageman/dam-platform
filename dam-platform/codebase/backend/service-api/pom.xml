@@ -30,7 +30,7 @@
             <groupId>cn.dev33</groupId>
             <artifactId>sa-token-spring-boot3-starter</artifactId>
         </dependency>
-        <!-- 数据 API 管理需要持久化到 dam_data_service schema -->
+        <!-- 数据 API 管理需要持久化到 dam_dsp schema -->
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-spring-boot4-starter</artifactId>

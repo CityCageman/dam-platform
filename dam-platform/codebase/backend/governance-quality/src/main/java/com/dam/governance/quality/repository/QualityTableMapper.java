@@ -19,6 +19,6 @@ public interface QualityTableMapper {
      * @param tableId metadata_table.id
      * @return 表名（不存在返回 null）
      */
-    @Select("SELECT table_name FROM dam_metadata.metadata_table WHERE id = #{tableId} AND status = 1 LIMIT 1")
+    @Select("SELECT table_name FROM dam_dam.metadata_table WHERE id = #{tableId} AND status = 1 LIMIT 1")
     String findTableName(@Param("tableId") Long tableId);
 }

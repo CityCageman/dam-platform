@@ -13,14 +13,14 @@ import java.time.LocalDateTime;
 /**
  * 数据集成任务实体
  * <p>
- * 对应 dam_integration.integration_job 表。任务保存源端/目标端配置与生命周期状态；
+ * 对应 dam_dap.integration_job 表。任务保存源端/目标端配置与生命周期状态；
  * trigger 接口会创建 integration_run 并通过线程池执行真实 JDBC 全量同步。
  * source_config / target_config 为 PostgreSQL JSONB。
  *
  * @author DAM Platform
  */
 @Data
-@TableName(value = "integration_job", schema = "dam_integration", autoResultMap = true)
+@TableName(value = "integration_job", schema = "dam_dap", autoResultMap = true)
 public class IntegrationJob {
 
     /** 任务草稿状态 */

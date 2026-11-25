@@ -19,7 +19,7 @@ import java.util.List;
 /**
  * MetricLookupPort 的 HTTP 适配器。
  * <p>
- * 指标数据由 analytics-metric 服务独占，catalog 不再直接访问 dam_metric 表；
+ * 指标数据由 analytics-metric 服务独占，catalog 不再直接访问 dam_dan 表；
  * 本适配器通过 analytics-metric 的内部只读接口获取指标，并解析统一 {@code Result.data}。
  * 服务不可用或返回非成功状态码时抛出 {@link BusinessException}，绝不返回伪造/空指标掩盖故障。
  *

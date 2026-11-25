@@ -5,11 +5,11 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 技术元数据-表（对应文档 metadata_table，位于 dam_metadata 模块）
- * 与资产目录 dam_asset 职责分离：本表只存扫描到的技术结构信息，资产治理信息存 dam_asset
+ * 技术元数据-表（对应文档 metadata_table，位于 dam_dam 模块）
+ * 与资产目录 dam_dam 职责分离：本表只存扫描到的技术结构信息，资产治理信息存 dam_dam
  */
 @Data
-@TableName(value = "metadata_table", schema = "dam_metadata")
+@TableName(value = "metadata_table", schema = "dam_dam")
 public class MetadataTable {
     @TableId(type = IdType.AUTO)
     private Long id;

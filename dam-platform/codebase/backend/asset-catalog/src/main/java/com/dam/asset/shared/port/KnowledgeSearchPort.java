@@ -7,7 +7,7 @@ import java.util.Map;
  * <p>
  * 知识库数据由 ai-knowledge 服务独占，实现为
  * {@link com.dam.asset.shared.adapter.KnowledgeSearchHttpAdapter}（HTTP 调用 ai-knowledge），
- * catalog 不再包含知识库实现，也不直接访问 dam_knowledge 表。
+ * catalog 不再包含知识库实现，也不直接访问 dam_ai 表。
  *
  * @author DAM Platform
  */

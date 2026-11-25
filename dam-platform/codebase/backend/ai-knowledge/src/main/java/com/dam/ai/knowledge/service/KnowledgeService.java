@@ -22,9 +22,9 @@ import java.util.stream.Collectors;
 /**
  * 知识库：可维护分类、条目、外部数据同步和向量索引预留接口。
  * <p>
- * 知识分类/条目/同步配置持久化在 {@code dam_knowledge} schema。指标口径通过
+ * 知识分类/条目/同步配置持久化在 {@code dam_ai} schema。指标口径通过
  * {@link MetricReadClient} 调用 analytics-metric 只读接口获取；元数据/标准来源候选只做
- * {@code dam_metadata}/{@code dam_standard} 的跨 schema 只读查询，不写入这些领域。
+ * {@code dam_dam}/{@code dam_dgp} 的跨 schema 只读查询，不写入这些领域。
  */
 @Service
 @RequiredArgsConstructor
@@ -266,12 +266,12 @@ public class KnowledgeService {
         String kw = StrUtil.trimToEmpty(keyword).toLowerCase();
         List<Map<String, Object>> result = new ArrayList<>();
         if ("METADATA".equalsIgnoreCase(sourceType)) {
-            // 技术元数据仍归 catalog（dam_metadata schema），知识服务只做只读候选查询
+            // 技术元数据仍归 catalog（dam_dam schema），知识服务只做只读候选查询
             try {
                 List<Map<String, Object>> tables = jdbcTemplate.queryForList(
                         "SELECT t.id, t.table_name, t.table_comment, s.schema_name "
-                                + "FROM dam_metadata.metadata_table t "
-                                + "LEFT JOIN dam_metadata.metadata_schema s ON s.id = t.schema_id "
+                                + "FROM dam_dam.metadata_table t "
+                                + "LEFT JOIN dam_dam.metadata_schema s ON s.id = t.schema_id "
                                 + "ORDER BY t.id LIMIT 500");
                 for (Map<String, Object> t : tables) {
                     String schema = t.get("schema_name") == null ? "" : String.valueOf(t.get("schema_name"));
@@ -302,7 +302,7 @@ public class KnowledgeService {
         } else if ("STANDARD".equalsIgnoreCase(sourceType)) {
             try {
                 List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                        "SELECT id, code_table_name, description FROM dam_standard.standard_code_table WHERE status = 1 ORDER BY id DESC LIMIT 500");
+                        "SELECT id, code_table_name, description FROM dam_dgp.standard_code_table WHERE status = 1 ORDER BY id DESC LIMIT 500");
                 for (Map<String, Object> r : rows) {
                     String title = String.valueOf(r.getOrDefault("code_table_name", ""));
                     String desc = String.valueOf(r.getOrDefault("description", ""));

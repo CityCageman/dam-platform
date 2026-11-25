@@ -10,14 +10,14 @@ import java.time.LocalDateTime;
 /**
  * 数据集成任务运行记录
  * <p>
- * 对应 dam_integration.integration_run。一次 trigger 生成一条运行记录：
+ * 对应 dam_dap.integration_run。一次 trigger 生成一条运行记录：
  * 事务内以 PENDING 状态落库，线程池开始执行时置 RUNNING，执行结束后置
  * SUCCESS/FAILED，并回填读取/写入行数、起止时间与失败原因。
  *
  * @author DAM Platform
  */
 @Data
-@TableName(value = "integration_run", schema = "dam_integration")
+@TableName(value = "integration_run", schema = "dam_dap")
 public class IntegrationRun {
 
     /** 等待线程池执行 */

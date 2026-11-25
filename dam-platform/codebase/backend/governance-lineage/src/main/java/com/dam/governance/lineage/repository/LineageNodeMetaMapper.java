@@ -31,12 +31,12 @@ public interface LineageNodeMetaMapper {
                    ls.id            AS source_id,
                    ds.data_layer    AS data_layer,
                    ms.schema_name   AS schema_name
-              FROM dam_metadata.metadata_lineage_source ls
-              LEFT JOIN dam_metadata.metadata_table t
+              FROM dam_dam.metadata_lineage_source ls
+              LEFT JOIN dam_dam.metadata_table t
                      ON t.table_name = ls.source_code
-              LEFT JOIN dam_metadata.metadata_schema ms
+              LEFT JOIN dam_dam.metadata_schema ms
                      ON ms.id = t.schema_id
-              LEFT JOIN dam_metadata.metadata_datasource ds
+              LEFT JOIN dam_dam.metadata_datasource ds
                      ON ds.id = t.datasource_id
              WHERE ls.id IN
              <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
@@ -57,10 +57,10 @@ public interface LineageNodeMetaMapper {
                    t.table_name     AS table_name,
                    ds.data_layer    AS data_layer,
                    ms.schema_name   AS schema_name
-              FROM dam_metadata.metadata_table t
-              LEFT JOIN dam_metadata.metadata_schema ms
+              FROM dam_dam.metadata_table t
+              LEFT JOIN dam_dam.metadata_schema ms
                      ON ms.id = t.schema_id
-              LEFT JOIN dam_metadata.metadata_datasource ds
+              LEFT JOIN dam_dam.metadata_datasource ds
                      ON ds.id = t.datasource_id
              WHERE t.table_name IN
              <foreach collection="names" item="name" open="(" separator="," close=")">#{name}</foreach>

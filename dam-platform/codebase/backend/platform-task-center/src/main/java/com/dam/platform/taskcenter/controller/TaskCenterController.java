@@ -77,7 +77,7 @@ public class TaskCenterController {
         status.put("service", "platform-task-center");
         status.put("status", "UP");
         status.put("role", "unified task center");
-        status.put("storage", "dam_task");
+        status.put("storage", "dam_dpm");
         status.put("executor", "not implemented");
         return Result.success(status);
     }

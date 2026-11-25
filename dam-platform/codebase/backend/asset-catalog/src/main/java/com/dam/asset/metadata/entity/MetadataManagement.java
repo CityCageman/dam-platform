@@ -6,11 +6,11 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 管理元数据（对应文档 metadata_management，位于 dam_metadata 模块）
+ * 管理元数据（对应文档 metadata_management，位于 dam_dam 模块）
  * 记录治理状态、生命周期、安全分级等管理属性，通过 table_id 关联技术元数据表
  */
 @Data
-@TableName(value = "metadata_management", schema = "dam_metadata")
+@TableName(value = "metadata_management", schema = "dam_dam")
 public class MetadataManagement {
     @TableId(type = IdType.AUTO)
     private Long id;

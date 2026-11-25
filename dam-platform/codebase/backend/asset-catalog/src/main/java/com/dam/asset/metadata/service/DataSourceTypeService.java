@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 /**
  * 数据源类型服务
  * <p>
- * 数据源类型统一由系统配置中心维护（{@code dam_sys.sys_config}，{@code config_type=source_type}），
+ * 数据源类型统一由系统配置中心维护（{@code dam_dpm.sys_config}，{@code config_type=source_type}），
  * 每条配置的 {@code config_value} 以 JSON 承载连接参数：
  * <pre>
  * {"driverClass":"...","urlTemplate":"...","defaultPort":5432,

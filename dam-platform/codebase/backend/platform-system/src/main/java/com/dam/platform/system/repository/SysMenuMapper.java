@@ -7,7 +7,7 @@ import com.dam.platform.system.entity.SysMenu;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * 系统菜单 Mapper（dam_sys.sys_menu）
+ * 系统菜单 Mapper（dam_dpm.sys_menu）
  *
  * @author DAM Platform
  */

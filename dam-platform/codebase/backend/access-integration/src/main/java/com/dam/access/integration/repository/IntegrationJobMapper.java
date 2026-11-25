@@ -27,7 +27,7 @@ public interface IntegrationJobMapper extends BaseMapper<IntegrationJob> {
      * @param jobCode 任务编码
      * @return 记录数
      */
-    @Select("SELECT COUNT(1) FROM dam_integration.integration_job WHERE job_code = #{jobCode}")
+    @Select("SELECT COUNT(1) FROM dam_dap.integration_job WHERE job_code = #{jobCode}")
     long countByJobCodeIncludingDeleted(@Param("jobCode") String jobCode);
 
     /**
@@ -39,7 +39,7 @@ public interface IntegrationJobMapper extends BaseMapper<IntegrationJob> {
      * @param id 任务 ID
      * @return 任务 ID；记录不存在或已逻辑删除时返回 null
      */
-    @Select("SELECT id FROM dam_integration.integration_job "
+    @Select("SELECT id FROM dam_dap.integration_job "
             + "WHERE id = #{id} AND deleted_at IS NULL FOR UPDATE")
     Long lockById(@Param("id") Long id);
 }

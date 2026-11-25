@@ -7,7 +7,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 /**
- * 数据 API Mapper（dam_data_service.data_api）
+ * 数据 API Mapper（dam_dsp.data_api）
  * <p>
  * 基础 CRUD 由 MyBatis-Plus 提供；逻辑删除条件由 {@code @TableLogic} 自动追加。
  * 额外提供包含已逻辑删除记录的唯一性统计，避免复用已删除的 api_code 触发
@@ -24,7 +24,7 @@ public interface DataApiMapper extends BaseMapper<DataApi> {
      * @param apiCode API 编码
      * @return 记录数
      */
-    @Select("SELECT COUNT(1) FROM dam_data_service.data_api WHERE api_code = #{apiCode}")
+    @Select("SELECT COUNT(1) FROM dam_dsp.data_api WHERE api_code = #{apiCode}")
     long countByApiCodeIncludingDeleted(@Param("apiCode") String apiCode);
 
     /**
@@ -37,7 +37,7 @@ public interface DataApiMapper extends BaseMapper<DataApi> {
      * @param apiCode API 编码
      * @return 数据 API 定义；不存在或已删除时返回 null
      */
-    @Select("SELECT * FROM dam_data_service.data_api "
+    @Select("SELECT * FROM dam_dsp.data_api "
             + "WHERE api_code = #{apiCode} AND deleted_at IS NULL LIMIT 1")
     DataApi selectByApiCode(@Param("apiCode") String apiCode);
 }

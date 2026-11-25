@@ -10,14 +10,14 @@ import java.time.LocalDateTime;
 /**
  * 任务实例。
  * <p>
- * 对应 {@code dam_task.task_instance}：一次任务触发对应一条实例记录。
+ * 对应 {@code dam_dpm.task_instance}：一次任务触发对应一条实例记录。
  * 触发接口只写入 PENDING 实例，不伪造执行结果；started_at/finished_at/
  * error_message 由执行器或状态回填接口维护。
  *
  * @author DAM Platform
  */
 @Data
-@TableName(value = "task_instance", schema = "dam_task")
+@TableName(value = "task_instance", schema = "dam_dpm")
 public class TaskInstance {
 
     /** 主键 */

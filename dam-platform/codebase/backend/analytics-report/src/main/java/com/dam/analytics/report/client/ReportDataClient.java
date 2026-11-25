@@ -20,7 +20,7 @@ import java.util.function.Supplier;
  * 报表模块已物理脱离 asset-catalog 的 Maven 依赖，数据源、资产、分类/主题域、
  * 技术元数据表结构、指标与知识检索统一通过本客户端调用
  * {@code /api/catalog/report-data/**} 的 HTTP 接口获取，
- * 不再直接依赖 DAM Mapper 或访问 dam_asset / dam_metadata 表。
+ * 不再直接依赖 DAM Mapper 或访问 dam_dam / dam_dam 表。
  *
  * @author DAM Platform
  */

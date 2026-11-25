@@ -5,7 +5,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName(value = "security_sensitive_rule", schema = "dam_security")
+@TableName(value = "security_sensitive_rule", schema = "dam_dgp")
 public class DamSensitiveRule {
     @TableId(type = IdType.AUTO)
     private Long id;

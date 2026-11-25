@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 /**
  * 通用字典数据实体
  * <p>
- * 对应表：dam_sys.sys_dict_data
+ * 对应表：dam_dpm.sys_dict_data
  * 通过 dictTypeId 关联 {@link SysDictType}（字典类型），
  * 每条记录承载一个枚举值（dictValue）及其展示名（dictLabel），
  * 供前端下拉框、表格标签翻译等场景使用。
@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
  * @see SysDictType
  */
 @Data
-@TableName(value = "sys_dict_data", schema = "dam_sys")
+@TableName(value = "sys_dict_data", schema = "dam_dpm")
 public class SysDictData {
 
     /** 自增主键 */

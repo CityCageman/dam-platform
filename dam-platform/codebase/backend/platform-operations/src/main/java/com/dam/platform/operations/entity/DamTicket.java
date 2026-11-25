@@ -5,7 +5,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName(value = "ticket_order", schema = "dam_ticket")
+@TableName(value = "ticket_order", schema = "dam_dpm")
 public class DamTicket {
     @TableId(type = IdType.AUTO)
     private Long id;

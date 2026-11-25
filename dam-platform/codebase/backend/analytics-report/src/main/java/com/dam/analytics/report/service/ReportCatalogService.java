@@ -124,7 +124,7 @@ public class ReportCatalogService {
             if (username.isBlank()) w.eq(ReportCatalog::getId, -1L);
             else w.eq(ReportCatalog::getCreatedBy, username);
         }
-        // 角色可见主题域收敛：经 DAM 接口取主题域下的资产ID，报表库不直连 dam_asset 表
+        // 角色可见主题域收敛：经 DAM 接口取主题域下的资产ID，报表库不直连 dam_dam 表
         if (visible != null) {
             List<Long> domainAssetIds = reportDataClient.assetIdsForDomains(visible);
             if (domainAssetIds.isEmpty()) return emptyPage(page, pageSize);

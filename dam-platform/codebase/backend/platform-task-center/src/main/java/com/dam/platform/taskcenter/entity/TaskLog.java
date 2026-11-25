@@ -10,13 +10,13 @@ import java.time.LocalDateTime;
 /**
  * 任务日志。
  * <p>
- * 对应 {@code dam_task.task_log}：按实例追加的执行日志，供执行器与运维排查使用。
+ * 对应 {@code dam_dpm.task_log}：按实例追加的执行日志，供执行器与运维排查使用。
  * 本服务只负责日志持久化，不解析日志内容。
  *
  * @author DAM Platform
  */
 @Data
-@TableName(value = "task_log", schema = "dam_task")
+@TableName(value = "task_log", schema = "dam_dpm")
 public class TaskLog {
 
     /** 主键 */

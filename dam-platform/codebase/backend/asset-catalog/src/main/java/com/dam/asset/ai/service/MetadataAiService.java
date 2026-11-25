@@ -55,7 +55,7 @@ public class MetadataAiService {
     private static final int MAX_BATCH_SIZE = 80;
 
     /** metadata_management 表全限定名（安全分级缺失判断用） */
-    private static final String MGMT_TABLE = "dam_metadata.metadata_management";
+    private static final String MGMT_TABLE = "dam_dam.metadata_management";
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

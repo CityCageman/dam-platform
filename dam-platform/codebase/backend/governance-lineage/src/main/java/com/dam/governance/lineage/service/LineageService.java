@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 
 /**
  * 数据血缘服务
- * 适配新表 dam_metadata.metadata_lineage：
+ * 适配新表 dam_dam.metadata_lineage：
  *  - source_type/source_id/target_type/target_id 承载血缘节点（类型：TABLE/REPORT/VIEW/PROCEDURE/DICT 等）
  *  - transform_rule 承载转换规则 SQL
  *  - relation_type 承载关系类型（如 PARSER 解析所得）

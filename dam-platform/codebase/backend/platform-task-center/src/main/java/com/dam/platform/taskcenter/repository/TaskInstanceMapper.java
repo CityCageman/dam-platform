@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 任务实例 Mapper（dam_task.task_instance）。
+ * 任务实例 Mapper（dam_dpm.task_instance）。
  * <p>
  * 基础 CRUD 由 MyBatis-Plus 提供；额外提供同一任务定义内最大 run_no 查询、
  * 回调结束事务内按主键加行锁的实例查询，以及超时实例回收所需的
@@ -28,7 +28,7 @@ public interface TaskInstanceMapper extends BaseMapper<TaskInstance> {
      * @param definitionId 任务定义ID
      * @return 最大 run_no；尚无实例时返回 0
      */
-    @Select("SELECT COALESCE(MAX(run_no), 0) FROM dam_task.task_instance "
+    @Select("SELECT COALESCE(MAX(run_no), 0) FROM dam_dpm.task_instance "
             + "WHERE definition_id = #{definitionId}")
     Integer selectMaxRunNo(@Param("definitionId") Long definitionId);
 
@@ -40,7 +40,7 @@ public interface TaskInstanceMapper extends BaseMapper<TaskInstance> {
      * @param id 实例ID
      * @return 任务实例；不存在时返回 null
      */
-    @Select("SELECT * FROM dam_task.task_instance WHERE id = #{id} FOR UPDATE")
+    @Select("SELECT * FROM dam_dpm.task_instance WHERE id = #{id} FOR UPDATE")
     TaskInstance selectByIdForUpdate(@Param("id") Long id);
 
     /**
@@ -54,7 +54,7 @@ public interface TaskInstanceMapper extends BaseMapper<TaskInstance> {
      * @param limit  单次最多扫描条数
      * @return 超时候选实例ID（按创建时间升序）
      */
-    @Select("SELECT id FROM dam_task.task_instance "
+    @Select("SELECT id FROM dam_dpm.task_instance "
             + "WHERE status = 'PENDING' AND created_at < #{cutoff} "
             + "ORDER BY created_at, id LIMIT #{limit} FOR UPDATE SKIP LOCKED")
     List<Long> selectTimeoutPendingIds(@Param("cutoff") LocalDateTime cutoff,
@@ -71,7 +71,7 @@ public interface TaskInstanceMapper extends BaseMapper<TaskInstance> {
      * @param limit  单次最多扫描条数
      * @return 超时候选实例ID
      */
-    @Select("SELECT id FROM dam_task.task_instance "
+    @Select("SELECT id FROM dam_dpm.task_instance "
             + "WHERE status = 'RUNNING' AND COALESCE(started_at, created_at) < #{cutoff} "
             + "ORDER BY COALESCE(started_at, created_at), id LIMIT #{limit} FOR UPDATE SKIP LOCKED")
     List<Long> selectTimeoutRunningIds(@Param("cutoff") LocalDateTime cutoff,
@@ -91,7 +91,7 @@ public interface TaskInstanceMapper extends BaseMapper<TaskInstance> {
      * @param errorMessage   回收原因
      * @return 受影响行数（0 表示状态已变化，未回收）
      */
-    @Update("UPDATE dam_task.task_instance "
+    @Update("UPDATE dam_dpm.task_instance "
             + "SET status = #{targetStatus}, finished_at = #{finishedAt}, "
             + "error_message = #{errorMessage} "
             + "WHERE id = #{id} AND status = #{expectedStatus}")

@@ -10,14 +10,14 @@ import java.time.LocalDateTime;
 /**
  * 开放 API 调用审计日志
  * <p>
- * 对应 {@code dam_data_service.data_api_call_log}。每次调用开放 API 无论成功或
+ * 对应 {@code dam_dsp.data_api_call_log}。每次调用开放 API 无论成功或
  * 失败都写入一条记录；仅记录鉴权方式、结果、耗时、行数与脱敏后的错误摘要，
  * <b>不记录 API Key、密码与请求参数</b>。
  *
  * @author DAM Platform
  */
 @Data
-@TableName(value = "data_api_call_log", schema = "dam_data_service")
+@TableName(value = "data_api_call_log", schema = "dam_dsp")
 public class DataApiCallLog {
 
     /** 主键 */

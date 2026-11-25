@@ -6,7 +6,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
-@TableName(value = "asset_statistics", schema = "dam_asset")
+@TableName(value = "asset_statistics", schema = "dam_dam")
 public class DamUsageStats {
     @TableId(type = IdType.AUTO)
     private Long id;

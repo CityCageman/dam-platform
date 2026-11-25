@@ -54,7 +54,7 @@ public class MetricController {
         status.put("service", "analytics-metric");
         status.put("status", "UP");
         status.put("role", "metric center");
-        status.put("schema", "dam_metric");
+        status.put("schema", "dam_dan");
         status.put("port", 8094);
         return Result.success(status);
     }

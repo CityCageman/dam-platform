@@ -10,7 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** 通过 DAM 资产 API 读取资产和字段，不直接访问 dam_asset/metadata_column。 */
+/** 通过 DAM 资产 API 读取资产和字段，不直接访问 dam_dam/metadata_column。 */
 @Component
 public class AssetReadClient {
     private final RestClient client;

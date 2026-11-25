@@ -8,7 +8,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 系统菜单实体（dam_sys.sys_menu）
+ * 系统菜单实体（dam_dpm.sys_menu）
  * <p>
  * 支撑平台侧边栏导航的数据库驱动：parent_id 为空的是顶级目录（大模块），
  * 子节点为具体页面菜单（menu_type=C）。
@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
  * @author DAM Platform
  */
 @Data
-@TableName(value = "sys_menu", schema = "dam_sys")
+@TableName(value = "sys_menu", schema = "dam_dpm")
 public class SysMenu {
 
     @TableId(type = IdType.AUTO)

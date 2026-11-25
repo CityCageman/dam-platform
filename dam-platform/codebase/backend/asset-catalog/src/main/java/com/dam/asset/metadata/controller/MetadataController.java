@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 元数据管理接口（dam_metadata 模块）
+ * 元数据管理接口（dam_dam 模块）
  * <p>
  * 提供：
  * <ul>
@@ -70,7 +70,7 @@ public class MetadataController {
         return Result.success(metadataService.getRelatedMetadata(assetId));
     }
 
-    // ==================== 技术元数据浏览（dam_metadata 模块） ====================
+    // ==================== 技术元数据浏览（dam_dam 模块） ====================
 
     /**
      * 查询数据源下的技术元数据表列表（支持按数据源/Schema/关键字过滤）

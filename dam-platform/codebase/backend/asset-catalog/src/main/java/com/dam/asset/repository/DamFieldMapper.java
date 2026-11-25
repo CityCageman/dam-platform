@@ -14,7 +14,7 @@ public interface DamFieldMapper extends BaseMapper<DamField> {
     /** 批量写入字段，避免大表逐字段 INSERT 往返 */
     @Insert("""
             <script>
-            INSERT INTO dam_metadata.metadata_column
+            INSERT INTO dam_dam.metadata_column
               (datasource_id, schema_id, table_id, column_name, column_type, column_length,
                is_nullable, is_primary_key, default_value, column_comment, reference_table_name,
                ordinal_position, created_at, created_by, updated_at, updated_by)

@@ -11,13 +11,13 @@ import java.time.LocalDateTime;
 /**
  * 系统权限点实体
  * <p>
- * 映射 dam_sys.sys_permission，仅用于角色权限查询（可选能力）；
+ * 映射 dam_dpm.sys_permission，仅用于角色权限查询（可选能力）；
  * 当前平台尚未基于权限点做接口鉴权，权限数据用于后续 RBAC 管理端。
  *
  * @author DAM Platform
  */
 @Data
-@TableName(value = "sys_permission", schema = "dam_sys")
+@TableName(value = "sys_permission", schema = "dam_dpm")
 public class SysPermission {
 
     /** 自增ID */

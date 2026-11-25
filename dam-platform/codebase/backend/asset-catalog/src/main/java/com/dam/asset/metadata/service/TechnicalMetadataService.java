@@ -17,10 +17,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * 技术元数据服务（对应文档 dam_metadata 模块职责）
+ * 技术元数据服务（对应文档 dam_dam 模块职责）
  * <p>
  * 职责分离：本服务只负责技术元数据的采集落库（metadata_schema/metadata_table/metadata_column/metadata_management）
- * 与扫描作业管理（dam_scan_job），不直接操作资产表 dam_asset/dam_field。
+ * 与扫描作业管理（dam_scan_job），不直接操作资产表 dam_dam/dam_field。
  * 资产注册须通过 CatalogService 的注册入口完成。
  */
 @Service

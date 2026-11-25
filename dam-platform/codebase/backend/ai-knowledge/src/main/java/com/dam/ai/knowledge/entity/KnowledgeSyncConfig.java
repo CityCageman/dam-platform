@@ -5,7 +5,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName(value = "knowledge_sync_config", schema = "dam_knowledge")
+@TableName(value = "knowledge_sync_config", schema = "dam_ai")
 public class KnowledgeSyncConfig {
     @TableId
     private Long id;

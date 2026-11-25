@@ -7,7 +7,7 @@ import java.util.Map;
  * 数据集成连接器类型定义
  * <p>
  * 阶段 1 为静态目录数据，描述平台支持的连接器类型及其启用状态；
- * 后续可切换为 dam_integration 库表中的连接器注册信息。
+ * 后续可切换为 dam_dap 库表中的连接器注册信息。
  *
  * @param code        连接器编码，如 JDBC、CDC、FILE、API、KAFKA
  * @param name        连接器名称

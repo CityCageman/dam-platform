@@ -5,7 +5,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName(value = "knowledge_category", schema = "dam_knowledge")
+@TableName(value = "knowledge_category", schema = "dam_ai")
 public class KnowledgeCategory {
     @TableId(type = IdType.AUTO)
     private Long id;

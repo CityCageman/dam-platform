@@ -327,7 +327,7 @@ public class SchedulerService {
         status.put("service", "platform-scheduler");
         status.put("status", "UP");
         status.put("role", "data scheduler");
-        status.put("storage", "dam_scheduler");
+        status.put("storage", "dam_dpm");
         status.put("executionEngine", "sequential-sql-dag");
         status.put("executionEngineNote",
                 "支持基础顺序 SQL DAG 执行；不支持并行分支、条件分支与重试编排");

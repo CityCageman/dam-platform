@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 定义：谁(角色/部门)能对什么密级的数据做什么操作
  */
 @Data
-@TableName(value = "security_data_permission", schema = "dam_security")
+@TableName(value = "security_data_permission", schema = "dam_dgp")
 public class DamDataPermission {
     @TableId(type = IdType.AUTO)
     private Long id;

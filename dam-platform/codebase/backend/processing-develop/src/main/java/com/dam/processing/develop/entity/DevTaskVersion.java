@@ -11,14 +11,14 @@ import java.time.LocalDateTime;
 /**
  * 数据开发任务版本快照
  * <p>
- * 对应 {@code dam_dev.dev_task_version}。任务创建时写入版本 1；后续每次
+ * 对应 {@code dam_dpp.dev_task_version}。任务创建时写入版本 1；后续每次
  * {@code content} 变更都会在同一事务内递增任务主表版本号并追加一条版本记录，
  * 用于追溯脚本内容与变更说明。版本记录不随任务逻辑删除而删除。
  *
  * @author DAM Platform
  */
 @Data
-@TableName(value = "dev_task_version", schema = "dam_dev")
+@TableName(value = "dev_task_version", schema = "dam_dpp")
 public class DevTaskVersion {
 
     /** 自增主键 */

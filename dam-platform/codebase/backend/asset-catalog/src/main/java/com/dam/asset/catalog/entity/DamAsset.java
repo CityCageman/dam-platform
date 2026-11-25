@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 @Data
-@TableName(value = "asset_info", schema = "dam_asset")
+@TableName(value = "asset_info", schema = "dam_dam")
 public class DamAsset {
     @TableId(type = IdType.AUTO)
     private Long id;

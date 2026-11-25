@@ -9,7 +9,7 @@ import java.util.List;
 /**
  * 数据血缘 Mapper
  * <p>
- * 适配新表 dam_metadata.metadata_lineage：
+ * 适配新表 dam_dam.metadata_lineage：
  * 血缘节点通过 source_type/source_id、target_type/target_id 表达（节点类型统一为 TABLE），
  * source_id / target_id 即资产ID（表级血缘场景）。
  *

@@ -6,7 +6,7 @@ services:
   - app-studio
   - app-market
 schemas:
-  - dam_app
+  - dam_dapp
 routes:
   - /api/app-studio/**
   - /api/app-market/**

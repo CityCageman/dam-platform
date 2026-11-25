@@ -28,7 +28,7 @@ public interface ScheduleRunMapper extends BaseMapper<ScheduleRun> {
      * @param limit     单轮最大条数
      * @return 待轮询运行记录
      */
-    @Select("SELECT * FROM dam_scheduler.schedule_run "
+    @Select("SELECT * FROM dam_dpm.schedule_run "
             + "WHERE run_status = #{runStatus} AND dolphin_process_instance_id IS NOT NULL "
             + "AND id > #{afterId} ORDER BY id LIMIT #{limit}")
     List<ScheduleRun> selectDolphinPollable(@Param("runStatus") String runStatus,

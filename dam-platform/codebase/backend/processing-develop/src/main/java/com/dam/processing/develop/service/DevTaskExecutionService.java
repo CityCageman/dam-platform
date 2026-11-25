@@ -103,7 +103,7 @@ public class DevTaskExecutionService {
     private static final int MAX_ERROR_MESSAGE_LENGTH = 500;
 
     /** 结构探测使用的外层别名 */
-    private static final String SCHEMA_PROBE_ALIAS = "dam_dev_schema_probe";
+    private static final String SCHEMA_PROBE_ALIAS = "dam_dpp_schema_probe";
 
     /** 允许的 JDBC URL 查询参数（小写比较），用于阻断 socketFactory 等危险参数 */
     private static final Set<String> ALLOWED_URL_PARAMETERS = Set.of(
