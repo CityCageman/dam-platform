@@ -1,16 +1,13 @@
 package com.dam.governance.lifecycle.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.asset.catalog.entity.DamAsset;
-import com.dam.asset.catalog.repository.DamAssetMapper;
+import com.dam.governance.lifecycle.client.AssetLifecycleClient;
 import com.dam.governance.lifecycle.entity.DamDestructionRecord;
 import com.dam.governance.lifecycle.entity.DamLifecycleExecution;
 import com.dam.governance.lifecycle.entity.DamLifecyclePolicy;
 import com.dam.governance.lifecycle.repository.DamDestructionRecordMapper;
 import com.dam.governance.lifecycle.repository.DamLifecycleExecutionMapper;
 import com.dam.governance.lifecycle.repository.DamLifecyclePolicyMapper;
-import com.dam.platform.operations.entity.DamUsageStats;
-import com.dam.platform.operations.repository.DamUsageStatsMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,8 +30,7 @@ import java.util.stream.Collectors;
 public class StorageTieringService {
 
     private final DamLifecyclePolicyMapper policyMapper;
-    private final DamAssetMapper assetMapper;
-    private final DamUsageStatsMapper usageStatsMapper;
+    private final AssetLifecycleClient assetClient;
     private final DamDestructionRecordMapper destructionRecordMapper;
     /** 执行记录（可选表，未迁移时降级） */
     private final DamLifecycleExecutionMapper executionMapper;
@@ -52,9 +48,9 @@ public class StorageTieringService {
 
         for (DamLifecyclePolicy policy : policies) {
             // 查找匹配该策略的资产
-            List<DamAsset> targetAssets = findTargetAssets(policy);
+            List<Map<String, Object>> targetAssets = findTargetAssets(policy);
 
-            for (DamAsset asset : targetAssets) {
+            for (Map<String, Object> asset : targetAssets) {
                 Map<String, Object> action = evaluateAsset(asset, policy);
                 if (action != null) {
                     actions.add(action);
@@ -82,22 +78,21 @@ public class StorageTieringService {
     /**
      * 查找匹配策略的资产
      */
-    private List<DamAsset> findTargetAssets(DamLifecyclePolicy policy) {
-        LambdaQueryWrapper<DamAsset> wrapper = new LambdaQueryWrapper<>();
-        // 只处理已注册/已发布的资产
-        wrapper.in(DamAsset::getStatus, 1);
-        return assetMapper.selectList(wrapper);
+    private List<Map<String, Object>> findTargetAssets(DamLifecyclePolicy policy) {
+        return assetClient.assets().stream()
+                .filter(a -> a.get("status") instanceof Number n && n.intValue() == 1)
+                .toList();
     }
 
     /**
      * 评估单个资产的存储分层状态
      */
-    private Map<String, Object> evaluateAsset(DamAsset asset, DamLifecyclePolicy policy) {
+    private Map<String, Object> evaluateAsset(Map<String, Object> asset, DamLifecyclePolicy policy) {
         // 获取最近的使用统计
-        DamUsageStats stats = getLatestStats(asset.getId());
+        Map<String, Object> stats = getLatestStats(number(asset.get("id")));
 
         LocalDate now = LocalDate.now();
-        LocalDate createdAt = asset.getCreatedAt() != null ? asset.getCreatedAt().toLocalDate() : now;
+        LocalDate createdAt = date(asset.get("createdAt"), now);
         long ageDays = ChronoUnit.DAYS.between(createdAt, now);
 
         // 根据最后访问时间和策略判断分层
@@ -122,16 +117,17 @@ public class StorageTieringService {
         }
 
         // 检查是否有最近访问，如果有则降级处理
-        if (stats != null && stats.getQueryCount() != null && stats.getQueryCount() > 100) {
+        long queryCount = number(stats == null ? null : stats.get("queryCount")) == null ? 0 : number(stats.get("queryCount"));
+        if (queryCount > 100) {
             tier = "活跃-" + tier;
             action = "notify"; // 仍活跃的数据只通知不操作
             reason = "虽到期但访问频繁，仅通知";
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("assetId", asset.getId());
-        result.put("assetName", asset.getAssetName());
-        result.put("assetType", asset.getAssetTypeId());
+        result.put("assetId", number(asset.get("id")));
+        result.put("assetName", asset.get("assetName"));
+        result.put("assetType", asset.get("assetTypeId"));
         result.put("tier", tier);
         result.put("action", action);
         result.put("reason", reason);
@@ -174,7 +170,7 @@ public class StorageTieringService {
         DamLifecyclePolicy policy = policyMapper.selectById(policyId);
         if (policy == null) throw new RuntimeException("策略不存在");
         List<Map<String, Object>> rows = new ArrayList<>();
-        for (DamAsset asset : findTargetAssets(policy)) {
+        for (Map<String, Object> asset : findTargetAssets(policy)) {
             Map<String, Object> action = evaluateAsset(asset, policy);
             if (action != null) rows.add(action);
         }
@@ -205,13 +201,13 @@ public class StorageTieringService {
     /**
      * 执行销毁操作
      */
-    private void executeDestroy(DamAsset asset, DamLifecyclePolicy policy) {
+    private void executeDestroy(Map<String, Object> asset, DamLifecyclePolicy policy) {
         // 创建销毁记录
         DamDestructionRecord record = new DamDestructionRecord();
         record.setDestructionNo("DES-" + System.currentTimeMillis() % 1000000);
         record.setTargetType("ASSET");
-        record.setTargetId(asset.getId());
-        record.setTargetName(asset.getAssetName());
+        record.setTargetId(number(asset.get("id")));
+        record.setTargetName(String.valueOf(asset.get("assetName")));
         record.setDestructionMethod("logical");
         record.setDestructionReason("生命周期策略[" + policy.getPolicyName() + "]自动触发");
         record.setStatus(0); // 待审批
@@ -221,10 +217,9 @@ public class StorageTieringService {
         record.setUpdatedBy("system");
         destructionRecordMapper.insert(record);
 
-        // 标记资产状态
-        asset.setStatus(0);
-        assetMapper.updateById(asset);
-        log.info("资产[{}]已标记为归档，等待销毁审批", asset.getAssetName());
+        // 通过 DAM API 标记资产状态
+        assetClient.updateStatus(number(asset.get("id")), 0);
+        log.info("资产[{}]已标记为归档，等待销毁审批", asset.get("assetName"));
     }
 
     /**
@@ -233,14 +228,8 @@ public class StorageTieringService {
      * @param assetId 资产ID
      * @return 最近的使用统计（无记录时返回 null）
      */
-    private DamUsageStats getLatestStats(Long assetId) {
-        // 按统计时间倒序取最近一条
-        List<DamUsageStats> list = usageStatsMapper.selectList(
-                new LambdaQueryWrapper<DamUsageStats>()
-                        .eq(DamUsageStats::getAssetId, assetId)
-                        .orderByDesc(DamUsageStats::getStatDate)
-                        .last("LIMIT 1"));
-        return list.isEmpty() ? null : list.getFirst();
+    private Map<String, Object> getLatestStats(Long assetId) {
+        return assetClient.latestStats(assetId);
     }
 
     /**
@@ -249,15 +238,15 @@ public class StorageTieringService {
     public Map<String, Object> getTierDistribution() {
         List<DamLifecyclePolicy> policies = policyMapper.selectList(
                 new LambdaQueryWrapper<DamLifecyclePolicy>().eq(DamLifecyclePolicy::getStatus, 1));
-        List<DamAsset> allAssets = assetMapper.selectList(
-                new LambdaQueryWrapper<DamAsset>().in(DamAsset::getStatus, 1));
+        List<Map<String, Object>> allAssets = assetClient.assets().stream()
+                .filter(a -> a.get("status") instanceof Number n && n.intValue() == 1).toList();
 
         long hot = 0, warm = 0, cold = 0, expired = 0;
         LocalDate now = LocalDate.now();
 
-        for (DamAsset asset : allAssets) {
-            if (asset.getCreatedAt() == null) continue;
-            long ageDays = ChronoUnit.DAYS.between(asset.getCreatedAt().toLocalDate(), now);
+        for (Map<String, Object> asset : allAssets) {
+            if (asset.get("createdAt") == null) continue;
+            long ageDays = ChronoUnit.DAYS.between(date(asset.get("createdAt"), now), now);
 
             // 使用默认策略判断
             boolean isExpired = policies.stream().anyMatch(p ->
@@ -276,5 +265,11 @@ public class StorageTieringService {
                 "cold", cold, "expired", expired,
                 "total", allAssets.size()
         );
+    }
+
+    private Long number(Object v) { return v instanceof Number n ? n.longValue() : null; }
+    private LocalDate date(Object v, LocalDate fallback) {
+        if (v == null) return fallback;
+        try { return LocalDate.parse(String.valueOf(v).substring(0, 10)); } catch (Exception e) { return fallback; }
     }
 }
