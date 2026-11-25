@@ -37,6 +37,7 @@ PY
 )"
 echo "=== build $CODE $VERSION"
 echo "services: $SERVICES"
+SERVICE_PORTS="$(python3 -c 'import json,sys; c=json.load(open(sys.argv[1])); print(" ".join(s+":"+str(c[s]["port"]) for s in sys.argv[2].split()))' "$ROOT/products/service-catalog.json" "$SERVICES")"
 cd "$ROOT/codebase/backend"
 JAVA_HOME="${JAVA_HOME:-$(/usr/libexec/java_home -v 21 2>/dev/null || true)}"
 MAVEN_OPTS=()
@@ -109,6 +110,8 @@ fi
 echo "installed \$CODE \$VERSION -> \$PREFIX/current"
 echo "database: source \$ENV_DIR/${PRODUCT_FOLDER}.env && psql <database-url> -f \$PREFIX/current/db/migrate.sql"
 echo "start: \$PREFIX/current/bin/start.sh"
+echo "health: \$PREFIX/current/bin/health.sh"
+echo "systemd: \$PREFIX/current/bin/install-systemd.sh"
 EOS
 cat > "$RELEASE/bin/uninstall.sh" <<EOS
 #!/usr/bin/env bash
@@ -119,6 +122,7 @@ rm -rf "\$PREFIX"
 echo "removed \$PREFIX (database is not dropped)"
 EOS
 chmod +x "$RELEASE"/bin/*.sh
+bash "$ROOT/products/generate-product-ops.sh" "$RELEASE" "$CODE" "$PRODUCT_FOLDER" "$VERSION" "$SERVICES" "$SERVICE_PORTS"
 cat > "$RELEASE/README.md" <<EOM
 # $CODE $VERSION
 
