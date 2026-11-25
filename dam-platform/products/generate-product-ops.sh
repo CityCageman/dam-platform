@@ -34,6 +34,14 @@ ENV_FILE="${ENV_FILE:-/etc/dam-products/$(basename "$(dirname "$BASE")").env}"
 psql "$SPRING_DATASOURCE_URL" -v ON_ERROR_STOP=1 -f "$BASE/db/migrate.sql"
 [ -f "$BASE/db/base-migrate.sql" ] && psql "$SPRING_DATASOURCE_URL" -v ON_ERROR_STOP=1 -f "$BASE/db/base-migrate.sql" || true
 EOS
+cat > "$RELEASE/bin/serve-frontend.sh" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+BASE="$(cd "$(dirname "$0")/.." && pwd)"
+PORT="${FRONTEND_PORT:-8088}"
+[ -d "$BASE/frontend" ] || { echo "frontend/ missing"; exit 1; }
+exec python3 -m http.server "$PORT" --directory "$BASE/frontend"
+EOS
 cat > "$RELEASE/bin/rollback.sh" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
