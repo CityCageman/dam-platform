@@ -14,6 +14,6 @@ public interface DamLifecycleExecutionMapper extends BaseMapper<DamLifecycleExec
     /**
      * 判断执行记录表是否已迁移（未迁移时跳过写入，避免拖垮主流程）
      */
-    @Select("SELECT to_regclass('dam_dam.metadata_lifecycle_execution')::text")
+    @Select("SELECT to_regclass('dam_dgp.metadata_lifecycle_execution')::text")
     String tableExists();
 }

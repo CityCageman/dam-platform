@@ -8,7 +8,7 @@ import com.dam.governance.quality.entity.DamQualityRule;
 import com.dam.governance.quality.repository.DamQualityCheckMapper;
 import com.dam.governance.quality.repository.DamQualityRuleMapper;
 import com.dam.governance.quality.repository.DynamicQueryMapper;
-import com.dam.governance.quality.repository.QualityTableMapper;
+import com.dam.governance.quality.client.QualityTableClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -54,7 +54,7 @@ public class QualityScanService {
     private final DynamicQueryMapper dynamicQueryMapper;
 
     /** 目标表查询（补全规则条件式 SQL） */
-    private final QualityTableMapper qualityTableMapper;
+    private final QualityTableClient qualityTableClient;
 
     /**
      * 执行单条质量规则的检测
@@ -93,7 +93,7 @@ public class QualityScanService {
                 // 目标表名：用于补全“条件式”规则并统计总记录数
                 String tableName = null;
                 if (rule.getTargetTableId() != null) {
-                    tableName = qualityTableMapper.findTableName(rule.getTargetTableId());
+                    tableName = qualityTableClient.findTableName(rule.getTargetTableId());
                 }
                 if (tableName != null && !tableName.matches("[A-Za-z_][A-Za-z0-9_]*")) {
                     throw new BusinessException("目标表名不合法");

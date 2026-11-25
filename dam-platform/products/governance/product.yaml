@@ -14,4 +14,5 @@ frontend:
   remote: governance-ui
   entry: /products/governance/remoteEntry.js
 permissions: [standard:view, quality:view, security:view, lifecycle:view, lineage:view]
+requiresProducts: [DAM, DPM]
 requiresPlatform: ">=1.0.0 <2.0.0"

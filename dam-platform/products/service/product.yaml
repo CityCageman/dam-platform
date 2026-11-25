@@ -9,4 +9,5 @@ frontend:
   remote: service-ui
   entry: /products/service/remoteEntry.js
 permissions: [service:view, service:manage]
+requiresProducts: []
 requiresPlatform: ">=1.0.0 <2.0.0"

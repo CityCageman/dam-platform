@@ -16,5 +16,6 @@ frontend:
   remote: asset-ui
   entry: /products/asset/remoteEntry.js
 permissions: [asset:view, asset:manage, metadata:view, mdm:view, mdm:manage]
+requiresProducts: []
 requiresPlatform: ">=1.0.0 <2.0.0"
 optionalProducts: [DGP, DAN]

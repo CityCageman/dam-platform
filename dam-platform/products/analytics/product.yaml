@@ -9,4 +9,5 @@ frontend:
   remote: analytics-ui
   entry: /products/analytics/remoteEntry.js
 permissions: [metric:view, report:view, report:manage]
+requiresProducts: [DAM]
 requiresPlatform: ">=1.0.0 <2.0.0"

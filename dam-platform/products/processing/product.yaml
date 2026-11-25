@@ -9,4 +9,5 @@ frontend:
   remote: processing-ui
   entry: /products/processing/remoteEntry.js
 permissions: [develop:view, model:manage]
+requiresProducts: [DAM]
 requiresPlatform: ">=1.0.0 <2.0.0"

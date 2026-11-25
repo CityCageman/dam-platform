@@ -30,3 +30,4 @@ sa-token:
 
 dam:
   operations-url: ${DAM_OPERATIONS_URL:http://127.0.0.1:8088}
+  asset-catalog-url: ${DAM_ASSET_CATALOG_URL:http://127.0.0.1:8092}

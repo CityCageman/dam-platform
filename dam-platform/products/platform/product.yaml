@@ -19,4 +19,5 @@ frontend:
   remote: platform-ui
   entry: /products/platform/remoteEntry.js
 permissions: [platform:view, task:manage, scheduler:manage, operations:manage]
+requiresProducts: [DAM]
 requiresPlatform: ">=1.0.0 <2.0.0"

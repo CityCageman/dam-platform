@@ -9,4 +9,5 @@ frontend:
   remote: access-ui
   entry: /products/access/remoteEntry.js
 permissions: [access:view, integration:manage]
+requiresProducts: []
 requiresPlatform: ">=1.0.0 <2.0.0"

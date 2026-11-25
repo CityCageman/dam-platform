@@ -89,6 +89,12 @@ public class LineageDataController {
         return Result.success(out);
     }
 
+    @GetMapping("/table-name/{id}")
+    public Result<String> tableName(@PathVariable Long id) {
+        MetadataTable t = tableMapper.selectById(id);
+        return Result.success(t == null ? null : t.getTableName());
+    }
+
     @GetMapping("/source-systems")
     public Result<List<Map<String, Object>>> sourceSystems(@RequestParam(required = false) List<Long> ids) {
         List<DamSourceSystem> list = ids == null || ids.isEmpty()
