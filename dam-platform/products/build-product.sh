@@ -46,6 +46,9 @@ mvn -B "${MAVEN_OPTS[@]}" -DskipTests -Dmaven.repo.local="${MAVEN_REPO:-$ROOT/..
 RELEASE="$PRODUCT_DIR/dist/$VERSION"
 rm -rf "$RELEASE"
 mkdir -p "$RELEASE"/{jars,bin,db,systemd,frontend}
+if [ -d "$ROOT/codebase/frontend/dist" ] && [ "${COPY_FRONTEND:-1}" = "1" ]; then
+  cp -a "$ROOT/codebase/frontend/dist/." "$RELEASE/frontend/"
+fi
 for svc in $SERVICES; do
   jar="$ROOT/codebase/backend/$(python3 - "$ROOT" "$svc" <<'PY'
 import sys,json
@@ -98,6 +101,11 @@ SPRING_DATASOURCE_USERNAME=dam
 SPRING_DATASOURCE_PASSWORD=ChangeMe_2026
 SA_TOKEN_JWT_SECRET_KEY=ChangeMe_JWT_Secret_At_Least_32_Chars
 ENV
+ROUTE_DIR="\${ROUTE_DIR:-/etc/dam-products/routes}"
+if [ -f "\$BASE/deploy/gateway-routes.yaml" ]; then
+  if ! mkdir -p "\$ROUTE_DIR" 2>/dev/null; then ROUTE_DIR="\$PREFIX/routes"; mkdir -p "\$ROUTE_DIR"; fi
+  cp "\$BASE/deploy/gateway-routes.yaml" "\$ROUTE_DIR/${PRODUCT_FOLDER}.yaml"
+fi
 echo "installed \$CODE \$VERSION -> \$PREFIX/current"
 echo "database: source \$ENV_DIR/${PRODUCT_FOLDER}.env && psql <database-url> -f \$PREFIX/current/db/migrate.sql"
 echo "start: \$PREFIX/current/bin/start.sh"
