@@ -4,9 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dam.platform.common.vo.PageResult;
 import com.dam.governance.lineage.entity.MetadataLineageSource;
-import com.dam.governance.lineage.entity.SourceSystem;
+import java.util.Map;
 import com.dam.governance.lineage.repository.MetadataLineageSourceMapper;
-import com.dam.governance.lineage.repository.SourceSystemMapper;
+import com.dam.governance.lineage.client.LineageDataClient;
 import cn.hutool.core.util.StrUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +30,7 @@ public class LineageSourceService {
 
     private final MetadataLineageSourceMapper sourceMapper;
     /** 来源系统 Mapper（列表回填"所属系统"名称） */
-    private final SourceSystemMapper sourceSystemMapper;
+    private final LineageDataClient dataClient;
 
     /**
      * 按编码查询节点
@@ -220,9 +220,8 @@ public class LineageSourceService {
         }
         if (sysIds.isEmpty()) return;
         java.util.Map<Long, String> nameMap = new java.util.HashMap<>();
-        for (SourceSystem sys : sourceSystemMapper.selectList(
-                new LambdaQueryWrapper<SourceSystem>().in(SourceSystem::getId, sysIds))) {
-            nameMap.put(sys.getId(), sys.getSystemName());
+        for (Map<String, Object> sys : dataClient.sourceSystems(List.copyOf(sysIds))) {
+            if (sys.get("id") instanceof Number id) nameMap.put(id.longValue(), String.valueOf(sys.get("systemName")));
         }
         for (MetadataLineageSource s : records) {
             s.setSourceSystemName(nameMap.get(s.getSourceSystemId()));

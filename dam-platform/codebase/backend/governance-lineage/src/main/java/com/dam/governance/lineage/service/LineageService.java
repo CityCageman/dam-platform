@@ -10,7 +10,7 @@ import com.dam.governance.lineage.entity.MetadataLineageSource;
 import com.dam.governance.lineage.repository.DamLineageMapper;
 import com.dam.governance.lineage.repository.MetadataColumnLineageMapper;
 import com.dam.governance.lineage.repository.MetadataLineageSourceMapper;
-import com.dam.governance.lineage.repository.LineageNodeMetaMapper;
+import com.dam.governance.lineage.client.LineageDataClient;
 import com.dam.governance.lineage.repository.MetadataLineageHierarchyMapper;
 import com.dam.governance.lineage.entity.MetadataLineageHierarchy;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +46,7 @@ public class LineageService {
     /** 血缘节点注册表 Mapper（用于图谱节点名称回填） */
     private final MetadataLineageSourceMapper sourceMapper;
     /** 节点所属数据源/Schema（用于层级判定） */
-    private final LineageNodeMetaMapper nodeMetaMapper;
+    private final LineageDataClient dataClient;
     /** 分层边 */
     private final MetadataLineageHierarchyMapper hierarchyMapper;
     /** 节点注册 */
@@ -670,7 +670,7 @@ public class LineageService {
                 }
             }
             if (!ids.isEmpty()) {
-                for (Map<String, Object> row : nodeMetaMapper.selectNodeMeta(ids)) {
+                for (Map<String, Object> row : dataClient.nodeMeta(ids)) {
                     if (row.get("source_id") instanceof Number num) {
                         metaById.put(num.longValue(), row);
                     }

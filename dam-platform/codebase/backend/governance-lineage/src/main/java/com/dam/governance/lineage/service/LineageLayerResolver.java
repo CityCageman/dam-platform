@@ -1,6 +1,6 @@
 package com.dam.governance.lineage.service;
 
-import com.dam.governance.lineage.repository.LineageNodeMetaMapper;
+import com.dam.governance.lineage.client.LineageDataClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,7 +24,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class LineageLayerResolver {
 
-    private final LineageNodeMetaMapper nodeMetaMapper;
+    private final LineageDataClient dataClient;
 
     /**
      * 批量解析表名层级
@@ -44,7 +44,7 @@ public class LineageLayerResolver {
             return out;
         }
         try {
-            for (Map<String, Object> row : nodeMetaMapper.selectTableLayers(list)) {
+            for (Map<String, Object> row : dataClient.tableLayers(list)) {
                 String name = str(row.get("table_name"));
                 if (name != null) {
                     out.put(name, LineageLayer.of("TABLE", name,

@@ -21,3 +21,6 @@ sa-token:
   is-share: false
   token-style: jwt
   jwt-secret-key: ${SA_TOKEN_JWT_SECRET_KEY}
+
+dam:
+  asset-catalog-url: ${DAM_ASSET_CATALOG_URL:http://127.0.0.1:8092}

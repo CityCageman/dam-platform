@@ -2,7 +2,7 @@ package com.dam.governance.lineage.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.dam.governance.lineage.entity.MetadataLineageSource;
-import com.dam.governance.lineage.repository.LineageSearchMapper;
+import com.dam.governance.lineage.client.LineageDataClient;
 import com.dam.governance.lineage.repository.MetadataLineageSourceMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,7 +47,7 @@ public class LineageSearchService {
     /** 相关节点最多展示数量 */
     private static final int MAX_RELATED = 12;
 
-    private final LineageSearchMapper searchMapper;
+    private final LineageDataClient dataClient;
     private final MetadataLineageSourceMapper sourceMapper;
     private final LineageService lineageService;
     private final LineageLayerResolver layerResolver;
@@ -79,8 +79,8 @@ public class LineageSearchService {
         List<Map<String, Object>> columns;
         List<Map<String, Object>> tables;
         try {
-            columns = searchMapper.searchColumns(kw, lim);
-            tables = searchMapper.searchTables(kw, lim);
+            columns = dataClient.searchColumns(kw, lim);
+            tables = dataClient.searchTables(kw, lim);
         } catch (Exception e) {
             log.warn("血缘中文检索失败 [keyword={}]: {}", kw, e.getMessage());
             result.put("total", 0);
