@@ -1,0 +1,270 @@
+<template>
+  <div class="ai-tasks">
+    <div class="stat-grid" style="margin-bottom: 14px;">
+      <div class="stat-card">
+        <div class="stat-label">任务总数</div>
+        <div class="stat-value">{{ stats.total || 0 }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">待生成</div>
+        <div class="stat-value">{{ stats.PENDING || 0 }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">待审核</div>
+        <div class="stat-value">{{ stats.REVIEW || 0 }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">已完成</div>
+        <div class="stat-value">{{ stats.DONE || 0 }}</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ai-filter">
+        <el-select v-model="query.status" placeholder="全部状态" clearable style="width: 130px;" @change="loadTasks">
+          <el-option v-for="s in STATUS" :key="s.value" :label="s.label" :value="s.value" />
+        </el-select>
+        <el-select v-model="query.taskType" placeholder="全部类型" clearable style="width: 140px;" @change="loadTasks">
+          <el-option v-for="t in TYPES" :key="t.value" :label="t.label" :value="t.value" />
+        </el-select>
+        <el-input v-model="query.keyword" placeholder="搜索任务标题" clearable style="width: 220px;"
+                  @keyup.enter="loadTasks" @clear="loadTasks" />
+        <el-button type="primary" @click="loadTasks">查询</el-button>
+        <el-button @click="loadAll">刷新</el-button>
+        <div style="flex: 1;" />
+      </div>
+
+      <el-table :data="tasks" stripe v-loading="loading" style="cursor: pointer;" @row-click="openDetail">
+        <el-table-column prop="title" label="任务" min-width="220" show-overflow-tooltip />
+        <el-table-column label="类型" width="110">
+          <template #default="{ row }">
+            <el-tag size="small" :type="typeTag(row.taskType)">{{ typeLabel(row.taskType) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag size="small" :type="statusTag(row.status)">{{ statusLabel(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="进度" width="150">
+          <template #default="{ row }">
+            <span class="progress-text">已处理 {{ row.acceptedCount || 0 }} / 共 {{ row.totalCount || 0 }} 条</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="model" label="模型" width="140" show-overflow-tooltip />
+        <el-table-column prop="createdAt" label="创建时间" width="170">
+          <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="90" fixed="right">
+          <template #default="{ row }">
+            <el-button text type="primary" @click.stop="openDetail(row)">查看</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-empty v-if="!loading && !tasks.length" description="暂无 AI 任务，AI 注释/分类/血缘生成后会自动进入这里" :image-size="70" />
+      <div class="pagination-bar">
+        <el-pagination v-model:current-page="query.page" v-model:page-size="query.pageSize" :total="total"
+                       layout="total, prev, pager, next" @change="loadTasks" />
+      </div>
+    </div>
+
+    <el-drawer v-model="drawer" :title="current?.title || '任务详情'" size="62%" append-to-body>
+      <template v-if="current">
+        <div class="drawer-actions">
+          <el-select v-model="itemStatus" placeholder="全部明细" clearable size="small" style="width: 130px;" @change="loadItems">
+            <el-option label="草稿" value="DRAFT" />
+            <el-option label="已采纳" value="ACCEPTED" />
+            <el-option label="已驳回" value="REJECTED" />
+          </el-select>
+          <div style="flex: 1;" />
+          <el-button size="small" type="primary" plain :disabled="!items.length" @click="reviewAll(true)">全部采纳</el-button>
+          <el-button size="small" type="danger" plain :disabled="!items.length" @click="reviewAll(false)">全部驳回</el-button>
+        </div>
+        <el-descriptions :column="3" border size="small" style="margin-bottom: 14px;">
+          <el-descriptions-item label="类型">{{ typeLabel(current.taskType) }}</el-descriptions-item>
+          <el-descriptions-item label="状态">{{ statusLabel(current.status) }}</el-descriptions-item>
+          <el-descriptions-item label="模型">{{ current.model || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="目标">{{ current.targetType || '-' }} / {{ current.targetId || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="进度">{{ current.acceptedCount || 0 }} / {{ current.rejectedCount || 0 }} / {{ current.totalCount || 0 }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ formatTime(current.createdAt) }}</el-descriptions-item>
+        </el-descriptions>
+        <el-table :data="items" stripe size="small">
+          <el-table-column prop="targetName" label="目标" min-width="150" show-overflow-tooltip />
+          <el-table-column prop="fieldName" label="字段" width="130" show-overflow-tooltip />
+          <el-table-column label="AI 草稿" min-width="260" show-overflow-tooltip>
+            <template #default="{ row }">{{ draftText(row) }}</template>
+          </el-table-column>
+          <el-table-column label="置信度" width="80">
+            <template #default="{ row }">{{ row.confidence ?? '-' }}</template>
+          </el-table-column>
+          <el-table-column label="状态" width="90">
+            <template #default="{ row }">
+              <el-tag size="small" :type="itemTag(row.status)">{{ itemLabel(row.status) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="150" fixed="right">
+            <template #default="{ row }">
+              <template v-if="row.status === 'DRAFT'">
+                <el-button text type="primary" size="small" @click="review(row, true)">采纳</el-button>
+                <el-button text type="danger" size="small" @click="review(row, false)">驳回</el-button>
+              </template>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-empty v-if="!items.length" description="该任务暂无草稿明细" :image-size="60" />
+        <div class="pagination-bar">
+          <el-pagination v-model:current-page="itemPage" v-model:page-size="itemPageSize" :total="itemTotal"
+                         layout="total, prev, pager, next" @change="loadItems" />
+        </div>
+      </template>
+    </el-drawer>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { catalogApi } from '@/api'
+import { ElMessage, ElMessageBox } from 'element-plus'
+
+const STATUS = [
+  { value: 'PENDING', label: '待生成' },
+  { value: 'RUNNING', label: '生成中' },
+  { value: 'REVIEW', label: '待审核' },
+  { value: 'DONE', label: '已完成' },
+  { value: 'FAILED', label: '失败' }
+]
+const TYPES = [
+  { value: 'COMMENT', label: '注释生成' },
+  { value: 'CLASSIFY', label: '分类分级' },
+  { value: 'LINEAGE', label: '血缘识别' },
+  { value: 'REPORT', label: '报表生成' }
+]
+
+const stats = ref<any>({})
+const tasks = ref<any[]>([])
+const total = ref(0)
+const loading = ref(false)
+const query = ref({ status: '', taskType: '', keyword: '', page: 1, pageSize: 20 })
+const drawer = ref(false)
+const current = ref<any>(null)
+const items = ref<any[]>([])
+const itemTotal = ref(0)
+const itemPage = ref(1)
+const itemPageSize = ref(10)
+const itemStatus = ref('')
+
+const statusLabel = (v: string) => STATUS.find(s => s.value === v)?.label || v || '-'
+const statusTag = (v: string) => v === 'DONE' ? 'success' : v === 'REVIEW' ? 'warning' : v === 'FAILED' ? 'danger' : 'info'
+const typeLabel = (v: string) => TYPES.find(t => t.value === v)?.label || v || '-'
+const typeTag = (v: string) => v === 'COMMENT' ? 'primary' : v === 'CLASSIFY' ? 'warning' : v === 'LINEAGE' ? 'success' : 'info'
+const itemLabel = (v: string) => v === 'ACCEPTED' ? '已采纳' : v === 'REJECTED' ? '已驳回' : '草稿'
+const itemTag = (v: string) => v === 'ACCEPTED' ? 'success' : v === 'REJECTED' ? 'danger' : 'info'
+const formatTime = (v: string) => v ? String(v).replace('T', ' ').slice(0, 19) : '-'
+
+/** 草稿内容格式化：注释类显示“注释/主题域/分级”，分类类显示分类名 */
+function draftText(row: any) {
+  try {
+    const d = JSON.parse(row.draftContent || '{}')
+    if (row.itemType === 'CLASSIFY') return d.categoryName || d.categoryCode || row.draftContent
+    const parts: string[] = []
+    if (d.tableComment) parts.push('注释：' + d.tableComment)
+    if (d.subjectDomain) parts.push('主题域：' + d.subjectDomain)
+    if (d.securityLevel) parts.push('分级：' + d.securityLevel)
+    return parts.length ? parts.join('；') : (row.draftContent || '-')
+  } catch {
+    return row.draftContent || '-'
+  }
+}
+
+async function loadStats() {
+  try {
+    const res: any = await catalogApi.getAiTaskStats()
+    stats.value = res.data || {}
+  } catch (_e) { stats.value = {} }
+}
+
+async function loadTasks() {
+  loading.value = true
+  try {
+    const res: any = await catalogApi.listAiTasks({
+      status: query.value.status || undefined,
+      taskType: query.value.taskType || undefined,
+      keyword: query.value.keyword || undefined,
+      page: query.value.page,
+      pageSize: query.value.pageSize
+    })
+    tasks.value = res.data?.records || []
+    total.value = res.data?.total || 0
+  } catch (_e) { tasks.value = []; total.value = 0 }
+  finally { loading.value = false }
+}
+
+async function loadAll() { await Promise.all([loadTasks(), loadStats()]) }
+
+async function openDetail(row: any) {
+  try {
+    const res: any = await catalogApi.getAiTask(row.id)
+    current.value = res.data?.task
+    itemPage.value = 1
+    itemStatus.value = ''
+    await loadItems()
+    drawer.value = true
+  } catch (e: any) { ElMessage.error(e.message || '加载任务失败') }
+}
+
+async function loadItems() {
+  if (!current.value) return
+  try {
+    const res: any = await catalogApi.getAiTaskItems(current.value.id, {
+      page: itemPage.value,
+      pageSize: itemPageSize.value,
+      status: itemStatus.value || undefined
+    })
+    items.value = res.data?.records || []
+    itemTotal.value = res.data?.total || 0
+  } catch (_e) { items.value = []; itemTotal.value = 0 }
+}
+
+async function loadTask() {
+  if (!current.value) return
+  const res: any = await catalogApi.getAiTask(current.value.id)
+  current.value = res.data?.task
+}
+
+async function review(item: any, accept: boolean) {
+  if (!current.value) return
+  try {
+    await catalogApi.reviewAiTaskItem(current.value.id, item.id, accept)
+    ElMessage.success(accept ? '已采纳' : '已驳回')
+    await loadTask()
+    await loadItems()
+    await loadAll()
+  } catch (e: any) { ElMessage.error(e.message || '操作失败') }
+}
+
+/** 批量采纳/驳回当前任务全部草稿 */
+async function reviewAll(accept: boolean) {
+  if (!current.value) return
+  try {
+    await ElMessageBox.confirm(
+      `确认${accept ? '采纳' : '驳回'}该任务下全部草稿？采纳后会立即写回业务表。`,
+      '批量审核', { type: 'warning' }
+    )
+    const res: any = await catalogApi.reviewAiTaskItems(current.value.id, { all: true, accept })
+    ElMessage.success(`已处理 ${res.data || 0} 条草稿`)
+    await loadTask()
+    await loadItems()
+    await loadAll()
+  } catch (e: any) {
+    if (e !== 'cancel' && e !== 'close') ElMessage.error(e.message || '批量操作失败')
+  }
+}
+
+onMounted(loadAll)
+</script>
+
+<style scoped>
+.ai-filter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.drawer-actions { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.progress-text { font-size: 12px; color: var(--med-text-secondary); }
+</style>

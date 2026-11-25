@@ -1,0 +1,261 @@
+<template>
+  <div v-loading="loading">
+    <div class="page-head">
+      <div>
+        <h2 class="page-title">运营看板</h2>
+        <p class="page-desc">{{ mode === 'dam' ? 'DAM 资产规模、质量水位与运营协同。' : '数据中台组件、任务与服务运行概览。' }}</p>
+      </div>
+      <div class="dashboard-actions">
+        <el-radio-group v-model="mode" size="small">
+          <el-radio-button label="dam">DAM 运营</el-radio-button>
+          <el-radio-button label="platform">数据中台运营</el-radio-button>
+        </el-radio-group>
+        <el-button v-if="mode === 'dam'" :icon="Refresh" @click="load">刷新</el-button>
+      </div>
+    </div>
+
+    <template v-if="mode === 'dam'">
+    <!-- 模块一：总览 -->
+    <section class="module">
+      <div class="module-head">
+        <h3 class="module-title">总览</h3>
+        <span class="module-sub">平台核心运营指标</span>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card" v-for="s in stats" :key="s.label">
+          <div class="stat-label">{{ s.label }}</div>
+          <div class="stat-value">{{ s.value }}</div>
+          <div class="stat-foot">{{ s.foot }}</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 模块二：数据资产 -->
+    <section class="module">
+      <div class="module-head">
+        <h3 class="module-title">数据资产</h3>
+        <div class="module-links">
+          <router-link to="/catalog" class="module-link">资产目录 →</router-link>
+          <router-link to="/metadata" class="module-link">元数据管理 →</router-link>
+          <router-link to="/lineage" class="module-link">数据血缘 →</router-link>
+        </div>
+      </div>
+      <div class="chart-grid">
+        <div class="panel">
+          <h4 class="panel-title">资产增长趋势</h4>
+          <div ref="trendChart" class="chart"></div>
+        </div>
+        <div class="panel">
+          <h4 class="panel-title">热门资产 TOP10<span v-if="!hasHot" class="hint">暂无使用统计</span></h4>
+          <div ref="hotChart" class="chart"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 模块三：运营协同 -->
+    <section class="module">
+      <div class="module-head">
+        <h3 class="module-title">运营协同</h3>
+        <div class="module-links">
+          <router-link to="/operations" class="module-link">工单中心 →</router-link>
+          <router-link to="/quality" class="module-link">数据质量 →</router-link>
+        </div>
+      </div>
+      <div class="chart-grid">
+        <div class="panel">
+          <h4 class="panel-title">工单状态分布</h4>
+          <div ref="ticketChart" class="chart"></div>
+        </div>
+        <div class="panel">
+          <h4 class="panel-title">治理待办</h4>
+          <div class="todo-list">
+            <router-link to="/operations" class="todo-item">
+              <span class="todo-dot" style="background:var(--med-gold);"></span>
+              <div><b>待处理工单</b><span>及时响应数据申请/质量问题</span></div>
+              <em>{{ stats.find(s => s.label === '待办工单')?.value ?? '-' }}</em>
+            </router-link>
+            <router-link to="/quality" class="todo-item">
+              <span class="todo-dot" style="background:var(--med-primary);"></span>
+              <div><b>质量检测</b><span>执行规则并查看异常样例</span></div>
+              <em>进入</em>
+            </router-link>
+            <router-link to="/security" class="todo-item">
+              <span class="todo-dot" style="background:var(--med-danger);"></span>
+              <div><b>安全审批</b><span>处理数据访问申请与权限</span></div>
+              <em>进入</em>
+            </router-link>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    </template>
+    <PlatformDashboard v-else />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, shallowRef, onBeforeUnmount } from 'vue'
+import * as echarts from 'echarts'
+import { Refresh } from '@element-plus/icons-vue'
+import { operationsApi } from '@/api'
+import PlatformDashboard from './PlatformDashboard.vue'
+import { getChartTheme } from '@/utils/chartTheme'
+
+const loading = ref(false)
+const mode = ref<'dam' | 'platform'>('dam')
+const hasHot = ref(false)
+const stats = ref([
+  { label: '资产总数', value: '-', foot: '已登记数据资产' },
+  { label: '质量评分', value: '-', foot: '按最新规则通过率' },
+  { label: '待办工单', value: '-', foot: '待处理 / 处理中' },
+  { label: '活跃用户', value: '-', foot: '近期有操作的用户' }
+])
+
+const trendChart = shallowRef<HTMLElement>()
+const hotChart = shallowRef<HTMLElement>()
+const ticketChart = shallowRef<HTMLElement>()
+const charts: echarts.ECharts[] = []
+const ct = getChartTheme()
+
+const AXIS_COLOR = ct.textLight
+const SPLIT_COLOR = ct.split
+const GRADIENT = (horizontal = false) => new echarts.graphic.LinearGradient(
+  horizontal ? 0 : 0, horizontal ? 0 : 0, horizontal ? 1 : 0, horizontal ? 0 : 1,
+  [{ offset: 0, color: ct.primary }, { offset: 1, color: ct.accent }]
+)
+
+function mount(el: HTMLElement | undefined, option: any) {
+  if (!el) return
+  const chart = echarts.init(el)
+  chart.setOption(option)
+  charts.push(chart)
+}
+
+function disposeCharts() {
+  charts.forEach(c => c.dispose())
+  charts.length = 0
+}
+
+async function load() {
+  loading.value = true
+  disposeCharts()
+  try {
+    const res: any = await operationsApi.getDashboard()
+    const data = res.data
+    if (data) {
+      const o = data.overview || {}
+      stats.value = [
+        { label: '资产总数', value: o.totalAssets ?? '-', foot: '已登记数据资产' },
+        { label: '质量评分', value: o.avgQualityScore ?? '-', foot: '按最新规则通过率' },
+        { label: '待办工单', value: o.pendingTickets ?? '-', foot: '待处理 / 处理中' },
+        { label: '活跃用户', value: o.activeUsers ?? '-', foot: '近期有操作的用户' }
+      ]
+
+      if (data.monthlyTrend) {
+        const t = data.monthlyTrend
+        mount(trendChart.value, {
+          grid: { left: 40, right: 16, top: 24, bottom: 30 },
+          xAxis: { type: 'category', data: t.months, axisLine: { lineStyle: { color: ct.border } }, axisLabel: { color: AXIS_COLOR } },
+          yAxis: { type: 'value', splitLine: { lineStyle: { color: SPLIT_COLOR } }, axisLabel: { color: AXIS_COLOR } },
+          series: [
+            { name: '资产增量', data: t.assetCounts, type: 'bar', barWidth: 16, itemStyle: { borderRadius: [4, 4, 0, 0], color: GRADIENT() } },
+            { name: '工单增量', data: t.ticketCounts, type: 'line', smooth: true, itemStyle: { color: ct.accent }, lineStyle: { width: 2.5 } }
+          ],
+          tooltip: { trigger: 'axis' }
+        })
+      }
+
+      if (data.hotAssets) {
+        hasHot.value = data.hotAssets.length > 0
+        const top10 = data.hotAssets.slice(0, 10)
+        mount(hotChart.value, {
+          grid: { left: 70, right: 24, top: 12, bottom: 24 },
+          xAxis: { type: 'value', splitLine: { lineStyle: { color: SPLIT_COLOR } }, axisLabel: { color: AXIS_COLOR } },
+          yAxis: { type: 'category', data: top10.map((a: any) => '#' + a.assetId), inverse: true, axisLine: { lineStyle: { color: ct.border } }, axisLabel: { color: ct.text } },
+          series: [{ data: top10.map((a: any) => a.queryCount || 0), type: 'bar', barWidth: 14, itemStyle: { borderRadius: [0, 6, 6, 0], color: GRADIENT(true) } }],
+          tooltip: { trigger: 'axis' }
+        })
+      }
+
+      if (data.ticketOverview) {
+        const t = data.ticketOverview
+        mount(ticketChart.value, {
+          tooltip: { trigger: 'item' },
+          legend: { bottom: 0, textStyle: { color: AXIS_COLOR } },
+          series: [{
+            type: 'pie',
+            radius: ['45%', '70%'],
+            center: ['50%', '44%'],
+            data: [
+              { name: '待处理', value: t.pending || 0, itemStyle: { color: ct.gold } },
+              { name: '处理中', value: t.processing || 0, itemStyle: { color: ct.primary } },
+              { name: '已完成', value: t.completed || 0, itemStyle: { color: ct.green } },
+              { name: '已驳回', value: t.rejected || 0, itemStyle: { color: ct.danger } }
+            ],
+            label: { show: false }
+          }]
+        })
+      }
+    }
+  } catch (_e) {
+    // 接口异常时给空图，避免整页报错
+    mount(trendChart.value, { grid: { left: 40, right: 16, top: 24, bottom: 30 }, xAxis: { type: 'category', data: [] }, yAxis: { type: 'value' }, series: [] })
+    mount(hotChart.value, { grid: { left: 70, right: 24, top: 12, bottom: 24 }, xAxis: { type: 'value' }, yAxis: { type: 'category', data: [] }, series: [] })
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(load)
+onBeforeUnmount(disposeCharts)
+</script>
+
+<style scoped>
+.module { margin-top: 20px; }
+.module-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.module-title {
+  margin: 0; font-size: 15px; font-weight: 600; color: var(--med-text);
+  padding-left: 10px; border-left: 3px solid var(--med-primary); line-height: 1.3;
+}
+.module-sub { font-size: 12px; color: var(--med-text-light); margin-left: 8px; }
+.module-links { display: flex; gap: 14px; }
+.module-link { font-size: 12px; color: var(--med-primary); text-decoration: none; }
+.module-link:hover { text-decoration: underline; }
+
+.chart-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; }
+.chart { height: 260px; }
+.hint { font-size: 11px; color: var(--med-text-light); font-weight: 400; margin-left: 8px; }
+
+.entry-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.entry-card {
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+  background: #fff; border: 1px solid var(--med-border); border-radius: 12px;
+  text-decoration: none; color: inherit; transition: all .2s;
+}
+.entry-card:hover {
+  border-color: var(--med-primary-soft);
+  box-shadow: 0 6px 18px rgba(16, 41, 76, .08);
+  transform: translateY(-1px);
+}
+.entry-icon {
+  width: 38px; height: 38px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; flex: 0 0 38px;
+}
+.entry-body { min-width: 0; }
+.entry-title { font-size: 13.5px; font-weight: 600; color: var(--med-text); }
+.entry-desc { font-size: 11.5px; color: var(--med-text-light); margin-top: 3px; }
+
+@media (max-width: 1200px) {
+  .chart-grid { grid-template-columns: 1fr; }
+}
+
+.todo-list { display: flex; flex-direction: column; gap: 10px; }
+.todo-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--med-border); border-radius: 10px; text-decoration: none; color: inherit; }
+.todo-item:hover { background: #F8FAFD; }
+.todo-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; }
+.todo-item div { flex: 1; min-width: 0; }
+.todo-item b { display: block; font-size: 12.5px; color: var(--med-text); }
+.todo-item span { font-size: 10.5px; color: var(--med-text-light); }
+.todo-item em { font-style: normal; font-size: 13px; font-weight: 600; color: var(--med-primary); }
+</style>

@@ -52,6 +52,10 @@ FRONTEND_SRC="$ROOT/codebase/frontend/dist-products/$CODE"
 if [ -d "$FRONTEND_SRC" ] && [ "${COPY_FRONTEND:-1}" = "1" ]; then
   cp -a "$FRONTEND_SRC/." "$RELEASE/frontend/"
 fi
+if [ -d "$PRODUCT_DIR/frontend-src" ]; then
+  cp -a "$PRODUCT_DIR/frontend-src" "$RELEASE/frontend-src"
+  rm -rf "$RELEASE/frontend-src/node_modules" "$RELEASE/frontend-src/dist"
+fi
 for svc in $SERVICES; do
   jar="$ROOT/codebase/backend/$(python3 - "$ROOT" "$svc" <<'PY'
 import sys,json

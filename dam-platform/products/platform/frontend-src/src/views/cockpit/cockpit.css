@@ -1,0 +1,294 @@
+/* 角色驾驶舱共享样式（类名统一 ck- 前缀，避免污染业务页面） */
+.ck-page {
+  --ck-surface: var(--med-card-bg, #ffffff);
+  --ck-surface-2: var(--med-bg-level2, #fcf9fc);
+  --ck-border: var(--med-border, #eae2ea);
+  --ck-border-light: var(--med-border-light, #f3edf3);
+  --ck-text: var(--med-text, #2b2530);
+  --ck-text-2: var(--med-text-secondary, #655d68);
+  --ck-text-3: var(--med-text-light, #9b929f);
+  --ck-primary: var(--med-primary, #72156a);
+  --ck-accent: var(--med-accent, #2fa6a1);
+  --ck-gold: var(--med-gold, #d99a1c);
+  --ck-green: var(--med-green, #5bae47);
+  --ck-danger: var(--med-danger, #d9534f);
+  min-height: 100%;
+}
+
+.ck-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.ck-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--ck-text);
+}
+.ck-desc {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ck-text-3);
+}
+.ck-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.ck-dept-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  color: var(--ck-primary);
+  background: var(--med-primary-lighter, #f7edf6);
+  border: 1px solid var(--ck-border-light);
+}
+
+.ck-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.ck-stat {
+  position: relative;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--ck-border);
+  background: var(--ck-surface);
+  box-shadow: 0 3px 14px rgba(57, 25, 52, 0.045);
+  overflow: hidden;
+}
+.ck-stat::after {
+  content: '';
+  position: absolute;
+  right: -20px;
+  top: -20px;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: var(--med-primary-lighter, #f7edf6);
+  opacity: 0.6;
+}
+.ck-stat-label {
+  font-size: 12px;
+  color: var(--ck-text-3);
+}
+.ck-stat-value {
+  position: relative;
+  z-index: 1;
+  margin-top: 8px;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--ck-text);
+  font-variant-numeric: tabular-nums;
+}
+.ck-stat-foot {
+  position: relative;
+  z-index: 1;
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--ck-text-3);
+}
+.ck-stat.is-accent .ck-stat-value { color: var(--ck-accent); }
+.ck-stat.is-gold .ck-stat-value { color: var(--ck-gold); }
+.ck-stat.is-danger .ck-stat-value { color: var(--ck-danger); }
+.ck-stat.is-green .ck-stat-value { color: var(--ck-green); }
+
+.ck-grid {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.ck-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ck-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ck-grid-main { grid-template-columns: 1.5fr 1fr; }
+
+.ck-card {
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--ck-border);
+  background: var(--ck-surface);
+  box-shadow: 0 3px 14px rgba(57, 25, 52, 0.045);
+  min-width: 0;
+}
+.ck-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.ck-card-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--ck-text);
+}
+.ck-card-sub {
+  font-size: 11px;
+  color: var(--ck-text-3);
+}
+.ck-link {
+  font-size: 12px;
+  color: var(--ck-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.ck-link:hover { text-decoration: underline; }
+
+.ck-service-list { display: flex; flex-direction: column; gap: 2px; }
+.ck-service-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--ck-border-light);
+}
+.ck-service-row:last-child { border-bottom: 0; }
+.ck-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 8px;
+  background: var(--ck-text-3);
+}
+.ck-dot.is-online { background: #22a06b; box-shadow: 0 0 0 3px rgba(34, 160, 107, 0.12); }
+.ck-dot.is-offline { background: var(--ck-danger); box-shadow: 0 0 0 3px rgba(217, 83, 79, 0.12); }
+.ck-service-main { flex: 1; min-width: 0; }
+.ck-service-main b { display: block; font-size: 12.5px; color: var(--ck-text); }
+.ck-service-main span { font-size: 10.5px; color: var(--ck-text-3); }
+
+.ck-kv { display: flex; flex-wrap: wrap; gap: 8px; }
+.ck-kv-row {
+  flex: 1 1 calc(50% - 8px);
+  min-width: 130px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--ck-surface-2);
+  border: 1px solid var(--ck-border-light);
+}
+.ck-kv-row span { display: block; font-size: 11px; color: var(--ck-text-3); }
+.ck-kv-row b { display: block; margin-top: 5px; font-size: 18px; color: var(--ck-text); font-variant-numeric: tabular-nums; }
+
+.ck-list { display: flex; flex-direction: column; gap: 8px; }
+.ck-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  border: 1px solid var(--ck-border-light);
+  background: var(--ck-surface-2);
+  color: inherit;
+  text-decoration: none;
+}
+.ck-list-item:hover { border-color: var(--med-primary-soft, #e9d2e6); }
+.ck-list-item div { flex: 1; min-width: 0; }
+.ck-list-item b { display: block; font-size: 12.5px; color: var(--ck-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ck-list-item span { font-size: 10.5px; color: var(--ck-text-3); }
+.ck-list-item em { font-style: normal; font-size: 12.5px; font-weight: 600; color: var(--ck-primary); }
+
+.ck-bars { display: flex; flex-direction: column; gap: 10px; }
+.ck-bar-row { display: flex; align-items: center; gap: 8px; }
+.ck-bar-label { width: 54px; flex: 0 0 54px; font-size: 10.5px; color: var(--ck-text-3); text-align: right; }
+.ck-bar-track {
+  flex: 1;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--ck-surface-2);
+  border: 1px solid var(--ck-border-light);
+  overflow: hidden;
+}
+.ck-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--ck-primary), var(--ck-accent));
+}
+.ck-bar-value { width: 46px; flex: 0 0 46px; font-size: 11px; color: var(--ck-text-2); text-align: right; font-variant-numeric: tabular-nums; }
+
+.ck-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+.ck-entry-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 13px;
+  border-radius: 11px;
+  border: 1px solid var(--ck-border);
+  background: var(--ck-surface);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.ck-entry-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--med-primary-soft, #e9d2e6);
+  box-shadow: 0 8px 18px rgba(57, 25, 52, 0.08);
+}
+.ck-entry-icon {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ck-primary);
+  background: var(--med-primary-lighter, #f7edf6);
+}
+.ck-entry-name { font-size: 13px; font-weight: 600; color: var(--ck-text); }
+.ck-entry-desc { margin-top: 2px; font-size: 10.5px; color: var(--ck-text-3); }
+
+.ck-updated {
+  margin: 14px 2px 0;
+  font-size: 10.5px;
+  color: var(--ck-text-3);
+  text-align: right;
+}
+
+.ck-empty-block {
+  padding: 8px 0 2px;
+}
+.ck-empty-block .el-empty { padding: 18px 0; }
+.ck-empty-block .el-empty__description p { font-size: 12px; color: var(--ck-text-3); }
+
+.ck-error-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border-radius: 9px;
+  font-size: 12px;
+  color: #8a6d3b;
+  background: #fdf8e8;
+  border: 1px solid #f3e6bf;
+}
+
+@media (max-width: 1100px) {
+  .ck-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ck-grid-main { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .ck-head { align-items: flex-start; flex-direction: column; }
+  .ck-grid-2, .ck-grid-3 { grid-template-columns: 1fr; }
+  .ck-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+  .ck-stat-grid { grid-template-columns: 1fr; }
+}

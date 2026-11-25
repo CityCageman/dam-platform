@@ -1,3 +1,6 @@
 products/*/dist/
 
 codebase/frontend/dist-products/
+
+products/*/frontend-src/dist/
+products/*/frontend-src/node_modules/

@@ -1,0 +1,1174 @@
+[
+  {
+    "name": "AddLocation",
+    "file": "add-location.svg"
+  },
+  {
+    "name": "Aim",
+    "file": "aim.svg"
+  },
+  {
+    "name": "AlarmClock",
+    "file": "alarm-clock.svg"
+  },
+  {
+    "name": "Apple",
+    "file": "apple.svg"
+  },
+  {
+    "name": "ArrowDown",
+    "file": "arrow-down.svg"
+  },
+  {
+    "name": "ArrowDownBold",
+    "file": "arrow-down-bold.svg"
+  },
+  {
+    "name": "ArrowLeft",
+    "file": "arrow-left.svg"
+  },
+  {
+    "name": "ArrowLeftBold",
+    "file": "arrow-left-bold.svg"
+  },
+  {
+    "name": "ArrowRight",
+    "file": "arrow-right.svg"
+  },
+  {
+    "name": "ArrowRightBold",
+    "file": "arrow-right-bold.svg"
+  },
+  {
+    "name": "ArrowUp",
+    "file": "arrow-up.svg"
+  },
+  {
+    "name": "ArrowUpBold",
+    "file": "arrow-up-bold.svg"
+  },
+  {
+    "name": "Avatar",
+    "file": "avatar.svg"
+  },
+  {
+    "name": "Back",
+    "file": "back.svg"
+  },
+  {
+    "name": "Baseball",
+    "file": "baseball.svg"
+  },
+  {
+    "name": "Basketball",
+    "file": "basketball.svg"
+  },
+  {
+    "name": "Bell",
+    "file": "bell.svg"
+  },
+  {
+    "name": "BellFilled",
+    "file": "bell-filled.svg"
+  },
+  {
+    "name": "Bicycle",
+    "file": "bicycle.svg"
+  },
+  {
+    "name": "Bottom",
+    "file": "bottom.svg"
+  },
+  {
+    "name": "BottomLeft",
+    "file": "bottom-left.svg"
+  },
+  {
+    "name": "BottomRight",
+    "file": "bottom-right.svg"
+  },
+  {
+    "name": "Bowl",
+    "file": "bowl.svg"
+  },
+  {
+    "name": "Box",
+    "file": "box.svg"
+  },
+  {
+    "name": "Briefcase",
+    "file": "briefcase.svg"
+  },
+  {
+    "name": "Brush",
+    "file": "brush.svg"
+  },
+  {
+    "name": "BrushFilled",
+    "file": "brush-filled.svg"
+  },
+  {
+    "name": "Burger",
+    "file": "burger.svg"
+  },
+  {
+    "name": "Calendar",
+    "file": "calendar.svg"
+  },
+  {
+    "name": "Camera",
+    "file": "camera.svg"
+  },
+  {
+    "name": "CameraFilled",
+    "file": "camera-filled.svg"
+  },
+  {
+    "name": "CaretBottom",
+    "file": "caret-bottom.svg"
+  },
+  {
+    "name": "CaretLeft",
+    "file": "caret-left.svg"
+  },
+  {
+    "name": "CaretRight",
+    "file": "caret-right.svg"
+  },
+  {
+    "name": "CaretTop",
+    "file": "caret-top.svg"
+  },
+  {
+    "name": "Cellphone",
+    "file": "cellphone.svg"
+  },
+  {
+    "name": "ChatDotRound",
+    "file": "chat-dot-round.svg"
+  },
+  {
+    "name": "ChatDotSquare",
+    "file": "chat-dot-square.svg"
+  },
+  {
+    "name": "ChatLineRound",
+    "file": "chat-line-round.svg"
+  },
+  {
+    "name": "ChatLineSquare",
+    "file": "chat-line-square.svg"
+  },
+  {
+    "name": "ChatRound",
+    "file": "chat-round.svg"
+  },
+  {
+    "name": "ChatSquare",
+    "file": "chat-square.svg"
+  },
+  {
+    "name": "Check",
+    "file": "check.svg"
+  },
+  {
+    "name": "Checked",
+    "file": "checked.svg"
+  },
+  {
+    "name": "Cherry",
+    "file": "cherry.svg"
+  },
+  {
+    "name": "Chicken",
+    "file": "chicken.svg"
+  },
+  {
+    "name": "ChromeFilled",
+    "file": "chrome-filled.svg"
+  },
+  {
+    "name": "CircleCheck",
+    "file": "circle-check.svg"
+  },
+  {
+    "name": "CircleCheckFilled",
+    "file": "circle-check-filled.svg"
+  },
+  {
+    "name": "CircleClose",
+    "file": "circle-close.svg"
+  },
+  {
+    "name": "CircleCloseFilled",
+    "file": "circle-close-filled.svg"
+  },
+  {
+    "name": "CirclePlus",
+    "file": "circle-plus.svg"
+  },
+  {
+    "name": "CirclePlusFilled",
+    "file": "circle-plus-filled.svg"
+  },
+  {
+    "name": "Clock",
+    "file": "clock.svg"
+  },
+  {
+    "name": "Close",
+    "file": "close.svg"
+  },
+  {
+    "name": "CloseBold",
+    "file": "close-bold.svg"
+  },
+  {
+    "name": "Cloudy",
+    "file": "cloudy.svg"
+  },
+  {
+    "name": "Coffee",
+    "file": "coffee.svg"
+  },
+  {
+    "name": "CoffeeCup",
+    "file": "coffee-cup.svg"
+  },
+  {
+    "name": "Coin",
+    "file": "coin.svg"
+  },
+  {
+    "name": "ColdDrink",
+    "file": "cold-drink.svg"
+  },
+  {
+    "name": "Collection",
+    "file": "collection.svg"
+  },
+  {
+    "name": "CollectionTag",
+    "file": "collection-tag.svg"
+  },
+  {
+    "name": "Comment",
+    "file": "comment.svg"
+  },
+  {
+    "name": "Compass",
+    "file": "compass.svg"
+  },
+  {
+    "name": "Connection",
+    "file": "connection.svg"
+  },
+  {
+    "name": "Coordinate",
+    "file": "coordinate.svg"
+  },
+  {
+    "name": "CopyDocument",
+    "file": "copy-document.svg"
+  },
+  {
+    "name": "Cpu",
+    "file": "cpu.svg"
+  },
+  {
+    "name": "CreditCard",
+    "file": "credit-card.svg"
+  },
+  {
+    "name": "Crop",
+    "file": "crop.svg"
+  },
+  {
+    "name": "DArrowLeft",
+    "file": "d-arrow-left.svg"
+  },
+  {
+    "name": "DArrowRight",
+    "file": "d-arrow-right.svg"
+  },
+  {
+    "name": "DataAnalysis",
+    "file": "data-analysis.svg"
+  },
+  {
+    "name": "DataBoard",
+    "file": "data-board.svg"
+  },
+  {
+    "name": "DataLine",
+    "file": "data-line.svg"
+  },
+  {
+    "name": "DCaret",
+    "file": "d-caret.svg"
+  },
+  {
+    "name": "Delete",
+    "file": "delete.svg"
+  },
+  {
+    "name": "DeleteFilled",
+    "file": "delete-filled.svg"
+  },
+  {
+    "name": "DeleteLocation",
+    "file": "delete-location.svg"
+  },
+  {
+    "name": "Dessert",
+    "file": "dessert.svg"
+  },
+  {
+    "name": "Discount",
+    "file": "discount.svg"
+  },
+  {
+    "name": "Dish",
+    "file": "dish.svg"
+  },
+  {
+    "name": "DishDot",
+    "file": "dish-dot.svg"
+  },
+  {
+    "name": "Document",
+    "file": "document.svg"
+  },
+  {
+    "name": "DocumentAdd",
+    "file": "document-add.svg"
+  },
+  {
+    "name": "DocumentChecked",
+    "file": "document-checked.svg"
+  },
+  {
+    "name": "DocumentCopy",
+    "file": "document-copy.svg"
+  },
+  {
+    "name": "DocumentDelete",
+    "file": "document-delete.svg"
+  },
+  {
+    "name": "DocumentRemove",
+    "file": "document-remove.svg"
+  },
+  {
+    "name": "Download",
+    "file": "download.svg"
+  },
+  {
+    "name": "Drizzling",
+    "file": "drizzling.svg"
+  },
+  {
+    "name": "Edit",
+    "file": "edit.svg"
+  },
+  {
+    "name": "EditPen",
+    "file": "edit-pen.svg"
+  },
+  {
+    "name": "Eleme",
+    "file": "eleme.svg"
+  },
+  {
+    "name": "ElemeFilled",
+    "file": "eleme-filled.svg"
+  },
+  {
+    "name": "ElementPlus",
+    "file": "element-plus.svg"
+  },
+  {
+    "name": "Expand",
+    "file": "expand.svg"
+  },
+  {
+    "name": "Failed",
+    "file": "failed.svg"
+  },
+  {
+    "name": "Female",
+    "file": "female.svg"
+  },
+  {
+    "name": "Files",
+    "file": "files.svg"
+  },
+  {
+    "name": "Film",
+    "file": "film.svg"
+  },
+  {
+    "name": "Filter",
+    "file": "filter.svg"
+  },
+  {
+    "name": "Finished",
+    "file": "finished.svg"
+  },
+  {
+    "name": "FirstAidKit",
+    "file": "first-aid-kit.svg"
+  },
+  {
+    "name": "Flag",
+    "file": "flag.svg"
+  },
+  {
+    "name": "Fold",
+    "file": "fold.svg"
+  },
+  {
+    "name": "Folder",
+    "file": "folder.svg"
+  },
+  {
+    "name": "FolderAdd",
+    "file": "folder-add.svg"
+  },
+  {
+    "name": "FolderChecked",
+    "file": "folder-checked.svg"
+  },
+  {
+    "name": "FolderDelete",
+    "file": "folder-delete.svg"
+  },
+  {
+    "name": "FolderOpened",
+    "file": "folder-opened.svg"
+  },
+  {
+    "name": "FolderRemove",
+    "file": "folder-remove.svg"
+  },
+  {
+    "name": "Food",
+    "file": "food.svg"
+  },
+  {
+    "name": "Football",
+    "file": "football.svg"
+  },
+  {
+    "name": "ForkSpoon",
+    "file": "fork-spoon.svg"
+  },
+  {
+    "name": "Fries",
+    "file": "fries.svg"
+  },
+  {
+    "name": "FullScreen",
+    "file": "full-screen.svg"
+  },
+  {
+    "name": "Goblet",
+    "file": "goblet.svg"
+  },
+  {
+    "name": "GobletFull",
+    "file": "goblet-full.svg"
+  },
+  {
+    "name": "GobletSquare",
+    "file": "goblet-square.svg"
+  },
+  {
+    "name": "GobletSquareFull",
+    "file": "goblet-square-full.svg"
+  },
+  {
+    "name": "GoldMedal",
+    "file": "gold-medal.svg"
+  },
+  {
+    "name": "Goods",
+    "file": "goods.svg"
+  },
+  {
+    "name": "GoodsFilled",
+    "file": "goods-filled.svg"
+  },
+  {
+    "name": "Grape",
+    "file": "grape.svg"
+  },
+  {
+    "name": "Grid",
+    "file": "grid.svg"
+  },
+  {
+    "name": "Guide",
+    "file": "guide.svg"
+  },
+  {
+    "name": "Handbag",
+    "file": "handbag.svg"
+  },
+  {
+    "name": "Headset",
+    "file": "headset.svg"
+  },
+  {
+    "name": "Help",
+    "file": "help.svg"
+  },
+  {
+    "name": "HelpFilled",
+    "file": "help-filled.svg"
+  },
+  {
+    "name": "Hide",
+    "file": "hide.svg"
+  },
+  {
+    "name": "Histogram",
+    "file": "histogram.svg"
+  },
+  {
+    "name": "HomeFilled",
+    "file": "home-filled.svg"
+  },
+  {
+    "name": "HotWater",
+    "file": "hot-water.svg"
+  },
+  {
+    "name": "House",
+    "file": "house.svg"
+  },
+  {
+    "name": "IceCream",
+    "file": "ice-cream.svg"
+  },
+  {
+    "name": "IceCreamRound",
+    "file": "ice-cream-round.svg"
+  },
+  {
+    "name": "IceCreamSquare",
+    "file": "ice-cream-square.svg"
+  },
+  {
+    "name": "IceDrink",
+    "file": "ice-drink.svg"
+  },
+  {
+    "name": "IceTea",
+    "file": "ice-tea.svg"
+  },
+  {
+    "name": "InfoFilled",
+    "file": "info-filled.svg"
+  },
+  {
+    "name": "Iphone",
+    "file": "iphone.svg"
+  },
+  {
+    "name": "Key",
+    "file": "key.svg"
+  },
+  {
+    "name": "KnifeFork",
+    "file": "knife-fork.svg"
+  },
+  {
+    "name": "Lightning",
+    "file": "lightning.svg"
+  },
+  {
+    "name": "Link",
+    "file": "link.svg"
+  },
+  {
+    "name": "List",
+    "file": "list.svg"
+  },
+  {
+    "name": "Loading",
+    "file": "loading.svg"
+  },
+  {
+    "name": "Location",
+    "file": "location.svg"
+  },
+  {
+    "name": "LocationFilled",
+    "file": "location-filled.svg"
+  },
+  {
+    "name": "LocationInformation",
+    "file": "location-information.svg"
+  },
+  {
+    "name": "Lock",
+    "file": "lock.svg"
+  },
+  {
+    "name": "Lollipop",
+    "file": "lollipop.svg"
+  },
+  {
+    "name": "MagicStick",
+    "file": "magic-stick.svg"
+  },
+  {
+    "name": "Magnet",
+    "file": "magnet.svg"
+  },
+  {
+    "name": "Male",
+    "file": "male.svg"
+  },
+  {
+    "name": "Management",
+    "file": "management.svg"
+  },
+  {
+    "name": "MapLocation",
+    "file": "map-location.svg"
+  },
+  {
+    "name": "Medal",
+    "file": "medal.svg"
+  },
+  {
+    "name": "Memo",
+    "file": "memo.svg"
+  },
+  {
+    "name": "Menu",
+    "file": "menu.svg"
+  },
+  {
+    "name": "Message",
+    "file": "message.svg"
+  },
+  {
+    "name": "MessageBox",
+    "file": "message-box.svg"
+  },
+  {
+    "name": "Mic",
+    "file": "mic.svg"
+  },
+  {
+    "name": "Microphone",
+    "file": "microphone.svg"
+  },
+  {
+    "name": "MilkTea",
+    "file": "milk-tea.svg"
+  },
+  {
+    "name": "Minus",
+    "file": "minus.svg"
+  },
+  {
+    "name": "Money",
+    "file": "money.svg"
+  },
+  {
+    "name": "Monitor",
+    "file": "monitor.svg"
+  },
+  {
+    "name": "Moon",
+    "file": "moon.svg"
+  },
+  {
+    "name": "MoonNight",
+    "file": "moon-night.svg"
+  },
+  {
+    "name": "More",
+    "file": "more.svg"
+  },
+  {
+    "name": "MoreFilled",
+    "file": "more-filled.svg"
+  },
+  {
+    "name": "MostlyCloudy",
+    "file": "mostly-cloudy.svg"
+  },
+  {
+    "name": "Mouse",
+    "file": "mouse.svg"
+  },
+  {
+    "name": "Mug",
+    "file": "mug.svg"
+  },
+  {
+    "name": "Mute",
+    "file": "mute.svg"
+  },
+  {
+    "name": "MuteNotification",
+    "file": "mute-notification.svg"
+  },
+  {
+    "name": "NoSmoking",
+    "file": "no-smoking.svg"
+  },
+  {
+    "name": "Notebook",
+    "file": "notebook.svg"
+  },
+  {
+    "name": "Notification",
+    "file": "notification.svg"
+  },
+  {
+    "name": "Odometer",
+    "file": "odometer.svg"
+  },
+  {
+    "name": "OfficeBuilding",
+    "file": "office-building.svg"
+  },
+  {
+    "name": "Open",
+    "file": "open.svg"
+  },
+  {
+    "name": "Operation",
+    "file": "operation.svg"
+  },
+  {
+    "name": "Opportunity",
+    "file": "opportunity.svg"
+  },
+  {
+    "name": "Orange",
+    "file": "orange.svg"
+  },
+  {
+    "name": "Paperclip",
+    "file": "paperclip.svg"
+  },
+  {
+    "name": "PartlyCloudy",
+    "file": "partly-cloudy.svg"
+  },
+  {
+    "name": "Pear",
+    "file": "pear.svg"
+  },
+  {
+    "name": "Phone",
+    "file": "phone.svg"
+  },
+  {
+    "name": "PhoneFilled",
+    "file": "phone-filled.svg"
+  },
+  {
+    "name": "Picture",
+    "file": "picture.svg"
+  },
+  {
+    "name": "PictureFilled",
+    "file": "picture-filled.svg"
+  },
+  {
+    "name": "PictureRounded",
+    "file": "picture-rounded.svg"
+  },
+  {
+    "name": "PieChart",
+    "file": "pie-chart.svg"
+  },
+  {
+    "name": "Place",
+    "file": "place.svg"
+  },
+  {
+    "name": "Platform",
+    "file": "platform.svg"
+  },
+  {
+    "name": "Plus",
+    "file": "plus.svg"
+  },
+  {
+    "name": "Pointer",
+    "file": "pointer.svg"
+  },
+  {
+    "name": "Position",
+    "file": "position.svg"
+  },
+  {
+    "name": "Postcard",
+    "file": "postcard.svg"
+  },
+  {
+    "name": "Pouring",
+    "file": "pouring.svg"
+  },
+  {
+    "name": "Present",
+    "file": "present.svg"
+  },
+  {
+    "name": "PriceTag",
+    "file": "price-tag.svg"
+  },
+  {
+    "name": "Printer",
+    "file": "printer.svg"
+  },
+  {
+    "name": "Promotion",
+    "file": "promotion.svg"
+  },
+  {
+    "name": "QuartzWatch",
+    "file": "quartz-watch.svg"
+  },
+  {
+    "name": "QuestionFilled",
+    "file": "question-filled.svg"
+  },
+  {
+    "name": "Rank",
+    "file": "rank.svg"
+  },
+  {
+    "name": "Reading",
+    "file": "reading.svg"
+  },
+  {
+    "name": "ReadingLamp",
+    "file": "reading-lamp.svg"
+  },
+  {
+    "name": "Refresh",
+    "file": "refresh.svg"
+  },
+  {
+    "name": "RefreshLeft",
+    "file": "refresh-left.svg"
+  },
+  {
+    "name": "RefreshRight",
+    "file": "refresh-right.svg"
+  },
+  {
+    "name": "Refrigerator",
+    "file": "refrigerator.svg"
+  },
+  {
+    "name": "Remove",
+    "file": "remove.svg"
+  },
+  {
+    "name": "RemoveFilled",
+    "file": "remove-filled.svg"
+  },
+  {
+    "name": "Right",
+    "file": "right.svg"
+  },
+  {
+    "name": "ScaleToOriginal",
+    "file": "scale-to-original.svg"
+  },
+  {
+    "name": "School",
+    "file": "school.svg"
+  },
+  {
+    "name": "Scissor",
+    "file": "scissor.svg"
+  },
+  {
+    "name": "Search",
+    "file": "search.svg"
+  },
+  {
+    "name": "Select",
+    "file": "select.svg"
+  },
+  {
+    "name": "Sell",
+    "file": "sell.svg"
+  },
+  {
+    "name": "SemiSelect",
+    "file": "semi-select.svg"
+  },
+  {
+    "name": "Service",
+    "file": "service.svg"
+  },
+  {
+    "name": "Setting",
+    "file": "setting.svg"
+  },
+  {
+    "name": "SetUp",
+    "file": "set-up.svg"
+  },
+  {
+    "name": "Share",
+    "file": "share.svg"
+  },
+  {
+    "name": "Ship",
+    "file": "ship.svg"
+  },
+  {
+    "name": "Shop",
+    "file": "shop.svg"
+  },
+  {
+    "name": "ShoppingBag",
+    "file": "shopping-bag.svg"
+  },
+  {
+    "name": "ShoppingCart",
+    "file": "shopping-cart.svg"
+  },
+  {
+    "name": "ShoppingCartFull",
+    "file": "shopping-cart-full.svg"
+  },
+  {
+    "name": "ShoppingTrolley",
+    "file": "shopping-trolley.svg"
+  },
+  {
+    "name": "Smoking",
+    "file": "smoking.svg"
+  },
+  {
+    "name": "Soccer",
+    "file": "soccer.svg"
+  },
+  {
+    "name": "SoldOut",
+    "file": "sold-out.svg"
+  },
+  {
+    "name": "Sort",
+    "file": "sort.svg"
+  },
+  {
+    "name": "SortDown",
+    "file": "sort-down.svg"
+  },
+  {
+    "name": "SortUp",
+    "file": "sort-up.svg"
+  },
+  {
+    "name": "Stamp",
+    "file": "stamp.svg"
+  },
+  {
+    "name": "Star",
+    "file": "star.svg"
+  },
+  {
+    "name": "StarFilled",
+    "file": "star-filled.svg"
+  },
+  {
+    "name": "Stopwatch",
+    "file": "stopwatch.svg"
+  },
+  {
+    "name": "SuccessFilled",
+    "file": "success-filled.svg"
+  },
+  {
+    "name": "Sugar",
+    "file": "sugar.svg"
+  },
+  {
+    "name": "Suitcase",
+    "file": "suitcase.svg"
+  },
+  {
+    "name": "SuitcaseLine",
+    "file": "suitcase-line.svg"
+  },
+  {
+    "name": "Sunny",
+    "file": "sunny.svg"
+  },
+  {
+    "name": "Sunrise",
+    "file": "sunrise.svg"
+  },
+  {
+    "name": "Sunset",
+    "file": "sunset.svg"
+  },
+  {
+    "name": "Switch",
+    "file": "switch.svg"
+  },
+  {
+    "name": "SwitchButton",
+    "file": "switch-button.svg"
+  },
+  {
+    "name": "SwitchFilled",
+    "file": "switch-filled.svg"
+  },
+  {
+    "name": "TakeawayBox",
+    "file": "takeaway-box.svg"
+  },
+  {
+    "name": "Ticket",
+    "file": "ticket.svg"
+  },
+  {
+    "name": "Tickets",
+    "file": "tickets.svg"
+  },
+  {
+    "name": "Timer",
+    "file": "timer.svg"
+  },
+  {
+    "name": "ToiletPaper",
+    "file": "toilet-paper.svg"
+  },
+  {
+    "name": "Tools",
+    "file": "tools.svg"
+  },
+  {
+    "name": "Top",
+    "file": "top.svg"
+  },
+  {
+    "name": "TopLeft",
+    "file": "top-left.svg"
+  },
+  {
+    "name": "TopRight",
+    "file": "top-right.svg"
+  },
+  {
+    "name": "TrendCharts",
+    "file": "trend-charts.svg"
+  },
+  {
+    "name": "Trophy",
+    "file": "trophy.svg"
+  },
+  {
+    "name": "TrophyBase",
+    "file": "trophy-base.svg"
+  },
+  {
+    "name": "TurnOff",
+    "file": "turn-off.svg"
+  },
+  {
+    "name": "Umbrella",
+    "file": "umbrella.svg"
+  },
+  {
+    "name": "Unlock",
+    "file": "unlock.svg"
+  },
+  {
+    "name": "Upload",
+    "file": "upload.svg"
+  },
+  {
+    "name": "UploadFilled",
+    "file": "upload-filled.svg"
+  },
+  {
+    "name": "User",
+    "file": "user.svg"
+  },
+  {
+    "name": "UserFilled",
+    "file": "user-filled.svg"
+  },
+  {
+    "name": "Van",
+    "file": "van.svg"
+  },
+  {
+    "name": "VideoCamera",
+    "file": "video-camera.svg"
+  },
+  {
+    "name": "VideoCameraFilled",
+    "file": "video-camera-filled.svg"
+  },
+  {
+    "name": "VideoPause",
+    "file": "video-pause.svg"
+  },
+  {
+    "name": "VideoPlay",
+    "file": "video-play.svg"
+  },
+  {
+    "name": "View",
+    "file": "view.svg"
+  },
+  {
+    "name": "Wallet",
+    "file": "wallet.svg"
+  },
+  {
+    "name": "WalletFilled",
+    "file": "wallet-filled.svg"
+  },
+  {
+    "name": "Warning",
+    "file": "warning.svg"
+  },
+  {
+    "name": "WarningFilled",
+    "file": "warning-filled.svg"
+  },
+  {
+    "name": "WarnTriangleFilled",
+    "file": "warn-triangle-filled.svg"
+  },
+  {
+    "name": "Watch",
+    "file": "watch.svg"
+  },
+  {
+    "name": "Watermelon",
+    "file": "watermelon.svg"
+  },
+  {
+    "name": "WindPower",
+    "file": "wind-power.svg"
+  },
+  {
+    "name": "ZoomIn",
+    "file": "zoom-in.svg"
+  },
+  {
+    "name": "ZoomOut",
+    "file": "zoom-out.svg"
+  }
+]
