@@ -5,6 +5,7 @@ import cn.dev33.satoken.reactor.filter.SaReactorFilter;
 import cn.dev33.satoken.router.SaRouter;
 import cn.dev33.satoken.stp.StpLogic;
 import org.springframework.context.annotation.Bean;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
 
 /**
@@ -12,6 +13,7 @@ import org.springframework.context.annotation.Configuration;
  * 校验请求头 JWT 的签名与有效期；无效/过期返回 401
  */
 @Configuration
+@Slf4j
 public class SaTokenConfig {
 
     /**
@@ -32,6 +34,9 @@ public class SaTokenConfig {
                         // JWT 无状态验签：签名错误、过期、伪造都会抛出 NotLoginException
                         cn.dev33.satoken.stp.StpUtil.checkLogin();
                     }))
-                .setError(e -> "{\"code\":401,\"msg\":\"未登录或token已过期\"}");
+                .setError(e -> {
+                    log.warn("网关鉴权失败: {}", e.getMessage());
+                    return "{\"code\":401,\"msg\":\"未登录或token已过期\"}";
+                });
     }
 }

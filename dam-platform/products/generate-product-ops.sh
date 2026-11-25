@@ -10,14 +10,14 @@ for i in \$(seq 1 30); do
   ok=1
   for svc in $PORTS; do
     port="\${svc##*:}"
-    curl -fsS --max-time 2 "http://127.0.0.1:\$port/" >/dev/null 2>&1 || ok=0
+    curl -sS --max-time 2 -o /dev/null "http://127.0.0.1:\$port/" 2>/dev/null || ok=0
   done
   [ "\$ok" = "1" ] && break
   sleep 1
 done
 for svc in $PORTS; do
   name="\${svc%%:*}"; port="\${svc##*:}"
-  if curl -fsS --max-time 2 "http://127.0.0.1:\$port/" >/dev/null 2>&1; then
+  if curl -sS --max-time 2 -o /dev/null "http://127.0.0.1:\$port/" 2>/dev/null; then
     echo "[UP] \$name:\$port"
   else
     echo "[DOWN] \$name:\$port"; exit 1

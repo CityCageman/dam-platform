@@ -27,7 +27,7 @@ import java.util.Base64;
  *
  * @author DAM Platform
  */
-@Service
+@org.springframework.stereotype.Component("platformCryptoService")
 @Slf4j
 public class CryptoService {
 

@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.route.RouteDefinition;
 import org.springframework.cloud.gateway.route.RouteDefinitionRepository;
 import org.springframework.stereotype.Component;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.yaml.snakeyaml.Yaml;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -22,6 +23,7 @@ import java.util.Map;
  */
 @Slf4j
 @Component
+@ConditionalOnProperty(name = "dam.product-routes-enabled", havingValue = "true")
 public class ProductRouteDefinitionRepository implements RouteDefinitionRepository {
 
     @Value("${dam.product-routes-dir:/etc/dam-products/routes}")
