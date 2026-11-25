@@ -9,6 +9,11 @@
 
 DO $$
 BEGIN
+    -- 数据源分层字段：后续回填表达式依赖此列（旧库可能缺失）
+    IF to_regclass('dam_metadata.metadata_datasource') IS NOT NULL THEN
+        ALTER TABLE dam_metadata.metadata_datasource ADD COLUMN IF NOT EXISTS data_layer varchar(16);
+    END IF;
+
     -- 技术元数据表：数仓分层（SOURCE/ODS/DWD/DIM/DWS/ADS）
     IF to_regclass('dam_metadata.metadata_table') IS NOT NULL THEN
         ALTER TABLE dam_metadata.metadata_table ADD COLUMN IF NOT EXISTS layer varchar(16);

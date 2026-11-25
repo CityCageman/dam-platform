@@ -24,6 +24,18 @@ for svc in $PORTS; do
   fi
 done
 EOS
+cat > "$RELEASE/bin/bootstrap-db.sh" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+BASE="$(cd "$(dirname "$0")/.." && pwd)"
+ENV_FILE="${ENV_FILE:-/etc/dam-products/$(basename "$(dirname "$BASE")").env}"
+[ -f "$ENV_FILE" ] && set -a && . "$ENV_FILE" && set +a
+: "${SPRING_DATASOURCE_URL:?SPRING_DATASOURCE_URL is required}"
+PSQL_URL="${SPRING_DATASOURCE_URL#jdbc:}"
+export PGUSER="${SPRING_DATASOURCE_USERNAME:-${PGUSER:-}}"
+export PGPASSWORD="${SPRING_DATASOURCE_PASSWORD:-${PGPASSWORD:-}}"
+psql "$PSQL_URL" -v ON_ERROR_STOP=1 -f "$BASE/db/bootstrap.sql"
+EOS
 cat > "$RELEASE/bin/migrate.sh" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -31,8 +43,11 @@ BASE="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="${ENV_FILE:-/etc/dam-products/$(basename "$(dirname "$BASE")").env}"
 [ -f "$ENV_FILE" ] && set -a && . "$ENV_FILE" && set +a
 : "${SPRING_DATASOURCE_URL:?SPRING_DATASOURCE_URL is required}"
-psql "$SPRING_DATASOURCE_URL" -v ON_ERROR_STOP=1 -f "$BASE/db/migrate.sql"
-[ -f "$BASE/db/base-migrate.sql" ] && psql "$SPRING_DATASOURCE_URL" -v ON_ERROR_STOP=1 -f "$BASE/db/base-migrate.sql" || true
+PSQL_URL="${SPRING_DATASOURCE_URL#jdbc:}"
+export PGUSER="${SPRING_DATASOURCE_USERNAME:-${PGUSER:-}}"
+export PGPASSWORD="${SPRING_DATASOURCE_PASSWORD:-${PGPASSWORD:-}}"
+psql "$PSQL_URL" -v ON_ERROR_STOP=1 -f "$BASE/db/migrate.sql"
+[ -f "$BASE/db/base-migrate.sql" ] && psql "$PSQL_URL" -v ON_ERROR_STOP=1 -f "$BASE/db/base-migrate.sql" || true
 EOS
 cat > "$RELEASE/bin/serve-frontend.sh" <<'EOS'
 #!/usr/bin/env bash
