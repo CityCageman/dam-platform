@@ -19,6 +19,5 @@
         <dependency><groupId>org.postgresql</groupId><artifactId>postgresql</artifactId><scope>runtime</scope></dependency>
         <dependency><groupId>cn.hutool</groupId><artifactId>hutool-all</artifactId></dependency>
         <dependency><groupId>com.dam</groupId><artifactId>platform-common</artifactId></dependency>
-        <dependency><groupId>com.dam</groupId><artifactId>asset-catalog</artifactId></dependency>
     </dependencies>
 </project>

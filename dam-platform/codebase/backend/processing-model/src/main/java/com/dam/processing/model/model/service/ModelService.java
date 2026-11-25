@@ -3,14 +3,11 @@ package com.dam.processing.model.service;
 
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.asset.catalog.entity.DamAsset;
 import com.dam.processing.model.entity.DamDataModel;
-import com.dam.asset.entity.DamField;
 import com.dam.processing.model.entity.DamModelField;
 import com.dam.processing.model.repository.DamDataModelMapper;
-import com.dam.asset.repository.DamFieldMapper;
 import com.dam.processing.model.repository.DamModelFieldMapper;
-import com.dam.asset.catalog.repository.DamAssetMapper;
+import com.dam.processing.model.client.AssetReadClient;
 import com.dam.platform.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -38,11 +35,8 @@ public class ModelService {
     /** 模型字段映射 Mapper（model_column_mapping 表） */
     private final DamModelFieldMapper modelFieldMapper;
 
-    /** 字段 Mapper（metadata_column 表） */
-    private final DamFieldMapper fieldMapper;
-
-    /** 资产 Mapper */
-    private final DamAssetMapper assetMapper;
+    /** DAM 资产只读 API 客户端 */
+    private final AssetReadClient assetReadClient;
 
     // ==================== 模型管理 ====================
 
@@ -302,84 +296,60 @@ public class ModelService {
      * 对比模型字段与实际资产字段，返回差异明细
      */
     public Map<String, Object> compareModelWithAsset(Long modelId, Long assetId) {
-        // 查询模型与资产并校验存在
         DamDataModel model = dataModelMapper.selectById(modelId);
         if (model == null) throw new BusinessException("模型不存在");
-        DamAsset asset = assetMapper.selectById(assetId);
-        if (asset == null) throw new BusinessException("资产不存在");
-
+        Map<String, Object> assetDetail = assetReadClient.detail(assetId);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> asset = (Map<String, Object>) assetDetail.get("asset");
+        List<?> rawFields = (List<?>) assetDetail.getOrDefault("fields", List.of());
+        List<Map<String, Object>> assetFields = new ArrayList<>();
+        for (Object row : rawFields) if (row instanceof Map<?, ?> m) {
+            Map<String, Object> f = new LinkedHashMap<>();
+            f.put("fieldName", m.get("fieldName"));
+            f.put("dataType", m.get("dataType"));
+            assetFields.add(f);
+        }
         List<DamModelField> modelFields = getModelFields(modelId);
-        // 资产字段通过多态外键（source_metadata_id=metadata_table.id）查询
-        List<DamField> assetFields = asset.getSourceMetadataId() != null ? fieldMapper.selectList(
-                new LambdaQueryWrapper<DamField>().eq(DamField::getTableId, asset.getSourceMetadataId()))
-                : Collections.emptyList();
-
-        // 以模型目标字段名为key建立索引
         Map<String, DamModelField> modelFieldMap = modelFields.stream()
                 .collect(Collectors.toMap(DamModelField::getTargetColumnName, f -> f, (a, b) -> a));
-        Map<String, DamField> assetFieldMap = assetFields.stream()
-                .collect(Collectors.toMap(DamField::getFieldName, f -> f, (a, b) -> a));
-
+        Map<String, Map<String, Object>> assetFieldMap = assetFields.stream()
+                .filter(f -> f.get("fieldName") != null)
+                .collect(Collectors.toMap(f -> String.valueOf(f.get("fieldName")), f -> f, (a, b) -> a));
         List<Map<String, Object>> matched = new ArrayList<>();
         List<Map<String, Object>> missing = new ArrayList<>();
         List<Map<String, Object>> extra = new ArrayList<>();
         List<Map<String, Object>> mismatched = new ArrayList<>();
-
-        // 遍历模型字段，检查资产中是否存在及是否一致
         for (DamModelField mf : modelFields) {
             String mfName = mf.getTargetColumnName();
-            DamField af = assetFieldMap.get(mfName);
+            Map<String, Object> af = assetFieldMap.get(mfName);
             if (af == null) {
-                missing.add(Map.of(
-                        "fieldName", mfName,
-                        "expectedType", mf.getTargetColumnType()
-                ));
+                missing.add(Map.of("fieldName", mfName, "expectedType", mf.getTargetColumnType()));
                 continue;
             }
-            // 检查类型是否一致
             List<Map<String, Object>> diffs = new ArrayList<>();
-            if (mf.getTargetColumnType() != null
-                    && !Objects.equals(mf.getTargetColumnType(), af.getDataType())) {
-                diffs.add(Map.of("property", "数据类型", "expected", mf.getTargetColumnType(), "actual", af.getDataType()));
+            if (mf.getTargetColumnType() != null && !Objects.equals(mf.getTargetColumnType(), af.get("dataType"))) {
+                diffs.add(Map.of("property", "数据类型", "expected", mf.getTargetColumnType(), "actual", af.get("dataType")));
             }
             if (!diffs.isEmpty()) {
-                mismatched.add(Map.of(
-                        "fieldName", mfName,
-                        "differences", diffs
-                ));
-            } else {
-                matched.add(Map.of("fieldName", mfName));
-            }
+                mismatched.add(Map.of("fieldName", mfName, "differences", diffs));
+            } else matched.add(Map.of("fieldName", mfName));
         }
-
-        // 检查资产中多余的字段（不在模型中的）
-        for (DamField af : assetFields) {
-            if (!modelFieldMap.containsKey(af.getFieldName())) {
-                extra.add(Map.of(
-                        "fieldName", af.getFieldName(),
-                        "dataType", af.getDataType()
-                ));
-            }
+        for (Map<String, Object> af : assetFields) {
+            String name = String.valueOf(af.get("fieldName"));
+            if (!modelFieldMap.containsKey(name)) extra.add(Map.of("fieldName", name, "dataType", af.get("dataType")));
         }
-
         int totalModelFields = modelFields.size();
         int totalAssetFields = assetFields.size();
         int matchedCount = matched.size();
-
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("modelName", model.getDomainName());
-        result.put("assetName", asset.getAssetName());
+        result.put("assetName", asset.get("assetName"));
         result.put("summary", Map.of(
-                "totalModelFields", totalModelFields,
-                "totalAssetFields", totalAssetFields,
-                "matched", matchedCount,
-                "missing", missing.size(),
-                "extra", extra.size(),
+                "totalModelFields", totalModelFields, "totalAssetFields", totalAssetFields,
+                "matched", matchedCount, "missing", missing.size(), "extra", extra.size(),
                 "mismatched", mismatched.size(),
                 "complianceRate", totalModelFields > 0
-                        ? Math.round((double) matchedCount / totalModelFields * 10000) / 100.0
-                        : 0
-        ));
+                        ? Math.round((double) matchedCount / totalModelFields * 10000) / 100.0 : 0));
         result.put("matched", matched);
         result.put("missing", missing);
         result.put("extra", extra);
@@ -391,23 +361,6 @@ public class ModelService {
      * 获取可供对比的资产列表（有字段的资产）
      */
     public List<Map<String, Object>> getComparableAssets() {
-        // 新表 asset_info 无 table_name 列，资产名(asset_name)承载表名语义（后续仍按字段数>0 过滤）
-        List<DamAsset> assets = assetMapper.selectList(
-                new LambdaQueryWrapper<DamAsset>().isNotNull(DamAsset::getAssetName));
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (DamAsset asset : assets) {
-            if (asset.getSourceMetadataId() == null) continue;
-            long fieldCount = fieldMapper.selectCount(
-                    new LambdaQueryWrapper<DamField>().eq(DamField::getTableId, asset.getSourceMetadataId()));
-            if (fieldCount > 0) {
-                result.add(Map.of(
-                        "id", asset.getId(),
-                        "assetName", asset.getAssetName(),
-                        "tableName", asset.getTableName(),
-                        "fieldCount", fieldCount
-                ));
-            }
-        }
-        return result;
+        return assetReadClient.comparableAssets();
     }
 }
