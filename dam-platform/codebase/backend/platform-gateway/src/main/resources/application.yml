@@ -130,6 +130,8 @@ spring:
               '[/**]':
                 allowedOriginPatterns:
                   - ${DAM_CORS_ORIGINS:http://localhost:5173}
+                  - http://127.0.0.1:3000
+                  - http://localhost:3000
                 allowedMethods: "GET,POST,PUT,DELETE,OPTIONS"
                 allowedHeaders: "token,Content-Type,Authorization,X-API-Key"
                 allowCredentials: true
