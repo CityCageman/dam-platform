@@ -4,15 +4,12 @@ package com.dam.analytics.report.service;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.dam.asset.catalog.entity.DamAsset;
-import com.dam.asset.metadata.entity.DamDataSource;
 import com.dam.asset.metadata.entity.MetadataColumn;
 import com.dam.asset.metadata.entity.MetadataSchema;
 import com.dam.asset.metadata.entity.MetadataTable;
 import com.dam.platform.common.crypto.CryptoService;
+import com.dam.analytics.report.client.ReportDataClient;
 import com.dam.asset.metric.entity.MetricDefinition;
-import com.dam.asset.catalog.repository.DamAssetMapper;
-import com.dam.asset.metadata.repository.DamDataSourceMapper;
 import com.dam.asset.metadata.repository.MetadataColumnMapper;
 import com.dam.asset.metadata.repository.MetadataSchemaMapper;
 import com.dam.asset.metadata.repository.MetadataTableMapper;
@@ -93,8 +90,7 @@ public class ReportService {
     /** 执行结果默认最大行数 */
     private static final int DEFAULT_MAX_ROWS = 500;
 
-    private final DamDataSourceMapper dataSourceMapper;
-    private final DamAssetMapper assetMapper;
+    private final ReportDataClient reportDataClient;
     private final MetadataTableMapper tableMapper;
     private final MetadataColumnMapper columnMapper;
     private final MetricLookupPort metricLookupPort;
@@ -130,7 +126,7 @@ public class ReportService {
         if (StrUtil.isBlank(requirement)) throw new BusinessException("报表需求不能为空");
         if (dataSourceId == null) throw new BusinessException("请选择数据源");
 
-        DamDataSource ds = dataSourceMapper.selectById(dataSourceId);
+        Map<String, Object> ds = reportDataClient.dataSource(dataSourceId);
         if (ds == null) throw new BusinessException("数据源不存在");
 
         // 1. 通过知识服务检索指标解释、字段映射和取数规则，并入检索和 Prompt
@@ -150,7 +146,7 @@ public class ReportService {
         }
 
         // 3. 组装 Prompt 并调用编码智能体
-        String prompt = buildPrompt(enrichedRequirement, ds.getDsType(), ctx, dataSourceId, knowledgeContext);
+        String prompt = buildPrompt(enrichedRequirement, text(ds.get("dsType")), ctx, dataSourceId, knowledgeContext);
         String raw = callAgent(prompt, token);
         String sql = cleanSql(raw);
         if (StrUtil.isBlank(sql)) {
@@ -160,7 +156,7 @@ public class ReportService {
         validateGeneratedSql(sql, ctx);
         // 知识库命中时，让模型按照知识库口径再复核/修正一次，避免只“参考”不执行
         if (StrUtil.isNotBlank(knowledgeContext)) {
-            String reviewed = reviewSqlWithKnowledge(requirement, ds.getDsType(), ctx, dataSourceId,
+            String reviewed = reviewSqlWithKnowledge(requirement, text(ds.get("dsType")), ctx, dataSourceId,
                     sql, knowledgeContext, token);
             if (StrUtil.isNotBlank(reviewed)) sql = reviewed;
         }
@@ -171,7 +167,7 @@ public class ReportService {
         if (!requiredTables.isEmpty() && !usesAllTables(sql, requiredTables)) {
             String retryRequirement = requirement + "\n取数规则要求必须使用以下表：" + String.join("、", requiredTables)
                     + "；不能只使用其他业务表替代。";
-            String retryPrompt = buildPrompt(retryRequirement, ds.getDsType(), ctx, dataSourceId, knowledgeContext);
+            String retryPrompt = buildPrompt(retryRequirement, text(ds.get("dsType")), ctx, dataSourceId, knowledgeContext);
             String retryRaw = callAgent(retryPrompt, token);
             String retrySql = cleanSql(retryRaw);
             if (StrUtil.isNotBlank(retrySql) && !retrySql.startsWith("-- 无法生成")) {
@@ -186,7 +182,7 @@ public class ReportService {
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("sql", sql);
-        result.put("dataSourceName", ds.getDsName());
+        result.put("dataSourceName", text(ds.get("dsName")));
         result.put("tableCount", ctx.totalTables);
         result.put("truncatedTables", ctx.truncated);
         result.put("tablesUsed", extractUsedTables(sql, ctx));
@@ -196,7 +192,7 @@ public class ReportService {
         // 用户明确要求下钻/明细时，再生成下钻 SQL，避免每次多一次模型调用
         if (requirement.contains("下钻") || requirement.contains("明细")) {
             StringBuilder drillError = new StringBuilder();
-            String drillSql = generateDrill(requirement, dataSourceId, sql, token, knowledgeContext, ds.getDsType(), drillError);
+            String drillSql = generateDrill(requirement, dataSourceId, sql, token, knowledgeContext, text(ds.get("dsType")), drillError);
             if (StrUtil.isNotBlank(drillSql)) {
                 result.put("drillSql", drillSql);
                 result.put("drillParams", extractParams(drillSql));
@@ -217,7 +213,7 @@ public class ReportService {
             throw new BusinessException("手工填报指标不需要生成 SQL");
         }
         if (metric.getDataSourceId() == null) throw new BusinessException("请先为指标选择数据源");
-        DamDataSource ds = dataSourceMapper.selectById(metric.getDataSourceId());
+        Map<String, Object> ds = reportDataClient.dataSource(metric.getDataSourceId());
         if (ds == null) throw new BusinessException("指标数据源不存在");
 
         String requirement = "指标名称：" + StrUtil.blankToDefault(metric.getMetricName(), "")
@@ -232,7 +228,7 @@ public class ReportService {
             if (ctx.noMatch) throw new BusinessException("没有从表名/注释中检索到该指标准备使用的表，请补充来源表或注释");
             throw new BusinessException("该数据源暂无已同步的表结构");
         }
-        String prompt = buildPrompt(requirement, ds.getDsType(), ctx, metric.getDataSourceId(), "");
+        String prompt = buildPrompt(requirement, text(ds.get("dsType")), ctx, metric.getDataSourceId(), "");
         String raw = callAgent(prompt, token);
         String sql = cleanSql(raw);
         if (StrUtil.isBlank(sql)) throw new BusinessException("智能体未返回有效的指标 SQL");
@@ -240,7 +236,7 @@ public class ReportService {
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("sql", sql);
-        result.put("dataSourceName", ds.getDsName());
+        result.put("dataSourceName", text(ds.get("dsName")));
         result.put("tablesUsed", extractUsedTables(sql, ctx));
         result.put("params", extractParams(sql));
         return result;
@@ -419,16 +415,16 @@ public class ReportService {
             throw new BusinessException("SQL 存在安全风险：仅允许执行 SELECT 查询，且不能包含写操作/DDL 关键字");
         }
 
-        DamDataSource ds = dataSourceMapper.selectById(dataSourceId);
+        Map<String, Object> ds = reportDataClient.dataSource(dataSourceId);
         if (ds == null) throw new BusinessException("数据源不存在");
-        if (ds.getStatus() == null || ds.getStatus() != 1) throw new BusinessException("数据源已禁用");
+        if (number(ds.get("status")) == null || number(ds.get("status")) != 1) throw new BusinessException("数据源已禁用");
 
         int maxRows = limit != null ? Math.clamp(limit, 1, DEFAULT_MAX_ROWS) : DEFAULT_MAX_ROWS;
 
         List<String> columns = new ArrayList<>();
         List<Map<String, Object>> rows = new ArrayList<>();
         try (Connection conn = DriverManager.getConnection(
-                ds.getJdbcUrl(), ds.getUsername(), cryptoService.decryptStorage(ds.getPassword()));
+                text(ds.get("jdbcUrl")), text(ds.get("username")), cryptoService.decryptStorage(text(ds.get("password"))));
              Statement st = conn.createStatement()) {
             // 只读连接 + 行数/超时双重兜底，防止全表拖库
             conn.setReadOnly(true);
@@ -502,9 +498,9 @@ public class ReportService {
             throw new BusinessException("仅允许执行 SELECT 查询或已登记的存储过程调用");
         }
 
-        DamDataSource ds = dataSourceMapper.selectById(dataSourceId);
+        Map<String, Object> ds = reportDataClient.dataSource(dataSourceId);
         if (ds == null) throw new BusinessException("数据源不存在");
-        if (ds.getStatus() == null || ds.getStatus() != 1) throw new BusinessException("数据源已禁用");
+        if (number(ds.get("status")) == null || number(ds.get("status")) != 1) throw new BusinessException("数据源已禁用");
 
         int maxRows = limit != null ? Math.clamp(limit, 1, DEFAULT_MAX_ROWS) : DEFAULT_MAX_ROWS;
         // 2. 命名参数 → ?
@@ -515,7 +511,7 @@ public class ReportService {
         List<String> columns = new ArrayList<>();
         List<Map<String, Object>> rows = new ArrayList<>();
         try (Connection conn = DriverManager.getConnection(
-                ds.getJdbcUrl(), ds.getUsername(), cryptoService.decryptStorage(ds.getPassword()));
+                text(ds.get("jdbcUrl")), text(ds.get("username")), cryptoService.decryptStorage(text(ds.get("password"))));
              PreparedStatement ps = conn.prepareStatement(jdbcSql)) {
             conn.setReadOnly(true);
             ps.setMaxRows(maxRows + 1);
@@ -728,13 +724,9 @@ public class ReportService {
             List<String> selectedNames = ctx.tables.stream()
                     .map(t -> String.valueOf(t.get("tableName"))).filter(StrUtil::isNotBlank).toList();
             if (!selectedNames.isEmpty()) {
-                Map<String, String> comments = assetMapper.selectList(new LambdaQueryWrapper<DamAsset>()
-                                .eq(DamAsset::getDataSourceId, dataSourceId)
-                                .in(DamAsset::getAssetName, selectedNames))
-                        .stream().filter(a -> StrUtil.isNotBlank(a.getDescription()))
-                        .collect(Collectors.toMap(DamAsset::getAssetName, DamAsset::getDescription, (a, b) -> a));
+                Map<String, Object> comments = reportDataClient.assetComments(dataSourceId);
                 for (Map<String, Object> table : ctx.tables) {
-                    String comment = comments.get(String.valueOf(table.get("tableName")));
+                    String comment = comments.get(String.valueOf(table.get("tableName"))) instanceof String s ? s : null;
                     if (StrUtil.isNotBlank(comment)) table.put("tableComment", comment);
                 }
             }
@@ -1210,4 +1202,7 @@ public class ReportService {
         if (v instanceof java.sql.Blob || v instanceof java.sql.Clob) return "[LOB]";
         return v.toString();
     }
+
+    private String text(Object v) { return v == null ? null : String.valueOf(v); }
+    private Long number(Object v) { return v instanceof Number n ? n.longValue() : null; }
 }
