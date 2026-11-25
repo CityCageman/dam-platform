@@ -25,7 +25,8 @@ import sys,yaml
 print(' '.join(yaml.safe_load(open(sys.argv[1]+'/product.yaml'))['services']))
 PY
 )"
-if [ "${STANDALONE:-0}" = "1" ]; then
+STANDALONE="${STANDALONE:-1}"
+if [ "$STANDALONE" = "1" ]; then
   case " $SERVICES " in *" platform-gateway "*) ;; *) SERVICES="$SERVICES platform-gateway platform-auth" ;; esac
 fi
 MODULES="$(python3 - "$ROOT" "$SERVICES" <<'PY'
