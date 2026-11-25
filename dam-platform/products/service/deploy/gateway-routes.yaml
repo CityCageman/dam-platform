@@ -1,0 +1,10 @@
+# 该产品需要的网关路由；安装时合并到 platform-gateway 配置
+routes:
+  - id: service-api-api-data-service-allall
+    uri: lb://service-api
+    predicates:
+      - Path=/api/data-service/**
+  - id: service-api-api-open-allall
+    uri: lb://service-api
+    predicates:
+      - Path=/api/open/**

@@ -1,0 +1,18 @@
+# 该产品需要的网关路由；安装时合并到 platform-gateway 配置
+routes:
+  - id: asset-catalog-api-catalog-allall
+    uri: lb://asset-catalog
+    predicates:
+      - Path=/api/catalog/**
+  - id: asset-catalog-api-asset-allall
+    uri: lb://asset-catalog
+    predicates:
+      - Path=/api/asset/**
+  - id: asset-catalog-api-metadata-allall
+    uri: lb://asset-catalog
+    predicates:
+      - Path=/api/metadata/**
+  - id: asset-mdm-api-mdm-allall
+    uri: lb://asset-mdm
+    predicates:
+      - Path=/api/mdm/**

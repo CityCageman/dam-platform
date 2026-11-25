@@ -1,0 +1,12 @@
+code: DAN
+name: 数据分析
+version: 1.0.0
+description: 指标、报表与维度分析
+services: [analytics-metric, analytics-report]
+schemas: [dam_dan, dam_dimension]
+routes: [/api/metric/**, /api/catalog/reports/**, /api/catalog/internal/ai/**]
+frontend:
+  remote: analytics-ui
+  entry: /products/analytics/remoteEntry.js
+permissions: [metric:view, report:view, report:manage]
+requiresPlatform: ">=1.0.0 <2.0.0"

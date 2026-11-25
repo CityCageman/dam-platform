@@ -1,0 +1,22 @@
+# 该产品需要的网关路由；安装时合并到 platform-gateway 配置
+routes:
+  - id: governance-standard-api-standard-allall
+    uri: lb://governance-standard
+    predicates:
+      - Path=/api/standard/**
+  - id: governance-quality-api-quality-allall
+    uri: lb://governance-quality
+    predicates:
+      - Path=/api/quality/**
+  - id: governance-security-api-security-allall
+    uri: lb://governance-security
+    predicates:
+      - Path=/api/security/**
+  - id: governance-lifecycle-api-lifecycle-allall
+    uri: lb://governance-lifecycle
+    predicates:
+      - Path=/api/lifecycle/**
+  - id: governance-lineage-api-lineage-allall
+    uri: lb://governance-lineage
+    predicates:
+      - Path=/api/lineage/**

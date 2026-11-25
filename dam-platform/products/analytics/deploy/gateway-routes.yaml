@@ -1,0 +1,14 @@
+# 该产品需要的网关路由；安装时合并到 platform-gateway 配置
+routes:
+  - id: analytics-metric-api-metric-allall
+    uri: lb://analytics-metric
+    predicates:
+      - Path=/api/metric/**
+  - id: analytics-report-api-catalog-reports-allall
+    uri: lb://analytics-report
+    predicates:
+      - Path=/api/catalog/reports/**
+  - id: analytics-report-api-catalog-internal-ai-allall
+    uri: lb://analytics-report
+    predicates:
+      - Path=/api/catalog/internal/ai/**

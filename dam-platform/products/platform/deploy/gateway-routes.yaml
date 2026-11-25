@@ -1,0 +1,22 @@
+# 该产品需要的网关路由；安装时合并到 platform-gateway 配置
+routes:
+  - id: platform-portal-api-portal-allall
+    uri: lb://platform-portal
+    predicates:
+      - Path=/api/portal/**
+  - id: platform-system-api-catalog-menus-allall
+    uri: lb://platform-system
+    predicates:
+      - Path=/api/catalog/menus/**
+  - id: platform-task-center-api-task-allall
+    uri: lb://platform-task-center
+    predicates:
+      - Path=/api/task/**
+  - id: platform-scheduler-api-scheduler-allall
+    uri: lb://platform-scheduler
+    predicates:
+      - Path=/api/scheduler/**
+  - id: platform-operations-api-operations-allall
+    uri: lb://platform-operations
+    predicates:
+      - Path=/api/operations/**

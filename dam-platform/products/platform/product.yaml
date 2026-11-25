@@ -1,0 +1,22 @@
+code: DPM
+name: 数据中台管理
+version: 1.0.0
+description: 门户、系统配置、任务中心、调度与运维
+services:
+  - platform-portal
+  - platform-system
+  - platform-task-center
+  - platform-scheduler
+  - platform-operations
+schemas: [dam_dpm]
+routes:
+  - /api/portal/**
+  - /api/catalog/menus/**
+  - /api/task/**
+  - /api/scheduler/**
+  - /api/operations/**
+frontend:
+  remote: platform-ui
+  entry: /products/platform/remoteEntry.js
+permissions: [platform:view, task:manage, scheduler:manage, operations:manage]
+requiresPlatform: ">=1.0.0 <2.0.0"

@@ -1,0 +1,12 @@
+code: DPP
+name: 数据处理
+version: 1.0.0
+description: 数据开发与模型管理
+services: [processing-develop, processing-model]
+schemas: [dam_dpp]
+routes: [/api/develop/**, /api/catalog/models/**]
+frontend:
+  remote: processing-ui
+  entry: /products/processing/remoteEntry.js
+permissions: [develop:view, model:manage]
+requiresPlatform: ">=1.0.0 <2.0.0"

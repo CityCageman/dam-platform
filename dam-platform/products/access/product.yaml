@@ -1,0 +1,12 @@
+code: DAP
+name: 数据接入
+version: 1.0.0
+description: 数据源接入、集成任务与执行
+services: [access-integration]
+schemas: [dam_dap]
+routes: [/api/integration/**, /api/access/**]
+frontend:
+  remote: access-ui
+  entry: /products/access/remoteEntry.js
+permissions: [access:view, integration:manage]
+requiresPlatform: ">=1.0.0 <2.0.0"

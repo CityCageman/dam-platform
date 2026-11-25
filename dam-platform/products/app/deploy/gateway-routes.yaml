@@ -1,0 +1,10 @@
+# 该产品需要的网关路由；安装时合并到 platform-gateway 配置
+routes:
+  - id: app-studio-api-app-studio-allall
+    uri: lb://app-studio
+    predicates:
+      - Path=/api/app-studio/**
+  - id: app-market-api-app-market-allall
+    uri: lb://app-market
+    predicates:
+      - Path=/api/app-market/**

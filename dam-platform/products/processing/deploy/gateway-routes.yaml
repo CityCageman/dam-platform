@@ -1,0 +1,10 @@
+# 该产品需要的网关路由；安装时合并到 platform-gateway 配置
+routes:
+  - id: processing-develop-api-develop-allall
+    uri: lb://processing-develop
+    predicates:
+      - Path=/api/develop/**
+  - id: processing-model-api-catalog-models-allall
+    uri: lb://processing-model
+    predicates:
+      - Path=/api/catalog/models/**

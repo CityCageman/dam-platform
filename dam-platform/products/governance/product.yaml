@@ -1,0 +1,17 @@
+code: DGP
+name: 数据治理
+version: 1.0.0
+description: 标准、质量、安全、生命周期与血缘
+services:
+  - governance-standard
+  - governance-quality
+  - governance-security
+  - governance-lifecycle
+  - governance-lineage
+schemas: [dam_dgp]
+routes: [/api/standard/**, /api/quality/**, /api/security/**, /api/lifecycle/**, /api/lineage/**]
+frontend:
+  remote: governance-ui
+  entry: /products/governance/remoteEntry.js
+permissions: [standard:view, quality:view, security:view, lifecycle:view, lineage:view]
+requiresPlatform: ">=1.0.0 <2.0.0"

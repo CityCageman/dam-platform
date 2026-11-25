@@ -1,0 +1,10 @@
+# 该产品需要的网关路由；安装时合并到 platform-gateway 配置
+routes:
+  - id: access-integration-api-integration-allall
+    uri: lb://access-integration
+    predicates:
+      - Path=/api/integration/**
+  - id: access-integration-api-access-allall
+    uri: lb://access-integration
+    predicates:
+      - Path=/api/access/**
