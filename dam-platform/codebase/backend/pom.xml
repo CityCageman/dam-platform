@@ -218,21 +218,6 @@
                 <artifactId>platform-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
-            <dependency>
-                <groupId>com.dam</groupId>
-                <artifactId>asset-catalog</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.dam</groupId>
-                <artifactId>platform-system</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.dam</groupId>
-                <artifactId>platform-operations</artifactId>
-                <version>${project.version}</version>
-            </dependency>
         </dependencies>
     </dependencyManagement>
 
