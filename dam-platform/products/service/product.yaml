@@ -4,7 +4,7 @@ version: 1.0.0
 description: 数据 API、订阅和调用日志
 services: [service-api]
 schemas: [dam_dsp]
-routes: [/api/data-service/**, /api/open/**]
+routes: [/api/data-service/**, /open-api/**]
 frontend:
   remote: service-ui
   entry: /products/service/remoteEntry.js

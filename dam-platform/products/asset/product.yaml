@@ -9,8 +9,6 @@ schemas:
   - dam_dam
 routes:
   - /api/catalog/**
-  - /api/asset/**
-  - /api/metadata/**
   - /api/mdm/**
 frontend:
   remote: asset-ui

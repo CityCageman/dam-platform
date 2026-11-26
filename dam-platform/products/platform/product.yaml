@@ -12,7 +12,7 @@ schemas: [dam_dpm]
 routes:
   - /api/portal/**
   - /api/catalog/menus/**
-  - /api/task/**
+  - /api/task-center/**
   - /api/scheduler/**
   - /api/operations/**
 frontend:
