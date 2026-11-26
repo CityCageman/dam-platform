@@ -4,7 +4,7 @@ version: 1.0.0
 description: 指标、报表与维度分析
 services: [analytics-metric, analytics-report]
 schemas: [dam_dan, dam_dimension]
-routes: [/api/metric/**, /api/catalog/reports/**, /api/catalog/internal/ai/**]
+routes: [/api/metrics/**, /api/catalog/reports/**, /api/catalog/internal/ai/**]
 frontend:
   remote: analytics-ui
   entry: /products/analytics/remoteEntry.js
