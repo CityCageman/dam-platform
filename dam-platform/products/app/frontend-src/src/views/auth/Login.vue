@@ -16,8 +16,8 @@
           <span class="lm-dot d3"></span><span class="lm-dot d4"></span>
         </div>
         <div>
-          <div class="logo-title">数据资产管理平台</div>
-          <div class="logo-sub">DATA ASSET PLATFORM</div>
+          <div class="logo-title">{{ brandName }}</div>
+          <div class="logo-sub">{{ brandSub }}</div>
         </div>
       </div>
 
@@ -42,7 +42,7 @@
       <div class="login-card">
         <div class="card-kicker">WELCOME BACK</div>
         <h2 class="card-title">登录</h2>
-        <p class="card-sub">请使用平台账号登录</p>
+        <p class="card-sub">请使用 {{ brandName }} 账号登录</p>
         <el-form :model="form" :rules="rules" ref="formRef" @keyup.enter="handleLogin">
           <el-form-item prop="username">
             <el-input v-model="form.username" placeholder="用户名" size="large" :prefix-icon="User" autocomplete="username" autofocus />
@@ -55,7 +55,7 @@
             登 录
           </el-button>
         </el-form>
-        <div class="login-foot">内网部署 · 数据资产管理平台 v1.0.0</div>
+        <div class="login-foot">内网部署 · {{ brandName }} v1.0.0</div>
         <div class="demo-accounts">
           <div class="demo-title">演示账号（点击填充）</div>
           <div class="demo-row" v-for="d in demoAccounts" :key="d.u" @click="fill(d)">
@@ -76,18 +76,21 @@ import { authApi } from '@/api'
 import { ElMessage } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
 import { encryptPassword } from '@/utils/crypto'
+import { isProductMode, productHomePath, productTitle } from '@/config/product'
 
 const router = useRouter()
+const brandName = productTitle()
+const brandSub = isProductMode() ? 'PRODUCT WORKSPACE' : 'DATA ASSET PLATFORM'
 const userStore = useUserStore()
 const formRef = ref()
 const loading = ref(false)
 
-const form = reactive({ username: 'admin', password: 'admin123' })
+const form = reactive({ username: 'admin', password: 'Dam@2026' })
 
 const demoAccounts = [
-  { u: 'admin', p: 'admin123', role: '数据管理员', color: '#F5222D' },
-  { u: 'steward', p: 'steward123', role: '数据管家', color: '#FA8C16' },
-  { u: 'analyst', p: 'analyst123', role: '数据分析师', color: '#1677FF' }
+  { u: 'admin', p: 'Dam@2026', role: '系统管理员', color: '#F5222D' },
+  { u: 'governor', p: 'Dam@2026', role: '数据管家', color: '#FA8C16' },
+  { u: 'data_ops', p: 'Dam@2026', role: '数据运维', color: '#1677FF' }
 ]
 
 function fill(d: any) {
@@ -115,7 +118,7 @@ async function handleLogin() {
     userStore.applyAuthPayload(res.data, { login: true })
     ElMessage.success('登录成功')
     // 登录后进入角色默认驾驶舱（兼容 / 与 /dashboard 的守卫重定向）
-    router.push(userStore.homePath)
+    router.push(isProductMode() ? productHomePath() : userStore.homePath)
   } catch (e: any) {
     ElMessage.error(e.message || '登录失败')
   } finally {

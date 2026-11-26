@@ -5,7 +5,7 @@
       <div class="brand">
         <div class="brand-mark">DA</div>
         <div class="brand-text">
-          <div class="brand-title">数据资产管理平台</div>
+          <div class="brand-title">{{ brandName }}</div>
           <div class="brand-sub">DATA ASSET PLATFORM</div>
         </div>
       </div>
@@ -184,12 +184,14 @@ import {
   resolveModuleMenu
 } from '@/config/navigation'
 import { getPortalDomain, resolvePortalIcon } from '@/config/portal'
+import { productTitle } from '@/config/product'
 
 type LayoutMode = 'portal' | 'domain' | 'module'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+const brandName = productTitle()
 const initial = computed(() => (userStore.userInfo?.realName || userStore.userInfo?.username || '管').charAt(0).toUpperCase())
 const sidebarDepartment = computed(() => userStore.department || userStore.userInfo?.department || '未设置科室')
 const userRoleLabel = computed(() => userStore.roleNames.join(' / '))

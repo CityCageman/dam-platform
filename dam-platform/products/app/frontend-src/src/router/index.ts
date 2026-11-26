@@ -92,6 +92,7 @@ const routes = [
       { path: 'dashboard', redirect: () => useUserStore().homePath, meta: { title: '首页' } },
       // 产品中心（原统一门户）：能力域总览与模块入口，单窗口内跳转
       { path: 'portal', component: () => import('@/views/portal/PortalHome.vue'), meta: { title: '产品中心', icon: 'Grid' } },
+      { path: 'app-home', component: () => import('@/views/app/AppHome.vue'), meta: { title: '数据应用', icon: 'Grid' } },
       { path: 'domains/:domainCode', component: () => import('@/views/portal/DomainHome.vue'), meta: { title: '能力域', icon: 'Grid', hidden: true } },
       // 数据资产模块：资产目录 / 元数据管理 / 资产详情
       { path: 'catalog', component: () => import('@/views/catalog/AssetList.vue'), meta: moduleMeta('DAM', '资产目录', 'FolderOpened') },

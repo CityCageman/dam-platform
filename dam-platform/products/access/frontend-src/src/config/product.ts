@@ -38,20 +38,20 @@ export function productAllowsPath(path: string): boolean {
     DPP: ['/models', '/develop', '/scheduler'],
     DSP: ['/data-service'],
     DAN: ['/metrics', '/reports'],
-    DAPP: ['/portal']
+    DAPP: ['/app-home', '/portal']
   }
   return (allowed[PRODUCT_CODE] || []).some(prefix => path === prefix || path.startsWith(prefix + '/'))
 }
 
 export const PRODUCT_HOME: Record<string, string> = {
   DAM: '/catalog',
-  DPM: '/portal',
+  DPM: '/operations',
   DAP: '/integration',
   DGP: '/quality',
   DPP: '/models',
   DSP: '/data-service',
   DAN: '/reports',
-  DAPP: '/portal'
+  DAPP: '/app-home'
 }
 
 export function productHomePath(): string {

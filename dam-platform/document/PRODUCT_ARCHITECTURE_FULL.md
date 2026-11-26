@@ -254,12 +254,12 @@ platform-operations     8088
 VITE_PRODUCT_CODE=DPM
 ```
 
-显示路由：
+显示路由（产品首页 `/operations`）：
 
 ```text
 /portal
 /task-center
-/operations
+/operations      <- DPM 产品首页
 /system-config
 /system-config/SYS
 /cockpit/*
@@ -637,13 +637,14 @@ app-market  8108
 VITE_PRODUCT_CODE=DAPP
 ```
 
-显示路由：
+显示路由（产品首页 `/app-home`）：
 
 ```text
+/app-home      <- DAPP 产品首页
 /portal
 ```
 
-> DAPP 目前只有服务骨架和入口，应用开发/市场页面尚未实现。
+> DAPP 的后端仍是服务骨架；`/app-home` 是独立产品首页。
 
 ### 网关 API
 
@@ -740,6 +741,36 @@ DAPP /portal
 ```
 
 不在白名单的路径会回到产品首页。
+
+### 6.2.1 登录页与产品首页
+
+每个产品构建都包含 `/login`，但登录页会按产品注入品牌：
+
+```text
+数据资产与主数据
+数据中台管理
+数据接入
+数据治理
+数据处理
+数据服务
+数据分析
+数据应用
+```
+
+登录成功后跳转产品首页：
+
+| 产品 | 首页 |
+|---|---|
+| DAM | `/catalog` |
+| DPM | `/operations` |
+| DAP | `/integration` |
+| DGP | `/quality` |
+| DPP | `/models` |
+| DSP | `/data-service` |
+| DAN | `/reports` |
+| DAPP | `/app-home` |
+
+登录页组件本身复用同一套布局，但品牌名、页面标题和登录后首页按产品代码区分。
 
 ### 6.3 产品构建
 
